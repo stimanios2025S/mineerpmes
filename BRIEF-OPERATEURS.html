@@ -1,0 +1,1185 @@
+<title>Brief opérateurs atelier</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f2f3f5;
+    --surface: #ffffff;
+    --surface-2: #e9ecee;
+    --line: #d4d9dd;
+    --line-strong: #b3bac0;
+    --ink: #16191c;
+    --ink-2: #3b434a;
+    --muted: #6a7480;
+    --accent: #2b5f7e;
+    --accent-soft: #e1ecf2;
+    --oak: #8a5a2b;
+    --oak-soft: #f2e8dd;
+    --warn: #856009;
+    --warn-soft: #f7eed7;
+    --warn-line: #ddc487;
+    --danger: #9c3125;
+    --danger-soft: #f9e6e3;
+    --danger-line: #dda79e;
+    --ok: #2c6742;
+    --radius: 4px;
+    --font-display: "Archivo", "Segoe UI", system-ui, sans-serif;
+    --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #121416;
+      --surface: #1a1d20;
+      --surface-2: #22262a;
+      --line: #2f343a;
+      --line-strong: #454c53;
+      --ink: #e6e9eb;
+      --ink-2: #c0c7cc;
+      --muted: #8d959d;
+      --accent: #74aecd;
+      --accent-soft: #1b2a33;
+      --oak: #c28c55;
+      --oak-soft: #2a231b;
+      --warn: #d0a24a;
+      --warn-soft: #2d2617;
+      --warn-line: #4a3f22;
+      --danger: #e28279;
+      --danger-soft: #33211e;
+      --danger-line: #523231;
+      --ok: #7cbe98;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #121416;
+    --surface: #1a1d20;
+    --surface-2: #22262a;
+    --line: #2f343a;
+    --line-strong: #454c53;
+    --ink: #e6e9eb;
+    --ink-2: #c0c7cc;
+    --muted: #8d959d;
+    --accent: #74aecd;
+    --accent-soft: #1b2a33;
+    --oak: #c28c55;
+    --oak-soft: #2a231b;
+    --warn: #d0a24a;
+    --warn-soft: #2d2617;
+    --warn-line: #4a3f22;
+    --danger: #e28279;
+    --danger-soft: #33211e;
+    --danger-line: #523231;
+    --ok: #7cbe98;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 1140px;
+    margin-inline: auto;
+    padding-inline: 20px;
+    padding-block: 30px 72px;
+  }
+
+  /* ---------- en-tête ---------- */
+  .masthead {
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .eyebrow {
+    font-family: var(--font-display);
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.13em;
+    color: var(--muted);
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(1.85rem, 5.2vw, 2.7rem);
+    line-height: 1.06;
+    letter-spacing: -0.022em;
+    text-wrap: balance;
+    margin: 0;
+  }
+  .lede {
+    max-width: 66ch;
+    color: var(--ink-2);
+    margin: 0;
+  }
+  .divisions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .division {
+    font-family: var(--font-display);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+  .division.admedco { background: var(--accent-soft); color: var(--accent); }
+  .division.mobilix { background: var(--oak-soft); color: var(--oak); }
+  .division.regle { background: var(--surface-2); color: var(--muted); }
+
+  /* ---------- bandeau de chiffres ---------- */
+  .stats {
+    margin-block-start: 26px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .stat { background: var(--surface); padding: 14px 16px; }
+  .stat b {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+  }
+  .stat span { display: block; margin-block-start: 5px; font-size: 0.79rem; color: var(--muted); line-height: 1.4; }
+  .stat.is-critical b { color: var(--danger); }
+
+  /* ---------- coquille ---------- */
+  .shell { margin-block-start: 38px; }
+  .rail { display: none; }
+  @media (min-width: 1040px) {
+    .shell {
+      display: grid;
+      grid-template-columns: 210px minmax(0, 1fr);
+      gap: 52px;
+      align-items: start;
+    }
+    .rail {
+      display: block;
+      position: sticky;
+      top: 20px;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+    }
+  }
+  .rail h2 {
+    font-family: var(--font-display);
+    font-size: 0.66rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.13em;
+    color: var(--muted);
+    margin: 0 0 10px;
+  }
+  .rail ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .rail a {
+    display: flex;
+    gap: 9px;
+    padding: 4px 8px 4px 0;
+    font-size: 0.815rem;
+    line-height: 1.35;
+    color: var(--ink-2);
+    text-decoration: none;
+    border-radius: 3px;
+  }
+  .rail a:hover { color: var(--accent); }
+  .rail a i {
+    font-family: var(--font-mono);
+    font-style: normal;
+    font-size: 0.72rem;
+    color: var(--muted);
+    min-width: 1.1em;
+  }
+
+  /* ---------- sections ---------- */
+  .block { margin-block-start: 46px; scroll-margin-top: 20px; }
+  .block:first-of-type { margin-block-start: 0; }
+  .block > h2 {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 0 0 6px;
+    padding-bottom: 9px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.36rem;
+    letter-spacing: -0.012em;
+    line-height: 1.22;
+    text-wrap: balance;
+  }
+  .block > h2 .n {
+    font-family: var(--font-mono);
+    font-size: 0.86rem;
+    font-weight: 500;
+    color: var(--accent);
+  }
+  .block > * + * { margin-block-start: 14px; }
+  .block p, .block ul, .block ol { max-width: 68ch; }
+  .block h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1rem;
+    letter-spacing: -0.005em;
+    margin: 26px 0 0;
+    text-wrap: balance;
+  }
+  .block h3 + * { margin-block-start: 7px; }
+  .block ul, .block ol { padding-inline-start: 1.15em; }
+  .block li + li { margin-block-start: 5px; }
+  strong { font-weight: 600; }
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.855em;
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 3px;
+    overflow-wrap: anywhere;
+  }
+  a.inline { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+  /* ---------- encarts ---------- */
+  .callout {
+    position: relative;
+    max-width: 72ch;
+    padding: 14px 17px;
+    border: 1px solid var(--line);
+    border-left-width: 6px;
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .callout > h3 {
+    margin: 0 0 6px;
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.11em;
+  }
+  .callout > p { margin: 0; max-width: none; }
+  .callout > p + p { margin-block-start: 8px; }
+  .callout.is-critical { background: var(--danger-soft); border-color: var(--danger-line); border-left-color: transparent; }
+  .callout.is-critical > h3 { color: var(--danger); }
+  .callout.is-critical::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 6px;
+    border-start-start-radius: var(--radius);
+    border-end-start-radius: var(--radius);
+    background: repeating-linear-gradient(45deg, var(--danger) 0 4px, transparent 4px 9px);
+  }
+  .callout.is-warn { background: var(--warn-soft); border-color: var(--warn-line); }
+  .callout.is-warn > h3 { color: var(--warn); }
+  .callout.is-note { background: var(--accent-soft); border-color: transparent; border-left-color: var(--accent); }
+  .callout.is-note > h3 { color: var(--accent); }
+
+  /* ---------- tableaux ---------- */
+  .scroll {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 0.94rem; }
+  th, td { text-align: left; padding: 9px 13px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th {
+    font-family: var(--font-display);
+    font-size: 0.67rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--muted);
+    background: var(--surface-2);
+    white-space: nowrap;
+    border-bottom-color: var(--line-strong);
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.n, th.n { font-variant-numeric: tabular-nums; text-align: right; }
+  td .mono { font-family: var(--font-mono); font-size: 0.86em; }
+  .tag {
+    display: inline-block;
+    font-family: var(--font-display);
+    font-size: 0.66rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 2px 7px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .tag.danger { background: var(--danger-soft); color: var(--danger); }
+  .tag.warn { background: var(--warn-soft); color: var(--warn); }
+  .tag.ok { background: var(--accent-soft); color: var(--accent); }
+
+  /* ---------- code ---------- */
+  .code { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+  .code-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 8px 6px 12px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--line);
+  }
+  .code-bar span {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--muted);
+  }
+  .code-bar button {
+    font-family: var(--font-display);
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--ink-2);
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: 3px;
+    padding: 4px 9px;
+    cursor: pointer;
+  }
+  .code-bar button:hover { color: var(--accent); border-color: var(--accent); }
+  .code pre {
+    margin: 0;
+    padding: 13px 14px;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 0.805rem;
+    line-height: 1.7;
+    color: var(--ink-2);
+  }
+  .code pre b { color: var(--ink); font-weight: 500; }
+  .code pre em { color: var(--muted); font-style: normal; }
+
+  /* ---------- chaîne de dépendance ---------- */
+  .chain { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .chain > div {
+    background: var(--surface);
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 12px;
+    padding: 13px 15px;
+  }
+  @media (min-width: 620px) { .chain > div { grid-template-columns: 30px minmax(0, 15rem) minmax(0, 1fr); } }
+  .chain i {
+    font-family: var(--font-mono);
+    font-style: normal;
+    font-size: 0.8rem;
+    color: var(--accent);
+    padding-top: 2px;
+  }
+  .chain b { font-weight: 600; }
+  .chain small { display: block; color: var(--muted); font-family: var(--font-mono); font-size: 0.78rem; }
+  .chain p { margin: 0; color: var(--ink-2); font-size: 0.92rem; }
+
+  footer {
+    margin-block-start: 58px;
+    padding-block-start: 18px;
+    border-top: 1px solid var(--line);
+    font-size: 0.82rem;
+    color: var(--muted);
+    max-width: 68ch;
+  }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+    html { scroll-behavior: auto; }
+  }
+  html { scroll-behavior: smooth; }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <p class="eyebrow">Plateforme ERP + MES — document de transmission</p>
+    <h1>Brief opérateurs atelier</h1>
+    <p class="lede">
+      État des lieux factuel de la plateforme, à destination d'un tiers qui ne l'a
+      jamais vue et doit proposer des modifications. Ce document ne prescrit rien :
+      les changements sont décidés par le propriétaire de la plateforme.
+    </p>
+    <div class="divisions">
+      <span class="division admedco">ADMEDCO — métallique</span>
+      <span class="division mobilix">MOBILIX — bois &amp; couture</span>
+      <span class="division regle">28 septembre 2026</span>
+    </div>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><b>92</b><span>permissions fines</span></div>
+    <div class="stat"><b>18</b><span>rôles, dont 2 d'atelier</span></div>
+    <div class="stat"><b>11</b><span>comptes utilisateurs</span></div>
+    <div class="stat is-critical"><b>0</b><span>fiche employé réelle</span></div>
+    <div class="stat is-critical"><b>0</b><span>document métier créable</span></div>
+  </div>
+
+  <div class="shell">
+
+    <nav class="rail" aria-label="Sommaire">
+      <h2>Sommaire</h2>
+      <ol>
+        <li><a href="#s1"><i>1</i>Le projet</a></li>
+        <li><a href="#s2"><i>2</i>Les invariants</a></li>
+        <li><a href="#s3"><i>3</i>Le modèle d'accès</a></li>
+        <li><a href="#s4"><i>4</i>Les rôles d'atelier</a></li>
+        <li><a href="#s5"><i>5</i>Le portail employé</a></li>
+        <li><a href="#s6"><i>6</i>Ce qu'il faut pour travailler</a></li>
+        <li><a href="#s7"><i>7</i>État réel de la base</a></li>
+        <li><a href="#s8"><i>8</i>Changements récents</a></li>
+        <li><a href="#s9"><i>9</i>Décisions en attente</a></li>
+        <li><a href="#s10"><i>10</i>Vocabulaire</a></li>
+        <li><a href="#s11"><i>11</i>Commandes et fichiers</a></li>
+        <li><a href="#s12"><i>12</i>Rédiger une demande</a></li>
+        <li><a href="#s13"><i>13</i>Résumé en dix lignes</a></li>
+      </ol>
+    </nav>
+
+    <main>
+
+      <section class="block" id="s1">
+        <h2><span class="n">1</span>Le projet</h2>
+        <p>
+          Plateforme <strong>ERP + MES</strong> pour un industriel algérien à deux
+          divisions. <strong>ADMEDCO</strong> travaille le métal : coupe, usinage,
+          soudage, meulage, vissage, poudrage, dépôt <code>DEP-MP</code>.
+          <strong>MOBILIX</strong> travaille le bois, la couture et le garnissage,
+          dépôt <code>DEP-MP-MBX</code>.
+        </p>
+        <p>
+          Les deux divisions partagent un flux : des châssis peints par ADMEDCO
+          entrent chez MOBILIX pour le garnissage. Une règle de transfert
+          inter-ateliers encodée en base porte ce flux.
+        </p>
+        <div class="scroll">
+          <table>
+            <caption class="eyebrow" style="text-align:left; padding:12px 13px 0;">Pile technique</caption>
+            <tbody>
+              <tr><td>Next.js, App Router, Turbopack</td><td class="n"><span class="mono">16.3.6</span></td></tr>
+              <tr><td>React</td><td class="n"><span class="mono">19.3.0</span></td></tr>
+              <tr><td>TypeScript</td><td class="n"><span class="mono">5.9.3</span></td></tr>
+              <tr><td>Prisma</td><td class="n"><span class="mono">6.19.0</span></td></tr>
+              <tr><td>PostgreSQL 17 — conteneur Docker <span class="mono">erpmes-postgres</span></td><td class="n"><span class="mono">port 5433</span></td></tr>
+              <tr><td>Tailwind CSS</td><td class="n"><span class="mono">4</span></td></tr>
+              <tr><td>Ampleur : modèles Prisma · pages · permissions · rôles · migrations</td><td class="n"><span class="mono">~76 · ~80 · 92 · 18 · 4</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          Interface entièrement en français. Le code, les commentaires et les
+          messages de console sont en français <strong>sans accents</strong> —
+          contrainte des consoles Windows, pas un choix esthétique.
+        </p>
+      </section>
+
+      <section class="block" id="s2">
+        <h2><span class="n">2</span>Les invariants à ne jamais enfreindre</h2>
+        <p>
+          Ces règles ne sont pas des préférences de style. Une modification qui les
+          enfreint sera refusée, même si elle « fonctionne ».
+        </p>
+        <h3>Le cloisonnement est vérifié côté serveur, à quatre endroits</h3>
+        <p>
+          Le menu est filtré par permission, mais ce filtrage n'est qu'un confort.
+          La même permission est revérifiée dans la page, dans l'action serveur,
+          dans l'API et dans la requête. Formule du dépôt :
+          <em>« masquer un menu ne protège rien »</em>.
+        </p>
+        <div class="callout is-note">
+          <h3>Corollaire souvent oublié</h3>
+          <p>
+            Un bloc masqué en CSS laisse la donnée dans le HTML. On rend
+            conditionnellement ; on ne cache pas.
+          </p>
+        </div>
+        <h3>Aucun mot de passe en dur dans le dépôt</h3>
+        <p>
+          Tout est dans <code>.env</code>, non versionné. Le panneau d'accès rapide
+          de la page de connexion est désactivé en production
+          <strong>inconditionnellement</strong>, par une fonction qui renvoie
+          <code>false</code> dès que <code>NODE_ENV === "production"</code> : c'est
+          une garantie, pas un réglage. Les mots de passe ne transitent jamais par
+          le navigateur — seul l'email est envoyé, le serveur résout le mot de passe.
+        </p>
+        <h3>Un compte par personne, jamais de compte partagé</h3>
+        <p>
+          Aucun script n'invente de donnée RH. Une fiche employé doit exister avant
+          qu'un compte puisse y être rattaché.
+        </p>
+        <h3>Rien n'est deviné à la place de l'administrateur</h3>
+        <p>
+          Quand une donnée source n'est pas interprétable sans ambiguïté, l'import
+          applique un repli documenté, <strong>le signale en avertissement</strong>
+          (« Correspondance a confirmer ») et laisse l'administrateur trancher. Il ne
+          choisit jamais silencieusement.
+        </p>
+        <h3>Les migrations de données existantes sont additives</h3>
+        <p>
+          Les colonnes ajoutées sont nullables. Aucune donnée existante n'est
+          transformée.
+        </p>
+        <h3>Les rôles sont définis dans le code</h3>
+        <p>
+          <code>src/lib/rbac/roles.ts</code> est la source de vérité. La base ne
+          fait que refléter : <code>npm run db:seed</code> <strong>ajoute</strong>
+          les liaisons manquantes <strong>et retire</strong> les obsolètes. Modifier
+          <code>roles.ts</code> sans relancer le seed ne change rien — c'est le
+          piège numéro un de ce dépôt.
+        </p>
+      </section>
+
+      <section class="block" id="s3">
+        <h2><span class="n">3</span>Le modèle d'accès</h2>
+        <ul>
+          <li><strong>92 permissions</strong> fines, réparties en 12 modules.</li>
+          <li><strong>3 permissions de portée</strong> : <code>PORTEE_TOUTES_USINES</code>, <code>PORTEE_ADMEDCO</code>, <code>PORTEE_MOBILIX</code>.</li>
+          <li><strong>18 rôles</strong>, chacun avec une portée d'usine par défaut : <code>ADMEDCO</code>, <code>MOBILIX</code> ou <code>COMMUN</code>.</li>
+        </ul>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr><th>Module</th><th class="n">Permissions</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Système</td><td class="n">10</td></tr>
+              <tr><td>Référentiel</td><td class="n">11</td></tr>
+              <tr><td>Nomenclature</td><td class="n">5</td></tr>
+              <tr><td>Stocks</td><td class="n">9</td></tr>
+              <tr><td>Production</td><td class="n">9</td></tr>
+              <tr><td>Qualité</td><td class="n">6</td></tr>
+              <tr><td>Achats</td><td class="n">7</td></tr>
+              <tr><td>Ventes</td><td class="n">7</td></tr>
+              <tr><td>Finance et comptabilité</td><td class="n">10</td></tr>
+              <tr><td>Ressources humaines</td><td class="n">11</td></tr>
+              <tr><td>Portail</td><td class="n">1</td></tr>
+              <tr><td>Rapports et pilotage</td><td class="n">6</td></tr>
+              <tr><td><strong>Total</strong></td><td class="n"><strong>92</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          Le cloisonnement s'exerce à quatre niveaux : par permission, par usine
+          (un rôle <code>ADMEDCO</code> ne voit jamais une donnée
+          <code>MOBILIX</code>, même en tapant l'URL), par atelier, et par personne.
+        </p>
+        <p>
+          <strong>Chaque rôle a sa propre page d'accueil.</strong> Il n'existe pas
+          d'écran commun : la correspondance est déclarée dans
+          <code>ACCUEIL_PAR_ROLE</code>, dans
+          <code>src/components/navigation.ts</code>. Le tableau de bord lui-même
+          rend ses blocs conditionnellement — ses 7 sections et ses 5 cartes
+          d'alerte n'existent dans le HTML que pour qui détient la lecture
+          correspondante.
+        </p>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr><th>Rôle du fichier</th><th>Chemin</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Définition des rôles et de leurs permissions</td><td><span class="mono">src/lib/rbac/roles.ts</span></td></tr>
+              <tr><td>Catalogue des permissions</td><td><span class="mono">src/lib/rbac/permissions.ts</span></td></tr>
+              <tr><td>Garde serveur</td><td><span class="mono">src/lib/rbac/guard.ts</span></td></tr>
+              <tr><td>Navigation et filtrage</td><td><span class="mono">src/components/navigation.ts</span></td></tr>
+              <tr><td>Session : rôles, permissions, portée, <code>employeeId</code></td><td><span class="mono">src/lib/auth/session.ts</span></td></tr>
+              <tr><td>Matérialisation des rôles en base</td><td><span class="mono">prisma/seed.ts</span> → <code>semerRoles()</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="block" id="s4">
+        <h2><span class="n">4</span>Les deux rôles d'atelier</h2>
+        <p>Deux rôles seulement ouvrent le portail employé.</p>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr><th>Code</th><th>Libellé</th><th>Portée</th><th>Page d'accueil</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><span class="mono">OPERATEUR_ADMEDCO</span></td><td>Opérateur ADMEDCO</td><td>ADMEDCO</td><td><span class="mono">/portail</span></td></tr>
+              <tr><td><span class="mono">OPERATEUR_MOBILIX</span></td><td>Opérateur MOBILIX</td><td>MOBILIX</td><td><span class="mono">/portail</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Permissions, identiques pour les deux</h3>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr><th>Code</th><th>Effet</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><span class="mono">PORTAIL_EMPLOYE</span></td><td>Accès au portail</td></tr>
+              <tr><td><span class="mono">PRODUCTION_LIRE</span></td><td>Voir les ordres de fabrication</td></tr>
+              <tr><td><span class="mono">PRODUCTION_DECLARER</span></td><td>Déclarer une quantité produite</td></tr>
+              <tr><td><span class="mono">PRODUCTION_KANBAN_DEPLACER</span></td><td>Déplacer une carte dans le kanban</td></tr>
+              <tr><td><span class="mono">STOCK_LIRE</span></td><td>Voir l'état des stocks</td></tr>
+              <tr><td><span class="mono">STOCK_MOUVEMENT_CREER</span></td><td>Créer un mouvement de stock</td></tr>
+              <tr><td><span class="mono">QUALITE_LIRE</span></td><td>Voir les contrôles</td></tr>
+              <tr><td><span class="mono">QUALITE_CONTROLER</span></td><td>Enregistrer un contrôle</td></tr>
+              <tr><td><span class="mono">ARTICLE_LIRE</span></td><td>Consulter les articles</td></tr>
+              <tr><td><span class="mono">DEPOT_LIRE</span></td><td>Consulter les dépôts</td></tr>
+              <tr><td><span class="mono">NOMENCLATURE_LIRE</span></td><td>Consulter les nomenclatures</td></tr>
+              <tr><td><span class="mono">RH_AFFECTATION_LIRE</span></td><td>Voir ses affectations</td></tr>
+              <tr><td><span class="mono">PORTEE_ADMEDCO</span> / <span class="mono">PORTEE_MOBILIX</span></td><td>Portée d'usine</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Sections de menu ouvertes à un opérateur</h3>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr><th>Section</th><th>Sous-écrans</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Mon espace</td><td>Portail employé</td></tr>
+              <tr><td>Référentiel</td><td>Articles, Dépôts</td></tr>
+              <tr><td>Nomenclature et gammes</td><td>Nomenclatures</td></tr>
+              <tr><td>Stocks</td><td>État des stocks, Mouvements de stock</td></tr>
+              <tr><td>Production</td><td>Ordres de fabrication, Kanban atelier</td></tr>
+              <tr><td>Qualité</td><td>Contrôles qualité, Non-conformités</td></tr>
+              <tr><td>Ressources humaines</td><td>Affectations quotidiennes</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Ce qu'un opérateur ne voit pas du tout</h3>
+        <p>
+          Tableau de bord et pilotage, gammes de fabrication, tarifs et prix,
+          transferts inter-ateliers, inventaire physique, lots, déclarations à
+          valider, articles à libérer, achats, ventes, finance et comptabilité,
+          employés, présences, évaluations, compétences, administration.
+        </p>
+      </section>
+
+      <section class="block" id="s5">
+        <h2><span class="n">5</span>Le portail employé</h2>
+        <p>
+          Écran simplifié, conçu pour être utilisé <strong>au poste, dans
+          l'atelier</strong> — donc sur un écran tactile, par une personne debout,
+          avec des gants.
+        </p>
+
+        <h3>Les actions</h3>
+        <ul>
+          <li><strong>Démarrer</strong> — commence une opération affectée.</li>
+          <li><strong>Mettre en pause</strong></li>
+          <li><strong>Reprendre</strong></li>
+          <li><strong>Déclarer une quantité</strong> — production réalisée.</li>
+          <li><strong>Déclarer une perte</strong> — rebut, casse, chute.</li>
+          <li><strong>Signaler un problème</strong></li>
+          <li><strong>Terminer</strong> — clôt l'opération.</li>
+          <li><strong>Clôturer l'ordre</strong> — quand toutes ses opérations sont terminées.</li>
+        </ul>
+
+        <h3>Ce que le portail affiche</h3>
+        <p>
+          Mes affectations du jour · mes opérations · mes déclarations · mon temps du
+          mois · mes évaluations · mon pointage du jour.
+        </p>
+
+        <h3>Les trois garanties que la page tient</h3>
+        <p>
+          Elles sont écrites dans l'en-tête de
+          <code>src/app/(app)/portail/page.tsx</code> et méritent d'être citées
+          telles quelles.
+        </p>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr><th>Garantie</th><th>Ce que cela impose</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Cloisonnement</strong></td>
+                <td>Toutes les requêtes sont bornées sur <code>utilisateur.employeeId</code>. Aucun identifiant d'employé n'est lu dans un formulaire, et les actions serveur refusent toute opération qui n'est pas réellement affectée à l'employé connecté.</td>
+              </tr>
+              <tr>
+                <td><strong>Aucune donnée salariale</strong></td>
+                <td>Les colonnes de rémunération ne sont même pas sélectionnées, quelle que soit la permission du compte.</td>
+              </tr>
+              <tr>
+                <td><strong>Aucune modification libre du stock</strong></td>
+                <td>La déclaration de perte est enregistrée <strong>sans sortie de stock</strong>. C'est un signalement, pas un mouvement.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout is-warn">
+          <h3>Point de conception à ne pas contourner</h3>
+          <p>
+            Déclarer une perte ne bouge pas le stock. Un opérateur signale ; il ne
+            corrige pas l'inventaire. La régularisation est un acte distinct, réservé
+            au magasin. Toute proposition qui ferait écrire un mouvement de stock
+            depuis le portail va à l'encontre de cette règle.
+          </p>
+        </div>
+
+        <h3>Ce qu'un opérateur ne peut pas faire depuis le portail</h3>
+        <p>
+          Modifier une opération validée, toucher au stock, aux nomenclatures, aux
+          coûts, voir les salaires, ni consulter un autre atelier.
+        </p>
+      </section>
+
+      <section class="block" id="s6">
+        <h2><span class="n">6</span>Ce qu'il faut pour qu'un opérateur travaille</h2>
+        <p>
+          La chaîne est stricte et ordonnée. Chaque maillon manquant laisse le
+          portail vide ou inutilisable — sans jamais produire d'erreur, ce qui rend
+          le diagnostic contre-intuitif.
+        </p>
+        <div class="chain">
+          <div>
+            <i>1</i>
+            <div><b>Fiche employé</b><small>Employee</small></div>
+            <p>Matricule unique et bonne usine. Créée dans RH → Employés. Sans elle, le portail répond « Compte non rattaché à une fiche employé ».</p>
+          </div>
+          <div>
+            <i>2</i>
+            <div><b>Compte rattaché</b><small>User.employeeId</small></div>
+            <p>Le compte doit pointer sur la fiche. Sans lui, même message.</p>
+          </div>
+          <div>
+            <i>3</i>
+            <div><b>Affectation du jour</b><small>Assignment</small></div>
+            <p>Un employé, une opération, une journée. Sans elle, le portail s'ouvre mais « Mes affectations du jour » est vide, et les 7 boutons n'ont rien sur quoi agir.</p>
+          </div>
+          <div>
+            <i>4</i>
+            <div><b>Ordre de fabrication</b><small>Article.isProducible = true</small></div>
+            <p>Un OF exige un article marqué fabriquable. Sans lui, « Déclarer une production » est impossible.</p>
+          </div>
+        </div>
+        <div class="callout is-note">
+          <h3>L'ordre compte pour les vraies fiches</h3>
+          <p>
+            Un compte ne peut pas être rattaché à une fiche qui possède déjà un
+            compte : le script refuse explicitement, pour empêcher deux personnes de
+            partager un identifiant. Donc <strong>la fiche d'abord, le compte
+            ensuite</strong>.
+          </p>
+        </div>
+      </section>
+
+      <section class="block" id="s7">
+        <h2><span class="n">7</span>État réel de la base aujourd'hui</h2>
+
+        <h3>Comptes utilisateurs : 11</h3>
+        <ul>
+          <li><strong>9 comptes de bureau</strong>, tous sans fiche employé (normal : les rôles de bureau n'en ont pas besoin) — administrateur système, direction, responsable production, responsable stock, responsable qualité, acheteur, commercial, comptable, responsable RH.</li>
+          <li><strong>2 comptes d'atelier de test</strong>, créés pour valider le portail : <code>operateur.admedco@admedco.dz</code> (n° 10, <code>OPERATEUR_ADMEDCO</code>) et <code>operateur.mobilix@admedco.dz</code> (n° 11, <code>OPERATEUR_MOBILIX</code>).</li>
+        </ul>
+
+        <h3>Fiches employés : 2, toutes deux techniques et provisoires</h3>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr><th>Matricule</th><th>Nom</th><th>Poste</th><th>Usine</th><th>Problème</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="mono">ACC-0001</span></td>
+                <td>Operateur TEST-ADMEDCO</td>
+                <td>Compte d'acces direct (developpement)</td>
+                <td><span class="tag warn">COMMUN</span></td>
+                <td>Devrait être ADMEDCO</td>
+              </tr>
+              <tr>
+                <td><span class="mono">ACC-0002</span></td>
+                <td>Operateur TEST-MOBILIX</td>
+                <td>Compte d'acces direct (developpement)</td>
+                <td><span class="tag warn">COMMUN</span></td>
+                <td>Devrait être MOBILIX</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout is-critical">
+          <h3>Le point le plus important de ce document</h3>
+          <p>
+            <strong>Aucune fiche employé réelle n'existe.</strong> Les deux fiches
+            présentes ont été fabriquées par
+            <code>scripts/acces-direct.ts --creer-fiche</code>, un outil de
+            développement qui produit volontairement un repère : matricule
+            <code>ACC-xxxx</code>, poste marqué « developpement », usine
+            <code>COMMUN</code>.
+          </p>
+          <p>
+            Elles doivent être corrigées ou supprimées avant toute mise en service,
+            sinon les effectifs, les présences et les états RH seront faux.
+          </p>
+        </div>
+
+        <h3>Référentiel importé</h3>
+        <p>
+          Depuis un ancien système, dossier <code>E:/Massiexporte</code>.
+        </p>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr><th>Donnée</th><th class="n">Créés</th><th>État</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Tiers — clients, fournisseurs, personnes</td><td class="n">307</td><td><strong>Tous de type <code>AUTRE</code></strong>, <code>isClient = false</code>, <code>isSupplier = false</code></td></tr>
+              <tr><td>Articles</td><td class="n">706</td><td><strong>Tous de type <code>COMPOSANT</code></strong></td></tr>
+              <tr><td>Nomenclatures</td><td class="n">2 383</td><td>176 lignes rejetées</td></tr>
+              <tr><td>Lots et stocks</td><td class="n">704</td><td>2 lignes rejetées</td></tr>
+              <tr><td>Lignes rejetées au total</td><td class="n">188</td><td>Chacune avec son motif exact dans Administration → Import</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Pourquoi tous les tiers sont en « Autre tiers »</h3>
+        <p>
+          Le fichier source porte un champ <code>Type</code> à deux valeurs
+          (<code>0</code> et <code>1</code>) dont la signification n'est pas
+          documentée. L'import a refusé de la deviner, a appliqué le repli
+          <code>AUTRE</code> et a levé un avertissement « Correspondance a
+          confirmer ». La correspondance se règle dans
+          <strong>Administration → Import</strong> — modèle
+          <code>ImportValueMapping</code>, champ <code>isConfirmed</code>. Les
+          articles suivent exactement le même mécanisme, avec le repli
+          <code>COMPOSANT</code>.
+        </p>
+
+        <h3>Indicateurs commerciaux et industriels : tous à faux</h3>
+        <p>
+          Les champs <code>isPurchasable</code>, <code>isSellable</code> et
+          <code>isProducible</code> ne sont <strong>jamais</strong> renseignés par
+          l'import. Le schéma porte le commentaire « activables par
+          l'administrateur ». Conséquence directe : <strong>aucun devis, aucune
+          commande, aucun ordre de fabrication n'est créable en l'état.</strong>
+        </p>
+
+        <h3>Objets métier : aucun</h3>
+        <p>
+          Zéro ordre de fabrication, zéro affectation, zéro devis, zéro commande,
+          zéro facture. Seuls le référentiel et les stocks existent.
+        </p>
+
+        <h3>Un point d'arbitrage ouvert</h3>
+        <p>
+          Une contradiction de quantité sur le composant <code>TB403010</code>
+          (0,250000 contre 1,600000), au statut « Ouvert » dans Nomenclature →
+          Écarts. La plateforme ne corrige jamais ces contradictions
+          automatiquement ; elle demande un arbitrage humain.
+        </p>
+
+        <h3>Dernier seed exécuté — 28 septembre 2026</h3>
+        <div class="code">
+          <div class="code-bar"><span>sortie du seed</span><button type="button" class="code-copy">Copier</button></div>
+          <pre>Roles ......... 18 verifie(s), 2 liaison(s) ajoutee(s), <b>42 obsolete(s) retiree(s)</b></pre>
+        </div>
+        <p>
+          Les 42 liaisons retirées sont les lectures trop larges qu'un ancien socle
+          commun accordait à tous les rôles. C'est ce qui rendait tous les rôles
+          identiques.
+        </p>
+      </section>
+
+      <section class="block" id="s8">
+        <h2><span class="n">8</span>Ce qui vient d'être changé</h2>
+        <p>
+          Pour situer la base de départ de toute nouvelle proposition. Quatre
+          fichiers modifiés, plus une migration. Le typecheck
+          (<code>npx tsc --noEmit</code>) est propre.
+        </p>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr><th>Fichier</th><th>Changement</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="mono">src/lib/rbac/roles.ts</span></td>
+                <td>Réécrit. Un socle commun accordait à tout rôle lecteur les lectures stocks, production, qualité, rapports et configuration. Le socle est réduit au référentiel seul ; chaque métier demande désormais explicitement ses lectures.</td>
+              </tr>
+              <tr>
+                <td><span class="mono">prisma/seed.ts</span></td>
+                <td><code>semerRoles()</code> ne faisait qu'ajouter des liaisons. Il retire maintenant les obsolètes, sinon resserrer un rôle n'aurait aucun effet en base.</td>
+              </tr>
+              <tr>
+                <td><span class="mono">src/components/navigation.ts</span></td>
+                <td>Ajout de <code>ACCUEIL_PAR_ROLE</code> : chaque rôle ouvre sa propre page. Si la page cible n'est pas accessible, repli sur la première page réellement ouverte, pour qu'un changement de droits ne casse jamais la connexion.</td>
+              </tr>
+              <tr>
+                <td><span class="mono">src/app/(app)/tableau-de-bord/page.tsx</span></td>
+                <td>Les 7 sections et les 5 cartes d'alerte sont rendues conditionnellement.</td>
+              </tr>
+              <tr>
+                <td><span class="mono">20260928103000_third_party_person_fields</span></td>
+                <td>Migration : ajoute <code>birthDate</code> et <code>gender</code> à <code>ThirdParty</code>, colonnes nullables. Le fichier source mélange personnes physiques et sociétés dans une seule table ; le modèle omettait ces deux colonnes, ce qui faisait échouer <strong>toutes</strong> les lignes de tiers (<code>Unknown argument birthDate</code>).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="block" id="s9">
+        <h2><span class="n">9</span>Les décisions en attente</h2>
+        <p>
+          Ces points sont ouverts. Ils appartiennent au propriétaire de la
+          plateforme.
+        </p>
+
+        <h3>a. Comment faire entrer les vrais employés ?</h3>
+        <p>Trois voies possibles, non exclusives.</p>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr><th>Voie</th><th>Portée</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Saisie à la main dans <strong>RH → Employés</strong></td><td>Aucun code, aucune donnée inventée. Convient à un effectif de quelques dizaines de personnes.</td></tr>
+              <tr><td>Écrire une <strong>sixième étape d'import</strong></td><td>L'import actuel compte cinq étapes : familles, articles, tiers, nomenclatures, lots. <strong>Aucune ne crée de fiche employé</strong> — c'est structurel, pas un oubli. À noter : le dossier source contient <code>COM_FormulaEmpoyees.csv</code>, mais ce fichier sert au <strong>coût de main-d'œuvre des nomenclatures</strong>, pas de registre du personnel. À confirmer avant d'en faire une source RH.</td></tr>
+              <tr><td>Corriger les deux fiches de test</td><td>En faire les premières fiches réelles, puis continuer.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>b. Confirmer la correspondance du champ <code>Type</code> des tiers</h3>
+        <p>
+          Codes <code>0</code> et <code>1</code>, dans Administration → Import, puis
+          relancer l'import avec <code>--maj</code>. Sans cela, aucun document
+          commercial n'est créable.
+        </p>
+
+        <h3>c. Activer <code>isPurchasable</code>, <code>isSellable</code>, <code>isProducible</code></h3>
+        <p>Sur les articles réellement utilisés. Sans cela, ni commande ni ordre de fabrication.</p>
+
+        <h3>d. Trancher la contradiction de quantité <code>TB403010</code></h3>
+
+        <h3>e. Décider du sort des deux comptes de test</h3>
+        <p>
+          Et des fiches <code>ACC-0001</code> / <code>ACC-0002</code> : correction
+          (identité, matricule réel, usine) ou suppression.
+        </p>
+
+        <h3>f. Corriger, le cas échéant, les 188 lignes rejetées</h3>
+        <p>
+          Visible une par une, avec son motif, dans Administration → Import.
+        </p>
+      </section>
+
+      <section class="block" id="s10">
+        <h2><span class="n">10</span>Vocabulaire</h2>
+        <p>À respecter pour que les demandes soient comprises sans ambiguïté.</p>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr><th>Terme</th><th>Sens dans cette plateforme</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Portail</strong></td><td>L'écran de l'opérateur, <code>/portail</code>, utilisé au poste</td></tr>
+              <tr><td><strong>Fiche employé</strong></td><td>Enregistrement <code>Employee</code>, identifié par un <code>matricule</code> unique</td></tr>
+              <tr><td><strong>Affectation</strong></td><td><code>Assignment</code> — un employé, une opération, une journée</td></tr>
+              <tr><td><strong>Opération</strong></td><td>Étape d'une gamme : coupe, soudage, poudrage…</td></tr>
+              <tr><td><strong>Gamme</strong></td><td>La suite d'opérations d'un article</td></tr>
+              <tr><td><strong>Nomenclature</strong></td><td><code>BOM</code> — la liste des composants d'un article et leurs quantités</td></tr>
+              <tr><td><strong>Ordre de fabrication (OF)</strong></td><td><code>WorkOrder</code> — un article à produire, en quantité, avec échéance</td></tr>
+              <tr><td><strong>Déclaration</strong></td><td>Ce que l'opérateur rapporte : quantité produite, ou perte</td></tr>
+              <tr><td><strong>Perte</strong></td><td>Rebut, casse, chute. <strong>Ne bouge pas le stock</strong></td></tr>
+              <tr><td><strong>Lot</strong></td><td><code>StockLot</code> — traçabilité. Un lot peut être en quarantaine</td></tr>
+              <tr><td><strong>Quarantaine</strong></td><td>Marchandise non disponible tant que la qualité n'a pas statué</td></tr>
+              <tr><td><strong>Dépôt</strong></td><td>Emplacement de stockage : <code>DEP-MP</code> (ADMEDCO), <code>DEP-MP-MBX</code> (MOBILIX)</td></tr>
+              <tr><td><strong>Article fabriquable</strong></td><td>Article dont <code>isProducible</code> est vrai — condition d'un OF</td></tr>
+              <tr><td><strong>Correspondance</strong></td><td>Règle de traduction d'un code source vers une valeur du modèle</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="block" id="s11">
+        <h2><span class="n">11</span>Commandes et fichiers de référence</h2>
+        <div class="code">
+          <div class="code-bar"><span>bash</span><button type="button" class="code-copy">Copier</button></div>
+          <pre><b># Démarrage</b>
+npm run dev                    <em># serveur sur http://localhost:3000</em>
+npm run build                  <em># build de production</em>
+
+<b># Base de données</b>
+npm run db:generate            <em># client Prisma — arrêter le serveur avant</em>
+npm run db:deploy              <em># applique les migrations</em>
+npm run db:seed                <em># référentiel + rôles et permissions (idempotent)</em>
+npm run setup                  <em># generate + deploy + seed</em>
+
+<b># Comptes</b>
+npm run acces -- --liste
+npm run acces -- --email=&lt;adresse&gt; --generer --roles=&lt;ROLE&gt; [--matricule=&lt;matricule&gt;]
+npm run bootstrap:admin        <em># premier administrateur</em>
+
+<b># Import</b>
+npm run import:csv -- --dossier=E:/Massiexporte   <em># simulation, aucune écriture</em>
+npm run import:csv -- --executer                  <em># import réel</em>
+npm run import:csv -- --executer --maj            <em># import réel + mise à jour</em>
+
+<b># Vérification</b>
+npm run typecheck
+npm test</pre>
+        </div>
+
+        <div class="callout is-warn">
+          <h3>Prérequis de santé</h3>
+          <p>
+            PostgreSQL démarré (<code>docker start erpmes-postgres</code>), port 3000
+            libre, et <strong>le serveur de développement arrêté avant
+            <code>db:generate</code></strong> — il verrouille la DLL du moteur Prisma
+            sur Windows, d'où une erreur <code>EPERM</code>.
+          </p>
+        </div>
+
+        <h3>Fichiers structurants</h3>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr><th>Chemin</th><th>Contenu</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><span class="mono">GUIDE-PLATEFORME.md</span></td><td>Guide utilisateur complet, 12 sections</td></tr>
+              <tr><td><span class="mono">BRIEF-OPERATEURS.md</span></td><td>Ce document, en version texte</td></tr>
+              <tr><td><span class="mono">src/lib/rbac/roles.ts</span></td><td>Les 18 rôles et leurs permissions</td></tr>
+              <tr><td><span class="mono">src/lib/rbac/permissions.ts</span></td><td>Les 92 permissions et les 3 portées</td></tr>
+              <tr><td><span class="mono">src/lib/rbac/guard.ts</span></td><td>Garde serveur</td></tr>
+              <tr><td><span class="mono">src/lib/auth/session.ts</span></td><td>Contenu de la session (<code>SessionUser</code>)</td></tr>
+              <tr><td><span class="mono">src/components/navigation.ts</span></td><td>Menu, filtrage, page d'accueil par rôle</td></tr>
+              <tr><td><span class="mono">src/app/(app)/portail/page.tsx</span></td><td>Le portail employé</td></tr>
+              <tr><td><span class="mono">src/app/(app)/tableau-de-bord/page.tsx</span></td><td>Tableau de bord à blocs conditionnels</td></tr>
+              <tr><td><span class="mono">src/lib/import/service.ts</span></td><td>Les cinq importateurs</td></tr>
+              <tr><td><span class="mono">prisma/schema.prisma</span></td><td>~76 modèles</td></tr>
+              <tr><td><span class="mono">prisma/seed.ts</span></td><td>Matérialisation des rôles et du référentiel</td></tr>
+              <tr><td><span class="mono">scripts/acces-direct.ts</span></td><td>Création de comptes en ligne de commande</td></tr>
+              <tr><td><span class="mono">creer-comptes-bureau.cmd</span></td><td>Les 9 comptes de bureau, un clic</td></tr>
+              <tr><td><span class="mono">creer-comptes-atelier.cmd</span></td><td>Les 2 comptes d'atelier de test, un clic</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="block" id="s12">
+        <h2><span class="n">12</span>Règles de rédaction d'une demande</h2>
+        <p>
+          Utile si une demande doit être reformulée avant d'être exécutée.
+        </p>
+        <ul>
+          <li>
+            <strong>Nommer au moins deux des quatre éléments suivants</strong> : le
+            rôle ou la permission concernée, l'écran ou le fichier touché, le
+            comportement attendu, et ce qui doit rester inchangé.
+          </li>
+          <li>
+            <strong>Toute demande touchant les droits doit préciser si
+            <code>npm run db:seed</code> doit être relancé.</strong> Une modification
+            de <code>roles.ts</code> sans seed n'a aucun effet visible. C'est la
+            source d'erreur la plus fréquente sur ce dépôt.
+          </li>
+          <li>
+            <strong>Toute demande touchant une donnée existante doit indiquer si les
+            données déjà en base doivent être reprises.</strong> Les migrations sont
+            additives par principe.
+          </li>
+          <li>
+            <strong>Toute demande d'affichage conditionnel doit dire « ne pas
+            afficher » plutôt que « masquer ».</strong> La nuance est structurante :
+            masquer laisse la donnée dans le HTML.
+          </li>
+          <li>
+            <strong>Les chiffres de ce document ne sont pas des objectifs.</strong>
+            Par exemple, « tous les tiers sont en <code>AUTRE</code> » est un constat,
+            pas un bug à corriger unilatéralement : c'est à l'administrateur de
+            confirmer la correspondance.
+          </li>
+        </ul>
+      </section>
+
+      <section class="block" id="s13">
+        <h2><span class="n">13</span>Résumé en dix lignes</h2>
+        <ol>
+          <li>ERP + MES pour deux divisions, ADMEDCO (métal) et MOBILIX (bois et couture), reliées par un flux de châssis.</li>
+          <li>Le cloisonnement est vérifié côté serveur, à quatre niveaux. Masquer ne protège rien ; rendre conditionnellement, oui.</li>
+          <li>92 permissions, 18 rôles, 3 portées d'usine. Les rôles sont définis dans le code et matérialisés par <code>npm run db:seed</code>, qui ajoute <strong>et retire</strong>.</li>
+          <li>Chaque rôle a sa propre page d'accueil. Il n'y a pas d'écran commun.</li>
+          <li>Deux rôles d'atelier seulement, tous deux sur <code>/portail</code>, cloisonnés à leur usine et à leur propre fiche.</li>
+          <li>Le portail offre 7 actions plus la clôture d'ordre, sur un écran tactile. Il ne montre que les données de la personne connectée, jamais les salaires.</li>
+          <li>Déclarer une perte ne bouge pas le stock : c'est un signalement, pas un mouvement. Règle de conception, pas un manque.</li>
+          <li>Pour qu'un opérateur travaille : fiche employé → compte rattaché → affectation du jour → ordre de fabrication, donc article fabriquable.</li>
+          <li><strong>Aucune fiche employé réelle n'existe.</strong> L'import ne crée pas d'employés. Deux fiches techniques <code>ACC-0001</code> et <code>ACC-0002</code> servent à valider le portail.</li>
+          <li>Bloquants actuels : correspondance des tiers à confirmer, indicateurs commerciaux et industriels à activer — sans quoi aucun document métier n'est créable.</li>
+        </ol>
+      </section>
+
+      <footer>
+        Document de transmission, 28 septembre 2026. Rédigé à partir du code et des
+        comptes rendus d'exécution du dépôt. Les chiffres de contenu en base
+        proviennent de ces comptes rendus : aucune requête SQL n'a pu être exécutée
+        lors de la rédaction.
+      </footer>
+
+    </main>
+  </div>
+</div>
+
+<script>
+  function copierSelection(pre, bouton) {
+    try {
+      var plage = document.createRange();
+      plage.selectNodeContents(pre);
+      var selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(plage);
+      bouton.textContent = "Sélectionné";
+    } catch (erreur) {
+      bouton.textContent = "À copier";
+    }
+    window.setTimeout(function () { bouton.textContent = "Copier"; }, 1600);
+  }
+
+  document.addEventListener("click", function (evenement) {
+    var bouton = evenement.target.closest(".code-copy");
+    if (!bouton) return;
+
+    var pre = bouton.closest(".code").querySelector("pre");
+    if (!pre) return;
+
+    var texte = pre.innerText;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texte).then(function () {
+        bouton.textContent = "Copié";
+        window.setTimeout(function () { bouton.textContent = "Copier"; }, 1600);
+      }).catch(function () {
+        copierSelection(pre, bouton);
+      });
+    } else {
+      copierSelection(pre, bouton);
+    }
+  });
+</script>

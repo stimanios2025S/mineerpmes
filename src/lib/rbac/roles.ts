@@ -1,0 +1,590 @@
+import { PERMISSIONS, SCOPE_PERMISSIONS, type PermissionCode } from "./permissions";
+
+/**
+ * Roles de la plateforme et leurs permissions.
+ * Le seed materialise ces definitions en base ; l'administrateur peut ensuite
+ * les ajuster sans modification du code.
+ */
+
+export interface RoleDefinition {
+  code: string;
+  label: string;
+  description: string;
+  /** Portee par defaut : ADMEDCO, MOBILIX ou COMMUN (les deux usines). */
+  factoryScope: "ADMEDCO" | "MOBILIX" | "COMMUN";
+  sortOrder: number;
+  permissions: string[];
+}
+
+const P = PERMISSIONS;
+const S = SCOPE_PERMISSIONS;
+
+/**
+ * Socle commun : le referentiel et l'acces au tableau de bord, rien de plus.
+ *
+ * Volontairement minimal. Les lectures propres a un metier — stocks, production,
+ * qualite, achats, ventes, finance, ressources humaines — ne sont PAS ici :
+ * chaque role les demande explicitement.
+ *
+ * C'est ce qui cloisonne reellement le menu. Une lecture offerte a tous ouvre la
+ * section correspondante a tous : le Responsable RH verrait les stocks, les
+ * achats et la comptabilite. Masquer un menu ne protege rien, mais ouvrir une
+ * lecture a tout le monde ne cloisonne rien non plus.
+ */
+const LECTURES_SOCLE: string[] = [
+  P.ARTICLE_LIRE,
+  P.FAMILLE_LIRE,
+  P.DEPOT_LIRE,
+  P.TIERS_LIRE,
+  P.NOMENCLATURE_LIRE,
+  P.GAMME_LIRE,
+  P.TABLEAU_BORD_LIRE,
+];
+
+/** Lectures par domaine. Chacune ouvre la section de menu correspondante. */
+const LECTURES_STOCK: string[] = [P.STOCK_LIRE];
+const LECTURES_PRODUCTION: string[] = [P.PRODUCTION_LIRE];
+const LECTURES_QUALITE: string[] = [P.QUALITE_LIRE];
+const LECTURES_ACHATS: string[] = [P.ACHAT_LIRE];
+const LECTURES_VENTES: string[] = [P.VENTE_LIRE];
+const LECTURES_PRIX: string[] = [P.PRIX_LIRE];
+const LECTURES_RAPPORTS: string[] = [P.RAPPORT_LIRE];
+const LECTURES_FINANCE: string[] = [P.FINANCE_LIRE, P.COMPTABILITE_LIRE];
+const LECTURES_RH: string[] = [
+  P.RH_LIRE,
+  P.RH_AFFECTATION_LIRE,
+  P.RH_PRESENCE_LIRE,
+  P.RH_EVALUATION_LIRE,
+];
+
+/** Socle industriel : l'atelier, du stock a la qualite. */
+const LECTURES_INDUSTRIELLES: string[] = [
+  ...LECTURES_STOCK,
+  ...LECTURES_PRODUCTION,
+  ...LECTURES_QUALITE,
+];
+
+const LECTURES_SCOPE_TOUTES_USINES: string[] = [S.PORTEE_TOUTES_USINES];
+
+export const ROLE_DEFINITIONS: RoleDefinition[] = [
+  {
+    code: "ADMIN_SYSTEME",
+    label: "Administrateur systeme",
+    description:
+      "Acces complet a la plateforme : ventes, achats, stocks, production, qualite, finance, comptabilite, ressources humaines, configuration, utilisateurs, import et rapports, sur les deux usines. Seul role a administrer techniquement le systeme.",
+    factoryScope: "COMMUN",
+    sortOrder: 1,
+    permissions: [
+      ...Object.values(P),
+      S.PORTEE_TOUTES_USINES,
+    ],
+  },
+  {
+    code: "DIRECTION",
+    label: "Proprietaire / Direction",
+    description:
+      "Vision complete des deux usines et validation des engagements : consultations, decisions de qualite, reglements et evaluations. Aucune administration technique du systeme.",
+    factoryScope: "COMMUN",
+    sortOrder: 2,
+    permissions: [
+      ...LECTURES_SOCLE,
+      ...LECTURES_INDUSTRIELLES,
+      ...LECTURES_ACHATS,
+      ...LECTURES_VENTES,
+      ...LECTURES_PRIX,
+      ...LECTURES_FINANCE,
+      ...LECTURES_RH,
+      ...LECTURES_RAPPORTS,
+      P.STOCK_VALORISATION_LIRE,
+      P.TABLEAU_BORD_PRODUCTION,
+      P.TABLEAU_BORD_FINANCE,
+      P.TABLEAU_BORD_RH,
+      P.RAPPORT_EXPORTER,
+      P.ACHAT_COMMANDE_APPROUVER,
+      P.VENTE_COMMANDE_CONFIRMER,
+      P.QUALITE_DECIDER,
+      P.QUALITE_LIBERER,
+      P.REGLEMENT_VALIDER,
+      P.RH_EVALUATION_VALIDER,
+      P.RH_SALAIRE_LIRE,
+      P.AUDIT_LIRE,
+      P.IMPORT_LIRE,
+      ...LECTURES_SCOPE_TOUTES_USINES,
+    ],
+  },
+  {
+    code: "RESPONSABLE_USINE",
+    label: "Responsable d'usine",
+    description:
+      "Pilotage industriel des deux divisions : production, stocks, qualite, achats, affectations et rapports.",
+    factoryScope: "COMMUN",
+    sortOrder: 3,
+    permissions: [
+      ...LECTURES_SOCLE,
+      ...LECTURES_INDUSTRIELLES,
+      ...LECTURES_ACHATS,
+      ...LECTURES_RH,
+      ...LECTURES_RAPPORTS,
+      P.STOCK_VALORISATION_LIRE,
+      P.TABLEAU_BORD_PRODUCTION,
+      P.RAPPORT_EXPORTER,
+      P.PRODUCTION_ORDRE_CREER,
+      P.PRODUCTION_ORDRE_MODIFIER,
+      P.PRODUCTION_LANCER,
+      P.PRODUCTION_DECLARER,
+      P.PRODUCTION_KANBAN_DEPLACER,
+      P.PRODUCTION_VALIDER_DECLARATION,
+      P.PRODUCTION_CLOTURER,
+      P.PRODUCTION_ANNULER,
+      P.STOCK_MOUVEMENT_CREER,
+      P.STOCK_TRANSFERT,
+      P.STOCK_INVENTAIRE,
+      P.STOCK_ANNULER_MOUVEMENT,
+      P.STOCK_LOT_GERER,
+      P.QUALITE_CONTROLER,
+      P.QUALITE_DECIDER,
+      P.QUALITE_LIBERER,
+      P.QUALITE_NONCONFORMITE_GERER,
+      P.RH_AFFECTATION_GERER,
+      P.RH_PRESENCE_GERER,
+      P.RH_EVALUATION_CALCULER,
+      P.RH_COMPETENCE_GERER,
+      P.ACHAT_DEMANDE_CREER,
+      P.ACHAT_COMMANDE_CREER,
+      P.ACHAT_RECEPTIONNER,
+      P.PRODUCTION_SOUS_STOCK_LIRE,
+      P.PRODUCTION_SOUS_STOCK_GERER,
+      P.PRODUCTION_TRANSFERT_ETAPE,
+      P.PRODUCTION_PLANNING_LIRE,
+      P.PRODUCTION_PLANNING_GERER,
+      P.POSTE_QR_GERER,
+      ...LECTURES_SCOPE_TOUTES_USINES,
+    ],
+  },
+  {
+    code: "RESPONSABLE_ADMEDCO",
+    label: "Responsable ADMEDCO",
+    description:
+      "Pilotage de la division metallique ADMEDCO : coupe, usinage, soudage, meulage, vissage et poudrage, depot DEP-MP.",
+    factoryScope: "ADMEDCO",
+    sortOrder: 4,
+    permissions: [
+      ...LECTURES_SOCLE,
+      ...LECTURES_INDUSTRIELLES,
+      ...LECTURES_ACHATS,
+      ...LECTURES_RH,
+      ...LECTURES_RAPPORTS,
+      P.TABLEAU_BORD_PRODUCTION,
+      P.RAPPORT_EXPORTER,
+      P.PRODUCTION_ORDRE_CREER,
+      P.PRODUCTION_ORDRE_MODIFIER,
+      P.PRODUCTION_LANCER,
+      P.PRODUCTION_DECLARER,
+      P.PRODUCTION_KANBAN_DEPLACER,
+      P.PRODUCTION_VALIDER_DECLARATION,
+      P.PRODUCTION_CLOTURER,
+      P.STOCK_MOUVEMENT_CREER,
+      P.STOCK_TRANSFERT,
+      P.STOCK_INVENTAIRE,
+      P.STOCK_LOT_GERER,
+      P.QUALITE_CONTROLER,
+      P.QUALITE_DECIDER,
+      P.RH_AFFECTATION_GERER,
+      P.RH_PRESENCE_GERER,
+      P.RH_EVALUATION_CALCULER,
+      P.ACHAT_DEMANDE_CREER,
+      P.ACHAT_RECEPTIONNER,
+      P.PRODUCTION_SOUS_STOCK_LIRE,
+      P.PRODUCTION_SOUS_STOCK_GERER,
+      P.PRODUCTION_TRANSFERT_ETAPE,
+      P.PRODUCTION_PLANNING_LIRE,
+      P.PRODUCTION_PLANNING_GERER,
+      P.POSTE_QR_GERER,
+      S.PORTEE_ADMEDCO,
+    ],
+  },
+  {
+    code: "RESPONSABLE_MOBILIX",
+    label: "Responsable MOBILIX",
+    description:
+      "Pilotage de la division bois, couture et garnissage MOBILIX, depot DEP-MP-MBX.",
+    factoryScope: "MOBILIX",
+    sortOrder: 5,
+    permissions: [
+      ...LECTURES_SOCLE,
+      ...LECTURES_INDUSTRIELLES,
+      ...LECTURES_ACHATS,
+      ...LECTURES_RH,
+      ...LECTURES_RAPPORTS,
+      P.TABLEAU_BORD_PRODUCTION,
+      P.RAPPORT_EXPORTER,
+      P.PRODUCTION_ORDRE_CREER,
+      P.PRODUCTION_ORDRE_MODIFIER,
+      P.PRODUCTION_LANCER,
+      P.PRODUCTION_DECLARER,
+      P.PRODUCTION_KANBAN_DEPLACER,
+      P.PRODUCTION_VALIDER_DECLARATION,
+      P.PRODUCTION_CLOTURER,
+      P.STOCK_MOUVEMENT_CREER,
+      P.STOCK_TRANSFERT,
+      P.STOCK_INVENTAIRE,
+      P.STOCK_LOT_GERER,
+      P.QUALITE_CONTROLER,
+      P.QUALITE_DECIDER,
+      P.RH_AFFECTATION_GERER,
+      P.RH_PRESENCE_GERER,
+      P.RH_EVALUATION_CALCULER,
+      P.ACHAT_DEMANDE_CREER,
+      P.ACHAT_RECEPTIONNER,
+      P.PRODUCTION_SOUS_STOCK_LIRE,
+      P.PRODUCTION_SOUS_STOCK_GERER,
+      P.PRODUCTION_TRANSFERT_ETAPE,
+      P.PRODUCTION_PLANNING_LIRE,
+      P.PRODUCTION_PLANNING_GERER,
+      P.POSTE_QR_GERER,
+      S.PORTEE_MOBILIX,
+    ],
+  },
+  {
+    code: "RESPONSABLE_PRODUCTION",
+    label: "Responsable production",
+    description:
+      "Planification et suivi des ordres de fabrication, des gammes et des affectations d'atelier. Ni achats, ni ventes, ni finance.",
+    factoryScope: "COMMUN",
+    sortOrder: 6,
+    permissions: [
+      ...LECTURES_SOCLE,
+      ...LECTURES_INDUSTRIELLES,
+      ...LECTURES_RH,
+      ...LECTURES_RAPPORTS,
+      P.TABLEAU_BORD_PRODUCTION,
+      P.RAPPORT_EXPORTER,
+      P.PRODUCTION_ORDRE_CREER,
+      P.PRODUCTION_ORDRE_MODIFIER,
+      P.PRODUCTION_LANCER,
+      P.PRODUCTION_DECLARER,
+      P.PRODUCTION_KANBAN_DEPLACER,
+      P.PRODUCTION_VALIDER_DECLARATION,
+      P.PRODUCTION_CLOTURER,
+      P.PRODUCTION_SOUS_STOCK_LIRE,
+      P.PRODUCTION_SOUS_STOCK_GERER,
+      P.PRODUCTION_TRANSFERT_ETAPE,
+      P.PRODUCTION_PLANNING_LIRE,
+      P.PRODUCTION_PLANNING_GERER,
+      P.POSTE_QR_GERER,
+      P.STOCK_MOUVEMENT_CREER,
+      P.STOCK_TRANSFERT,
+      P.QUALITE_CONTROLER,
+      P.RH_AFFECTATION_GERER,
+      P.RH_PRESENCE_GERER,
+      P.RH_EVALUATION_CALCULER,
+      ...LECTURES_SCOPE_TOUTES_USINES,
+    ],
+  },
+  {
+    code: "OPERATEUR_ADMEDCO",
+    label: "Operateur ADMEDCO",
+    description:
+      "Portail personnel, affectations, Kanban ADMEDCO, declarations de production, consommations et pertes sur le depot DEP-MP.",
+    factoryScope: "ADMEDCO",
+    sortOrder: 10,
+    permissions: [
+      P.PORTAIL_EMPLOYE,
+      P.PRODUCTION_LIRE,
+      P.PRODUCTION_DECLARER,
+      P.PRODUCTION_KANBAN_DEPLACER,
+      P.STOCK_LIRE,
+      P.STOCK_MOUVEMENT_CREER,
+      P.QUALITE_LIRE,
+      P.QUALITE_CONTROLER,
+      P.ARTICLE_LIRE,
+      P.DEPOT_LIRE,
+      P.NOMENCLATURE_LIRE,
+      P.RH_AFFECTATION_LIRE,
+      P.PORTAIL_POSTE_SCANNER,
+      P.PRODUCTION_SOUS_STOCK_LIRE,
+      P.PRODUCTION_TRANSFERT_ETAPE,
+      S.PORTEE_ADMEDCO,
+    ],
+  },
+  {
+    code: "OPERATEUR_MOBILIX",
+    label: "Operateur MOBILIX",
+    description:
+      "Portail personnel, affectations, Kanban MOBILIX, declarations de production, consommations et pertes sur le depot DEP-MP-MBX.",
+    factoryScope: "MOBILIX",
+    sortOrder: 11,
+    permissions: [
+      P.PORTAIL_EMPLOYE,
+      P.PRODUCTION_LIRE,
+      P.PRODUCTION_DECLARER,
+      P.PRODUCTION_KANBAN_DEPLACER,
+      P.STOCK_LIRE,
+      P.STOCK_MOUVEMENT_CREER,
+      P.QUALITE_LIRE,
+      P.QUALITE_CONTROLER,
+      P.ARTICLE_LIRE,
+      P.DEPOT_LIRE,
+      P.NOMENCLATURE_LIRE,
+      P.RH_AFFECTATION_LIRE,
+      P.PORTAIL_POSTE_SCANNER,
+      P.PRODUCTION_SOUS_STOCK_LIRE,
+      P.PRODUCTION_TRANSFERT_ETAPE,
+      S.PORTEE_MOBILIX,
+    ],
+  },
+  {
+    code: "RESPONSABLE_STOCK",
+    label: "Responsable stock",
+    description:
+      "Gestion complete des stocks, des depots, des lots, des inventaires et des valorisations, et reception des fournisseurs.",
+    factoryScope: "COMMUN",
+    sortOrder: 12,
+    permissions: [
+      ...LECTURES_SOCLE,
+      ...LECTURES_INDUSTRIELLES,
+      ...LECTURES_ACHATS,
+      ...LECTURES_PRIX,
+      ...LECTURES_RAPPORTS,
+      P.STOCK_MOUVEMENT_CREER,
+      P.STOCK_TRANSFERT,
+      P.STOCK_INVENTAIRE,
+      P.STOCK_CORRECTION,
+      P.STOCK_ANNULER_MOUVEMENT,
+      P.STOCK_LOT_GERER,
+      P.STOCK_VALORISATION_LIRE,
+      P.DEPOT_GERER,
+      P.ARTICLE_ECRIRE,
+      P.ACHAT_RECEPTIONNER,
+      P.RAPPORT_EXPORTER,
+      P.TABLEAU_BORD_PRODUCTION,
+      ...LECTURES_SCOPE_TOUTES_USINES,
+    ],
+  },
+  {
+    code: "MAGASINIER",
+    label: "Magasinier",
+    description:
+      "Reception, rangement, transferts et sorties de stock sur les depots autorises.",
+    factoryScope: "COMMUN",
+    sortOrder: 13,
+    permissions: [
+      P.ARTICLE_LIRE,
+      P.FAMILLE_LIRE,
+      P.DEPOT_LIRE,
+      P.STOCK_LIRE,
+      P.STOCK_MOUVEMENT_CREER,
+      P.STOCK_TRANSFERT,
+      P.STOCK_INVENTAIRE,
+      P.STOCK_LOT_GERER,
+      P.PRODUCTION_LIRE,
+      P.ACHAT_LIRE,
+      P.ACHAT_RECEPTIONNER,
+      P.QUALITE_LIRE,
+      P.NOMENCLATURE_LIRE,
+      ...LECTURES_SCOPE_TOUTES_USINES,
+    ],
+  },
+  {
+    code: "RESPONSABLE_QUALITE",
+    label: "Responsable qualite",
+    description:
+      "Plans de controle, decisions qualite, quarantaines, liberations et non-conformites. Ni achats, ni ventes, ni finance.",
+    factoryScope: "COMMUN",
+    sortOrder: 14,
+    permissions: [
+      ...LECTURES_SOCLE,
+      ...LECTURES_INDUSTRIELLES,
+      ...LECTURES_RAPPORTS,
+      P.QUALITE_CONTROLER,
+      P.QUALITE_DECIDER,
+      P.QUALITE_LIBERER,
+      P.QUALITE_NONCONFORMITE_GERER,
+      P.QUALITE_PLAN_GERER,
+      P.STOCK_LOT_GERER,
+      P.STOCK_MOUVEMENT_CREER,
+      P.RAPPORT_EXPORTER,
+      ...LECTURES_SCOPE_TOUTES_USINES,
+    ],
+  },
+  {
+    code: "ACHETEUR",
+    label: "Acheteur",
+    description:
+      "Demandes d'achat, demandes de prix, bons de commande fournisseur et suivi des receptions. Ne voit pas les ventes.",
+    factoryScope: "COMMUN",
+    sortOrder: 15,
+    permissions: [
+      ...LECTURES_SOCLE,
+      ...LECTURES_ACHATS,
+      ...LECTURES_PRIX,
+      P.ACHAT_DEMANDE_CREER,
+      P.ACHAT_COMMANDE_CREER,
+      P.ACHAT_FACTURE_SAISIR,
+      P.ACHAT_TIERS_MATCHING,
+      P.TIERS_ECRIRE,
+      P.PRIX_GERER,
+      P.RAPPORT_EXPORTER,
+      ...LECTURES_SCOPE_TOUTES_USINES,
+    ],
+  },
+  {
+    code: "COMMERCIAL",
+    label: "Commercial",
+    description:
+      "Devis, commandes clients, livraisons, tarifs clients et suivi des encours. Ne voit pas les achats.",
+    factoryScope: "COMMUN",
+    sortOrder: 16,
+    permissions: [
+      ...LECTURES_SOCLE,
+      ...LECTURES_VENTES,
+      ...LECTURES_PRIX,
+      P.VENTE_DEVIS_CREER,
+      P.VENTE_COMMANDE_CREER,
+      P.VENTE_COMMANDE_CONFIRMER,
+      P.VENTE_LIVRER,
+      P.VENTE_TARIF_GERER,
+      P.TIERS_ECRIRE,
+      P.PRIX_GERER,
+      P.RAPPORT_EXPORTER,
+      ...LECTURES_SCOPE_TOUTES_USINES,
+    ],
+  },
+  {
+    code: "COMPTABLE",
+    label: "Comptable",
+    description:
+      "Facturation, reglements, plan comptable, journaux, ecritures et lettrage. Ni production, ni qualite, ni ressources humaines.",
+    factoryScope: "COMMUN",
+    sortOrder: 17,
+    permissions: [
+      ...LECTURES_SOCLE,
+      ...LECTURES_ACHATS,
+      ...LECTURES_VENTES,
+      ...LECTURES_FINANCE,
+      ...LECTURES_RAPPORTS,
+      P.VENTE_FACTURER,
+      P.ACHAT_FACTURE_SAISIR,
+      P.ACHAT_TIERS_MATCHING,
+      P.REGLEMENT_SAISIR,
+      P.COMPTABILITE_SAISIR,
+      P.COMPTABILITE_POSTER,
+      P.PLAN_COMPTABLE_GERER,
+      P.TABLEAU_BORD_FINANCE,
+      P.RAPPORT_EXPORTER,
+      ...LECTURES_SCOPE_TOUTES_USINES,
+    ],
+  },
+  {
+    code: "RESPONSABLE_FINANCIER",
+    label: "Responsable financier",
+    description:
+      "Supervision financiere : validation des reglements, contrepassation, cloture et regles d'ecriture. Ni production, ni qualite, ni ressources humaines.",
+    factoryScope: "COMMUN",
+    sortOrder: 18,
+    permissions: [
+      ...LECTURES_SOCLE,
+      ...LECTURES_ACHATS,
+      ...LECTURES_VENTES,
+      ...LECTURES_FINANCE,
+      ...LECTURES_RAPPORTS,
+      P.VENTE_FACTURER,
+      P.ACHAT_FACTURE_SAISIR,
+      P.ACHAT_TIERS_MATCHING,
+      P.ACHAT_COMMANDE_APPROUVER,
+      P.REGLEMENT_SAISIR,
+      P.REGLEMENT_VALIDER,
+      P.COMPTABILITE_SAISIR,
+      P.COMPTABILITE_POSTER,
+      P.COMPTABILITE_CONTREPASSER,
+      P.COMPTABILITE_CLOTURER,
+      P.COMPTABILITE_REGLES_GERER,
+      P.PLAN_COMPTABLE_GERER,
+      P.TABLEAU_BORD_FINANCE,
+      P.RAPPORT_EXPORTER,
+      P.AUDIT_LIRE,
+      ...LECTURES_SCOPE_TOUTES_USINES,
+    ],
+  },
+  {
+    code: "RESPONSABLE_RH",
+    label: "Responsable RH",
+    description:
+      "Employes, competences, affectations quotidiennes, presences et evaluations de performance. Ne voit que les ressources humaines et son tableau de bord : ni stocks, ni production, ni ventes, ni achats, ni comptabilite.",
+    factoryScope: "COMMUN",
+    sortOrder: 19,
+    permissions: [
+      P.TABLEAU_BORD_LIRE,
+      P.TABLEAU_BORD_RH,
+      ...LECTURES_RH,
+      P.RH_ECRIRE,
+      P.RH_SALAIRE_LIRE,
+      P.RH_AFFECTATION_GERER,
+      P.RH_PRESENCE_GERER,
+      P.RH_EVALUATION_CALCULER,
+      P.RH_EVALUATION_VALIDER,
+      P.RH_COMPETENCE_GERER,
+      P.RAPPORT_EXPORTER,
+      ...LECTURES_SCOPE_TOUTES_USINES,
+    ],
+  },
+  {
+    code: "AUDITEUR",
+    label: "Auditeur",
+    description:
+      "Consultation de l'ensemble des donnees et du journal d'audit, sans aucune modification.",
+    factoryScope: "COMMUN",
+    sortOrder: 20,
+    permissions: [
+      ...LECTURES_SOCLE,
+      ...LECTURES_INDUSTRIELLES,
+      ...LECTURES_ACHATS,
+      ...LECTURES_VENTES,
+      ...LECTURES_PRIX,
+      ...LECTURES_FINANCE,
+      ...LECTURES_RH,
+      ...LECTURES_RAPPORTS,
+      P.STOCK_VALORISATION_LIRE,
+      P.RH_SALAIRE_LIRE,
+      P.AUDIT_LIRE,
+      P.IMPORT_LIRE,
+      P.UTILISATEUR_LIRE,
+      P.ROLE_LIRE,
+      P.RAPPORT_EXPORTER,
+      ...LECTURES_SCOPE_TOUTES_USINES,
+    ],
+  },
+  {
+    code: "LECTURE_SEULE",
+    label: "Utilisateur lecture seule",
+    description: "Consultation des articles, des stocks et des ordres de fabrication.",
+    factoryScope: "COMMUN",
+    sortOrder: 21,
+    permissions: [
+      P.ARTICLE_LIRE,
+      P.FAMILLE_LIRE,
+      P.DEPOT_LIRE,
+      P.STOCK_LIRE,
+      P.PRODUCTION_LIRE,
+      P.NOMENCLATURE_LIRE,
+      P.GAMME_LIRE,
+      P.TABLEAU_BORD_LIRE,
+      ...LECTURES_SCOPE_TOUTES_USINES,
+    ],
+  },
+];
+
+export const ROLE_CODES = ROLE_DEFINITIONS.map((r) => r.code);
+
+export function getRoleByCode(code: string): RoleDefinition | undefined {
+  return ROLE_DEFINITIONS.find((r) => r.code === code);
+}
+
+/** Permissions effectives d'un role, dedoublonnees. */
+export function getRolePermissions(code: string): string[] {
+  const role = getRoleByCode(code);
+  if (!role) return [];
+  return Array.from(new Set(role.permissions));
+}
+
+export type KnownPermission = PermissionCode;

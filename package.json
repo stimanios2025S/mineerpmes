@@ -1,0 +1,60 @@
+{
+  "name": "erpmes-admedco-mobilix",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Plateforme ERP + MES ADMEDCO / MOBILIX - gestion industrielle, stocks, production, qualite, achats, ventes, comptabilite",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:status": "prisma migrate status",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx prisma/seed.ts",
+    "bootstrap:admin": "tsx scripts/bootstrap-admin.ts",
+    "comptes": "tsx scripts/comptes.ts",
+    "acces": "tsx scripts/acces-direct.ts",
+    "import:csv": "tsx scripts/import-csv.ts",
+    "import:all": "tsx scripts/import-csv.ts --all",
+    "setup": "npm run db:generate && npm run db:deploy && npm run db:seed",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "verify": "npm run typecheck && npm run test"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.0",
+    "clsx": "^2.1.1",
+    "html5-qrcode": "^2.3.8",
+    "next": "16.3.6",
+    "qrcode": "^1.5.4",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^24",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^10.11.0",
+    "eslint-config-next": "16.3.6",
+    "prisma": "^6.19.0",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

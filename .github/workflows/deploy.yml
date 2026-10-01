@@ -1,0 +1,40 @@
+﻿name: Deploy ERP MES
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: erpmes-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Transfer application source
+        uses: appleboy/scp-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_SSH_HOST }}
+          username: ${{ secrets.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: "./"
+          target: ${{ secrets.DEPLOY_APP_PATH }}
+          overwrite: true
+          rm: false
+
+      - name: Install, migrate, build and reload PM2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_SSH_HOST }}
+          username: ${{ secrets.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd "${{ secrets.DEPLOY_APP_PATH }}"
+            powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-server.ps1 -Apply -Port "${{ vars.ERPMES_PORT || '3000' }}"

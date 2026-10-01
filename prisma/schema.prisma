@@ -1,0 +1,3180 @@
+// =============================================================================
+// ERPMES ADMEDCO / MOBILIX
+// Schema de donnees de la plateforme ERP + MES
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// 1. ENUMERATIONS METIER
+// =============================================================================
+
+enum Factory {
+  ADMEDCO
+  MOBILIX
+  COMMUN
+}
+
+enum ItemType {
+  MATIERE_PREMIERE
+  COMPOSANT
+  SEMI_FINI
+  PRODUIT_FINI
+  EMBALLAGE
+  CONSOMMABLE
+  SERVICE
+  MAIN_OEUVRE
+}
+
+enum ItemStatus {
+  ACTIF
+  INACTIF
+  ARCHIVE
+  NON_COMMERCIALISABLE
+  NON_PRODUCTIBLE
+}
+
+enum ThirdPartyType {
+  CLIENT
+  FOURNISSEUR
+  EMPLOYE
+  AUTRE
+}
+
+enum WarehouseType {
+  MATIERES_PREMIERES
+  PRODUITS_FINIS
+  EN_COURS
+  QUARANTAINE
+  REBUT
+  TRANSIT
+  CONSOMMABLES
+}
+
+enum StockStatus {
+  LIBRE
+  QUARANTAINE
+  BLOQUE
+  REBUT
+  EN_COURS_PRODUCTION
+}
+
+enum MovementType {
+  ENTREE_INITIALE
+  RECEPTION_FOURNISSEUR
+  SORTIE_PRODUCTION
+  CONSOMMATION_OPERATION
+  PRODUCTION_SEMI_FINI
+  PRODUCTION_PRODUIT_FINI
+  TRANSFERT_INTER_DEPOTS
+  TRANSFERT_SOUS_STOCK
+  LIVRAISON_CLIENT
+  RETOUR_CLIENT
+  RETOUR_FOURNISSEUR
+  MISE_EN_QUARANTAINE
+  LIBERATION_QUALITE
+  REBUT
+  PERTE
+  CORRECTION_INVENTAIRE
+  INVENTAIRE_PHYSIQUE
+  RESERVATION
+  ANNULATION_RESERVATION
+  AJUSTEMENT
+}
+
+enum FormulaStatus {
+  BROUILLON
+  EN_VALIDATION
+  VALIDEE
+  ACTIVE
+  REMPLACEE
+  ARCHIVEE
+}
+
+enum RouteStatus {
+  BROUILLON
+  ACTIVE
+  REMPLACEE
+  ARCHIVEE
+}
+
+enum WorkOrderStatus {
+  BROUILLON
+  PLANIFIE
+  LANCE
+  EN_COURS
+  SUSPENDU
+  EN_CONTROLE_QUALITE
+  PARTIELLEMENT_TERMINE
+  TERMINE
+  CLOTURE
+  ANNULE
+}
+
+enum OperationStatus {
+  NON_DEMARREE
+  EN_COURS
+  EN_PAUSE
+  TERMINEE
+  VALIDEE
+  ANNULEE
+}
+
+enum Priority {
+  BASSE
+  NORMALE
+  HAUTE
+  URGENTE
+}
+
+enum QualityDecision {
+  ACCEPTE
+  ACCEPTE_SOUS_RESERVE
+  QUARANTAINE
+  REJETE
+}
+
+enum QualityCheckResult {
+  CONFORME
+  NON_CONFORME
+  NON_APPLICABLE
+}
+
+enum NonConformityStatus {
+  OUVERTE
+  EN_ANALYSE
+  EN_REPRISE
+  RESOLUE
+  CLOTUREE
+  REJETEE
+}
+
+enum NonConformitySource {
+  RECEPTION
+  PRODUCTION
+  CONTROLE_FINAL
+  CLIENT
+  INVENTAIRE
+}
+
+enum LossCategory {
+  CONSOMMATION_NORMALE
+  SURCONSOMMATION
+  PERTE_NORMALE
+  PERTE_EXCEPTIONNELLE
+  REBUT
+  REPRISE
+  RETOUR_STOCK
+}
+
+enum LossReason {
+  DECOUPE_INCORRECTE
+  ERREUR_DE_MESURE
+  DEFAUT_MATIERE
+  DEFAUT_DE_COUTURE
+  DEFAUT_DE_SOUDURE
+  DEFAUT_DE_PEINTURE
+  DOMMAGE_MACHINE
+  ERREUR_DE_MONTAGE
+  DEFAUT_QUALITE
+  MATIERE_INUTILISABLE
+  CHUTE_NORMALE
+  AUTRE
+}
+
+enum DeclarationKind {
+  DEMARRAGE
+  PAUSE
+  REPRISE
+  PRODUCTION
+  CONSOMMATION
+  PERTE
+  PROBLEME
+  DEMANDE_CONTROLE
+  FIN
+  DEPLACEMENT_KANBAN
+}
+
+enum DeclarationStatus {
+  SAISIE
+  SOUMISE
+  VALIDEE
+  REJETEE
+}
+
+enum AssignmentStatus {
+  PLANIFIEE
+  EN_COURS
+  EN_PAUSE
+  TERMINEE
+  ANNULEE
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  RETARD
+  CONGE
+  MALADIE
+  FERIE
+  FORMATION
+}
+
+enum QuoteStatus {
+  BROUILLON
+  ENVOYE
+  ACCEPTE
+  REFUSE
+  EXPIRE
+  CONVERTI
+  ANNULE
+}
+
+enum SalesOrderStatus {
+  BROUILLON
+  CONFIRMEE
+  PARTIELLEMENT_PRODUITE
+  PRODUITE
+  PARTIELLEMENT_LIVREE
+  LIVREE
+  FACTUREE
+  CLOTUREE
+  ANNULEE
+}
+
+enum DeliveryStatus {
+  BROUILLON
+  PREPAREE
+  EXPEDIEE
+  LIVREE
+  ANNULEE
+}
+
+enum PurchaseRequestStatus {
+  BROUILLON
+  SOUMISE
+  APPROUVEE
+  REFUSEE
+  CONVERTIE
+  ANNULEE
+}
+
+enum PurchaseOrderStatus {
+  BROUILLON
+  SOUMIS
+  APPROUVE
+  PARTIELLEMENT_RECU
+  RECU
+  FACTURE
+  CLOTURE
+  ANNULE
+}
+
+enum ReceiptStatus {
+  BROUILLON
+  EN_CONTROLE_QUALITE
+  ACCEPTE
+  PARTIELLEMENT_ACCEPTE
+  REJETE
+  ANNULE
+}
+
+enum InvoiceDirection {
+  CLIENT
+  FOURNISSEUR
+}
+
+enum InvoiceNature {
+  FACTURE
+  AVOIR
+}
+
+enum InvoiceStatus {
+  BROUILLON
+  VALIDEE
+  POSTEE
+  PARTIELLEMENT_REGLEE
+  REGLEE
+  EN_RETARD
+  ANNULEE
+}
+
+enum PaymentDirection {
+  ENCAISSEMENT
+  DECAISSEMENT
+}
+
+enum PaymentMethod {
+  ESPECES
+  CHEQUE
+  VIREMENT
+  TRAITE
+  CARTE
+  COMPENSATION
+  AUTRE
+}
+
+enum PaymentStatus {
+  BROUILLON
+  VALIDE
+  POSTE
+  ANNULE
+}
+
+enum AccountType {
+  ACTIF
+  PASSIF
+  CHARGE
+  PRODUIT
+  TRESORERIE
+  CAPITAUX
+}
+
+enum JournalType {
+  VENTE
+  ACHAT
+  BANQUE
+  CAISSE
+  STOCK
+  PRODUCTION
+  OPERATIONS_DIVERSES
+  PAIE
+}
+
+enum EntryStatus {
+  BROUILLON
+  VALIDEE
+  POSTEE
+  EXTOURNEE
+}
+
+enum FiscalYearStatus {
+  OUVERT
+  CLOTURE
+}
+
+enum PeriodStatus {
+  OUVERT
+  CLOTURE
+}
+
+enum FormulaVarianceStatus {
+  OUVERT
+  EN_ANALYSE
+  RESOLU
+  ACCEPTE
+}
+
+enum ImportEntityType {
+  ITEM_FAMILY
+  ITEM
+  FORMULA
+  FORMULA_LINE
+  BATCH
+  THIRD_PARTY
+  SUPPLIER_PRICE
+  ACCOUNT
+}
+
+enum ImportJobStatus {
+  EN_COURS
+  TERMINE
+  PARTIEL
+  ECHEC
+}
+
+enum ImportRowAction {
+  INSERE
+  MIS_A_JOUR
+  IGNORE
+  PROTEGE
+  REJETE
+}
+
+enum EvaluationPeriodType {
+  JOUR
+  SEMAINE
+  MOIS
+}
+
+enum ReliabilityLevel {
+  INSUFFISANTE
+  FAIBLE
+  MOYENNE
+  BONNE
+}
+
+// =============================================================================
+// 2. AUTHENTIFICATION, ROLES ET PERMISSIONS
+// =============================================================================
+
+model User {
+  id                 Int       @id @default(autoincrement())
+  email              String    @unique
+  passwordHash       String
+  isActive           Boolean   @default(true)
+  mustChangePassword Boolean   @default(false)
+  failedAttempts     Int       @default(0)
+  lockedUntil        DateTime?
+  lastLoginAt        DateTime?
+  lastLoginIp        String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  disabledAt         DateTime?
+
+  employee                  Employee?         @relation("UserEmployee")
+  roles                     UserRole[]
+  sessions                  Session[]
+  auditLogs                 AuditLog[]
+  importJobs                ImportJob[]
+  approvals                 Formula[]         @relation("FormulaApprover")
+  createdEntries            AccountingEntry[] @relation("EntryCreatedBy")
+  postedEntries             AccountingEntry[] @relation("EntryPostedBy")
+  createdWorkOrders         WorkOrder[]       @relation("WorkOrderCreatedBy")
+  qualityReleasedWorkOrders WorkOrder[]       @relation("WorkOrderQualityReleasedBy")
+  signatureMagasinierWorkOrders WorkOrder[]   @relation("SigMagasinier")
+  signatureChefAtelierWorkOrders WorkOrder[]  @relation("SigChefAtelier")
+
+  @@index([isActive])
+}
+
+model Role {
+  id           Int      @id @default(autoincrement())
+  code         String   @unique
+  label        String
+  description  String?
+  factoryScope Factory? @default(COMMUN)
+  isSystem     Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  permissions RolePermission[]
+  users       UserRole[]
+
+  @@index([isActive])
+}
+
+model Permission {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  label       String
+  module      String
+  description String?
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+
+  @@index([module])
+}
+
+model RolePermission {
+  roleId       Int
+  permissionId Int
+  createdAt    DateTime @default(now())
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+}
+
+model UserRole {
+  userId    Int
+  roleId    Int
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+}
+
+model Session {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+  ip        String?
+  userAgent String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// =============================================================================
+// 3. AUDIT ET TRACABILITE
+// =============================================================================
+
+model AuditLog {
+  id        BigInt   @id @default(autoincrement())
+  userId    Int?
+  userEmail String?
+  action    String
+  module    String
+  entity    String
+  entityId  String?
+  oldValue  Json?
+  newValue  Json?
+  ip        String?
+  userAgent String?
+  comment   String?
+  reason    String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([userId])
+  @@index([module])
+  @@index([createdAt])
+}
+
+// =============================================================================
+// 4. CONFIGURATION APPLICATIVE
+// =============================================================================
+
+model AppSetting {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique
+  value       Json
+  category    String   @default("GENERAL")
+  label       String
+  description String?
+  updatedAt   DateTime @updatedAt
+  updatedBy   String?
+
+  @@index([category])
+}
+
+model NumberingSequence {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  label       String
+  prefix      String
+  pattern     String   @default("{PREFIX}-{YYYY}-{SEQ}")
+  nextValue   Int      @default(1)
+  padding     Int      @default(5)
+  resetYearly Boolean  @default(true)
+  lastYear    Int?
+  updatedAt   DateTime @updatedAt
+}
+
+model TaxRate {
+  code                    String   @id
+  label                   String
+  rate                    Decimal  @db.Decimal(9, 4)
+  collectedAccountNumber  String?
+  deductibleAccountNumber String?
+  isDefault               Boolean  @default(false)
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  items           Item[]
+  invoiceLines    InvoiceLine[]
+  quoteLines      QuoteLine[]
+  salesOrderLines SalesOrderLine[]
+  poLines         PurchaseOrderLine[]
+
+  @@index([isActive])
+}
+
+/// Regle de transfert automatique entre divisions (ex : chassis peint ADMEDCO -> MOBILIX)
+model DivisionTransferRule {
+  id                   Int      @id @default(autoincrement())
+  code                 String   @unique
+  label                String
+  triggerOperationCode String
+  producedItemId       Int
+  sourceWarehouseId    Int
+  targetWarehouseId    Int
+  factorySource        Factory  @default(ADMEDCO)
+  factoryTarget        Factory  @default(MOBILIX)
+  isActive             Boolean  @default(true)
+  comment              String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  producedItem    Item      @relation("TransferRuleItem", fields: [producedItemId], references: [id])
+  sourceWarehouse Warehouse @relation("TransferRuleSource", fields: [sourceWarehouseId], references: [id])
+  targetWarehouse Warehouse @relation("TransferRuleTarget", fields: [targetWarehouseId], references: [id])
+
+  @@index([isActive])
+}
+
+// =============================================================================
+// 5. REFERENTIEL : FAMILLES, UNITES, ARTICLES, DEPOTS, TIERS
+// =============================================================================
+
+model ItemFamily {
+  id             Int      @id @default(autoincrement())
+  code           String   @unique
+  label          String
+  label2         String?
+  parentId       Int?
+  hierarchy      String?
+  accountingCode String?
+  isActive       Boolean  @default(true)
+  sourceSystem   String?
+  sourceOid      Int?
+  sourceSyncId   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  parent   ItemFamily?  @relation("FamilyTree", fields: [parentId], references: [id])
+  children ItemFamily[] @relation("FamilyTree")
+  items    Item[]
+
+  @@unique([sourceSystem, sourceOid])
+  @@index([parentId])
+}
+
+model UnitOfMeasure {
+  code     String  @id
+  label    String
+  decimals Int     @default(2)
+  isActive Boolean @default(true)
+
+  items              Item[]
+  formulaLines       FormulaLine[]
+  workOrderMaterials WorkOrderMaterial[]
+  declarations       OperationDeclaration[]
+  qualityCheckpoints QualityCheckpoint[]
+  routeStepOutputs   RouteStep[]
+  purchaseOrderLines PurchaseOrderLine[]
+  salesOrderLines    SalesOrderLine[]
+  receiptLines       GoodsReceiptLine[]
+  deliveryLines      DeliveryNoteLine[]
+  invoiceLines       InvoiceLine[]
+  quoteLines         QuoteLine[]
+}
+
+model Item {
+  id          Int        @id @default(autoincrement())
+  code        String     @unique
+  barcode     String?
+  reference   String?
+  label1      String
+  label2      String?
+  label3      String?
+  designation String?
+  type        ItemType   @default(COMPOSANT)
+  status      ItemStatus @default(ACTIF)
+  familyId    Int?
+  unitCode    String?
+  taxRateCode String?
+  factory     Factory    @default(COMMUN)
+
+  // Configuration commerciale et industrielle (activables par l'administrateur)
+  isPurchasable    Boolean @default(false)
+  isSellable       Boolean @default(false)
+  isProducible     Boolean @default(false)
+  isSemiFinished   Boolean @default(false)
+  isBatchManaged   Boolean @default(false)
+  isPerishable     Boolean @default(false)
+  isRawMaterial    Boolean @default(false)
+  isMainOeuvre     Boolean @default(false)
+  isKit            Boolean @default(false)
+  isOutOfService   Boolean @default(false)
+  useNegativeStock Boolean @default(false)
+
+  // Valorisation
+  vwap              Decimal @default(0) @db.Decimal(18, 6)
+  vwapPhysical      Decimal @default(0) @db.Decimal(18, 6)
+  lastPurchasePrice Decimal @default(0) @db.Decimal(18, 4)
+  lastSalesPrice    Decimal @default(0) @db.Decimal(18, 4)
+  standardCost      Decimal @default(0) @db.Decimal(18, 4)
+
+  // Stock
+  quantityMin  Decimal @default(0) @db.Decimal(18, 6)
+  quantityMin2 Decimal @default(0) @db.Decimal(18, 6)
+  quantityMax  Decimal @default(0) @db.Decimal(18, 6)
+  quantityMax2 Decimal @default(0) @db.Decimal(18, 6)
+  safetyStock  Decimal @default(0) @db.Decimal(18, 6)
+
+  // Comptabilite
+  accountingCode     String?
+  stockAccount       String?
+  productionAccount  String?
+  consumptionAccount String?
+
+  // Dimensions / logistique
+  unitWeight Decimal @default(0) @db.Decimal(18, 6)
+  unitValue  Decimal @default(0) @db.Decimal(18, 6)
+  width      Decimal @default(0) @db.Decimal(18, 6)
+  height     Decimal @default(0) @db.Decimal(18, 6)
+  length     Decimal @default(0) @db.Decimal(18, 6)
+  thickness  Decimal @default(0) @db.Decimal(18, 6)
+
+  defaultPacking String?
+  image          String?
+  brand          String?
+  remark         String?
+  note           String?
+
+  sourceSystem         String?
+  sourceOid            Int?
+  sourceSyncId         String?
+  sourceDefaultFormula String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  family  ItemFamily?    @relation(fields: [familyId], references: [id])
+  unit    UnitOfMeasure? @relation(fields: [unitCode], references: [code])
+  taxRate TaxRate?       @relation(fields: [taxRateCode], references: [code])
+
+  balances                StockBalance[]
+  movements               StockMovement[]
+  lots                    StockLot[]
+  itemWarehouses          ItemWarehouseSetting[]
+  replenishmentProposals  ReplenishmentProposal[]
+  supplierPrices          ItemSupplierPrice[]
+  formulaParents          Formula[]               @relation("FormulaProduct")
+  bomComponents           FormulaLine[]           @relation("BomComponent")
+  routes                  ProductRoute[]
+  workOrders              WorkOrder[]
+  workOrderMaterials      WorkOrderMaterial[]
+  qualityPlans            QualityPlan[]
+  qualityChecks           QualityCheck[]
+  nonConformities         NonConformity[]
+  declarationsAsItem      OperationDeclaration[]  @relation("DeclarationItem")
+  declarationsAsComponent OperationDeclaration[]  @relation("DeclarationComponent")
+  purchaseOrderLines      PurchaseOrderLine[]
+  salesOrderLines         SalesOrderLine[]
+  quoteLines              QuoteLine[]
+  invoiceLines            InvoiceLine[]
+  receiptLines            GoodsReceiptLine[]
+  deliveryLines           DeliveryNoteLine[]
+  purchaseRequestLines    PurchaseRequestLine[]
+  skills                  Skill[]
+  producedByRouteSteps    RouteStep[]
+  transferRules           DivisionTransferRule[]  @relation("TransferRuleItem")
+  priceLists              ItemPrice[]
+  importErrors            ImportErrorLog[]
+  stepTransfers           OperationStepTransfer[]
+
+  @@unique([sourceSystem, sourceOid])
+  @@index([familyId])
+  @@index([type])
+  @@index([status])
+  @@index([isSellable])
+  @@index([isProducible])
+  @@index([label1])
+}
+
+model Warehouse {
+  id                    Int           @id @default(autoincrement())
+  code                  String        @unique
+  label                 String
+  type                  WarehouseType @default(MATIERES_PREMIERES)
+  factory               Factory       @default(ADMEDCO)
+  address               String?
+  isDefault             Boolean       @default(false)
+  isActive              Boolean       @default(true)
+  isQuarantineWarehouse Boolean       @default(false)
+  sourceSystem          String?
+  sourceOid             Int?
+  sourceSyncId          String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  locations              Location[]
+  operationSubStocks     OperationSubStock[]
+  balances               StockBalance[]
+  movements              StockMovement[]
+  lots                   StockLot[]
+  itemSettings           ItemWarehouseSetting[]
+  settingSources         ItemWarehouseSetting[]  @relation("SettingSourceWarehouse")
+  replenishmentProposals ReplenishmentProposal[]
+  proposalSources        ReplenishmentProposal[] @relation("ProposalSourceWarehouse")
+  workOrderSources       WorkOrder[]             @relation("WorkOrderSourceWarehouse")
+  workOrderTargets       WorkOrder[]             @relation("WorkOrderTargetWarehouse")
+  assignments            Assignment[]
+  employees              Employee[]
+  declarations           OperationDeclaration[]
+  formulaProd            Formula[]               @relation("FormulaWarehouseProd")
+  formulaStore           Formula[]               @relation("FormulaWarehouseStore")
+  formulaDest            Formula[]               @relation("FormulaWarehouseDest")
+  formulaLineCons        FormulaLine[]           @relation("FormulaLineConsWarehouse")
+  formulaLineProd        FormulaLine[]           @relation("FormulaLineProdWarehouse")
+  transferRuleSources    DivisionTransferRule[]  @relation("TransferRuleSource")
+  transferRuleTargets    DivisionTransferRule[]  @relation("TransferRuleTarget")
+  sourceMovements        StockMovement[]         @relation("MovementSourceWarehouse")
+  targetMovements        StockMovement[]         @relation("MovementTargetWarehouse")
+  goodsReceipts          GoodsReceipt[]
+  deliveryNotes          DeliveryNote[]
+
+  @@unique([sourceSystem, sourceOid])
+  @@index([factory])
+}
+
+model Location {
+  id          Int      @id @default(autoincrement())
+  code        String
+  label       String
+  warehouseId Int
+  aisle       String?
+  rack        String?
+  level       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  warehouse              Warehouse               @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  operationSubStocks     OperationSubStock[]
+  balances               StockBalance[]
+  movements              StockMovement[]
+  lots                   StockLot[]
+  itemSettings           ItemWarehouseSetting[]
+  replenishmentProposals ReplenishmentProposal[]
+
+  @@unique([warehouseId, code])
+}
+
+model ThirdParty {
+  id          Int            @id @default(autoincrement())
+  code        String         @unique
+  type        ThirdPartyType @default(CLIENT)
+  isClient    Boolean        @default(false)
+  isSupplier  Boolean        @default(false)
+  isEmployee  Boolean        @default(false)
+  isOther     Boolean        @default(false)
+  label1      String
+  label2      String?
+  designation String?
+  reference   String?
+  firstName   String?
+  lastName    String?
+  // Identite de la personne physique, lorsque le tiers en est une.
+  // Le fichier source historique melange les personnes et les societes dans une
+  // seule table : un tiers peut donc porter une date de naissance et un genre,
+  // comme une fiche employe.
+  birthDate   DateTime?
+  gender      String?
+
+  address1   String?
+  address2   String?
+  city       String?
+  postCode   String?
+  commune    String?
+  department String?
+  country    String? @default("Algerie")
+  region     String?
+
+  phone1 String?
+  phone2 String?
+  fax    String?
+  email  String?
+  url    String?
+  mobile String?
+
+  taxId                String?
+  nif                  String?
+  nis                  String?
+  rc                   String?
+  ai                   String?
+  ccp                  String?
+  socialSecurityNumber String?
+  legalForm            String?
+  activity             String?
+
+  accountingCode String?
+  familyCode     String?
+  category1      String?
+  category2      String?
+  category3      String?
+  category4      String?
+  category5      String?
+
+  paymentMethod        PaymentMethod?
+  deadlineDays         Int            @default(0)
+  discountRate         Decimal        @default(0) @db.Decimal(9, 4)
+  increaseRate         Decimal        @default(0) @db.Decimal(9, 4)
+  maxBalanceAmount     Decimal        @default(0) @db.Decimal(18, 4)
+  exemptFromVat        Boolean        @default(false)
+  balance              Decimal        @default(0) @db.Decimal(18, 4)
+  responsibilityCenter String?
+
+  isActive      Boolean @default(true)
+  isBlocked     Boolean @default(false)
+  blockedReason String?
+  remark        String?
+  note          String?
+
+  sourceSystem String?
+  sourceOid    Int?
+  sourceSyncId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employee            Employee?               @relation("ThirdPartyEmployee")
+  supplierPrices      ItemSupplierPrice[]
+  settingsAsSupplier  ItemWarehouseSetting[]  @relation("SettingSupplier")
+  proposalsAsSupplier ReplenishmentProposal[] @relation("ProposalSupplier")
+  priceLists          ItemPrice[]
+  purchaseOrders      PurchaseOrder[]
+  purchaseRequests    PurchaseRequest[]
+  receipts            GoodsReceipt[]
+  supplierInvoices    SupplierInvoice[]
+  quotes              Quote[]
+  salesOrders         SalesOrder[]
+  workOrders          WorkOrder[]      @relation("WorkOrderCustomer")
+  deliveryNotes       DeliveryNote[]
+  invoices            Invoice[]
+  payments            Payment[]
+  lots                StockLot[]
+  movements           StockMovement[]
+  qualityChecks       QualityCheck[]
+  nonConformities     NonConformity[]
+  accountingLines     AccountingEntryLine[]
+
+  @@unique([sourceSystem, sourceOid])
+  @@index([type])
+  @@index([isClient])
+  @@index([isSupplier])
+  @@index([label1])
+}
+
+model ItemSupplierPrice {
+  id           Int       @id @default(autoincrement())
+  itemId       Int
+  supplierId   Int
+  supplierRef  String?
+  price        Decimal   @db.Decimal(18, 4)
+  currency     String    @default("DZD")
+  leadTimeDays Int       @default(0)
+  minQuantity  Decimal   @default(0) @db.Decimal(18, 6)
+  validFrom    DateTime?
+  validTo      DateTime?
+  isPreferred  Boolean   @default(false)
+  sourceSystem String?
+  sourceOid    Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  item     Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  supplier ThirdParty @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceSystem, sourceOid])
+  @@index([itemId])
+  @@index([supplierId])
+}
+
+model ItemPrice {
+  id           Int       @id @default(autoincrement())
+  itemId       Int
+  thirdPartyId Int?
+  priceType    String    @default("VENTE")
+  price        Decimal   @db.Decimal(18, 4)
+  currency     String    @default("DZD")
+  discountRate Decimal   @default(0) @db.Decimal(9, 4)
+  validFrom    DateTime?
+  validTo      DateTime?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  item       Item        @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  thirdParty ThirdParty? @relation(fields: [thirdPartyId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@index([thirdPartyId])
+}
+
+/// Mode d'approvisionnement d'un article a un emplacement donne.
+enum SupplyMode {
+  ACHAT
+  FABRICATION
+  TRANSFERT_INTERNE
+}
+
+/// Cycle de vie d'une proposition de reapprovisionnement.
+/// Aucune valeur ne declenche a elle seule une commande ou une ecriture.
+enum ReplenishmentStatus {
+  PROPOSEE
+  VALIDEE
+  REJETEE
+  ANNULEE
+}
+
+model ItemWarehouseSetting {
+  id           Int     @id @default(autoincrement())
+  itemId       Int
+  warehouseId  Int
+  locationId   Int?
+  quantityMin  Decimal @default(0) @db.Decimal(18, 6)
+  quantityMax  Decimal @default(0) @db.Decimal(18, 6)
+  safetyStock  Decimal @default(0) @db.Decimal(18, 6)
+  reorderPoint Decimal @default(0) @db.Decimal(18, 6)
+  isDefault    Boolean @default(false)
+
+  /// Regle de reapprovisionnement. `quantityMin` et `quantityMax` sont des
+  /// EXEMPLES de seuils : ils se saisissent par article et par emplacement, ils
+  /// ne sont jamais codes en dur (200/500 ne sont qu'une illustration).
+  supplyMode            SupplyMode @default(ACHAT)
+  isReplenishmentActive Boolean    @default(false)
+  leadTimeDays          Int?
+  /// Fournisseur pour un achat, ou tiers prestataire pour une fabrication.
+  supplierId            Int?
+  /// Depot d'ou l'on transfere, pour un transfert interne.
+  sourceWarehouseId     Int?
+  lastProposalAt        DateTime?
+  approachedById        Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  item            Item        @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  warehouse       Warehouse   @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  location        Location?   @relation(fields: [locationId], references: [id])
+  supplier        ThirdParty? @relation("SettingSupplier", fields: [supplierId], references: [id])
+  sourceWarehouse Warehouse?  @relation("SettingSourceWarehouse", fields: [sourceWarehouseId], references: [id])
+  approachedBy    Employee?   @relation("SettingApproachedBy", fields: [approachedById], references: [id])
+
+  @@unique([itemId, warehouseId])
+}
+
+/// Proposition de reapprovisionnement min-max, par article et par emplacement.
+///
+/// Une proposition N'EST PAS une commande : elle ne declenche aucun achat, aucun
+/// transfert et aucune ecriture comptable. Elle est soumise a un responsable,
+/// qui la valide ou la rejette. `proposalKey` est deterministe : une meme
+/// situation pour un meme article et un meme emplacement ne produit jamais deux
+/// propositions en attente.
+model ReplenishmentProposal {
+  id          Int    @id @default(autoincrement())
+  proposalKey String @unique
+
+  itemId      Int
+  warehouseId Int
+  locationId  Int?
+
+  /// Position exacte au moment du calcul : physique moins reserve.
+  quantityPhysical    Decimal @db.Decimal(18, 6)
+  quantityReserved    Decimal @db.Decimal(18, 6)
+  /// Immobilise (bloque, endommage, quarantaine) : informatif, jamais compte
+  /// comme disponible.
+  quantityImmobilized Decimal @db.Decimal(18, 6)
+  quantityPosition    Decimal @db.Decimal(18, 6)
+
+  quantityMin      Decimal @db.Decimal(18, 6)
+  quantityTarget   Decimal @db.Decimal(18, 6)
+  /// max(0, cible - position) : la seule formule appliquee.
+  proposedQuantity Decimal @db.Decimal(18, 6)
+  /// Quantite deja en cours de reapprovisionnement, informative.
+  quantityOnOrder  Decimal @default(0) @db.Decimal(18, 6)
+
+  supplyMode        SupplyMode
+  supplierId        Int?
+  sourceWarehouseId Int?
+
+  status           ReplenishmentStatus @default(PROPOSEE)
+  motif            String?
+  comment          String?
+  computedAt       DateTime            @default(now())
+  validatedById    Int?
+  validatedAt      DateTime?
+  /// Quantite retenue par le responsable, quand elle differe de la proposition.
+  quantityApproved Decimal?            @db.Decimal(18, 6)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  item            Item        @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  warehouse       Warehouse   @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  location        Location?   @relation(fields: [locationId], references: [id])
+  supplier        ThirdParty? @relation("ProposalSupplier", fields: [supplierId], references: [id])
+  sourceWarehouse Warehouse?  @relation("ProposalSourceWarehouse", fields: [sourceWarehouseId], references: [id])
+  validatedBy     Employee?   @relation("ProposalValidatedBy", fields: [validatedById], references: [id])
+
+  @@index([status, computedAt])
+  @@index([itemId, warehouseId])
+}
+
+// =============================================================================
+// 6. NOMENCLATURES (FORMULES) ET GAMMES DE FABRICATION
+// =============================================================================
+
+model Formula {
+  id          Int           @id @default(autoincrement())
+  code        String
+  version     Int           @default(1)
+  label       String
+  label2      String?
+  itemId      Int
+  status      FormulaStatus @default(BROUILLON)
+  type        String?
+  typeFormule String?
+  isDefault   Boolean       @default(false)
+
+  effectiveFrom     DateTime?
+  effectiveTo       DateTime?
+  approvedById      Int?
+  approvedAt        DateTime?
+  changeReason      String?
+  previousVersionId Int?
+
+  // Depots de reference de la nomenclature
+  warehouseProdId  Int?
+  warehouseStoreId Int?
+  warehouseDestId  Int?
+
+  productionTimePerUnit Decimal @default(0) @db.Decimal(18, 6)
+  productionCostPerUnit Decimal @default(0) @db.Decimal(18, 4)
+  totalQuantity         Decimal @default(0) @db.Decimal(18, 6)
+  totalCost             Decimal @default(0) @db.Decimal(18, 4)
+  costCalcMethod        String?
+  blocked               Boolean @default(false)
+  isQuarantineWarehouse Boolean @default(false)
+  isDecomposable        Boolean @default(false)
+
+  sourceSystem String?
+  sourceOid    Int?
+  sourceSyncId String?
+  importedFrom String?
+  notes        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  item            Item      @relation("FormulaProduct", fields: [itemId], references: [id], onDelete: Cascade)
+  approvedBy      User?     @relation("FormulaApprover", fields: [approvedById], references: [id])
+  previousVersion Formula?  @relation("FormulaVersionChain", fields: [previousVersionId], references: [id])
+  nextVersions    Formula[] @relation("FormulaVersionChain")
+
+  warehouseProd  Warehouse? @relation("FormulaWarehouseProd", fields: [warehouseProdId], references: [id])
+  warehouseStore Warehouse? @relation("FormulaWarehouseStore", fields: [warehouseStoreId], references: [id])
+  warehouseDest  Warehouse? @relation("FormulaWarehouseDest", fields: [warehouseDestId], references: [id])
+
+  lines      FormulaLine[]
+  variances  FormulaVariance[]
+  workOrders WorkOrder[]
+
+  @@unique([sourceSystem, sourceOid])
+  @@unique([itemId, version])
+  @@index([status])
+  @@index([itemId])
+}
+
+model FormulaLine {
+  id              Int      @id @default(autoincrement())
+  formulaId       Int
+  lineNo          Int
+  componentItemId Int
+  quantity        Decimal  @db.Decimal(18, 6)
+  unitCode        String?
+  lossRate        Decimal  @default(0) @db.Decimal(9, 4)
+  scrapRate       Decimal  @default(0) @db.Decimal(9, 4)
+  toleratedError  Decimal? @db.Decimal(9, 4)
+
+  operationCode          String?
+  consumptionWarehouseId Int?
+  productionWarehouseId  Int?
+
+  unitCost      Decimal  @default(0) @db.Decimal(18, 4)
+  price         Decimal  @default(0) @db.Decimal(18, 4)
+  totalCost     Decimal  @default(0) @db.Decimal(18, 4)
+  apartFromCost Boolean  @default(false)
+  lineClass     String?
+  inProcess     Boolean  @default(false)
+  isLabor       Boolean  @default(false)
+  rate          Decimal? @db.Decimal(9, 4)
+  taux          Decimal? @db.Decimal(9, 4)
+
+  label1       String?
+  notes        String?
+  sourceSystem String?
+  sourceOid    Int?
+  sourceSyncId String?
+  importedFrom String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  formula              Formula           @relation(fields: [formulaId], references: [id], onDelete: Cascade)
+  componentItem        Item              @relation("BomComponent", fields: [componentItemId], references: [id])
+  unit                 UnitOfMeasure?    @relation(fields: [unitCode], references: [code])
+  consumptionWarehouse Warehouse?        @relation("FormulaLineConsWarehouse", fields: [consumptionWarehouseId], references: [id])
+  productionWarehouse  Warehouse?        @relation("FormulaLineProdWarehouse", fields: [productionWarehouseId], references: [id])
+  variances            FormulaVariance[]
+
+  @@unique([sourceSystem, sourceOid])
+  @@index([formulaId])
+  @@index([componentItemId])
+}
+
+/// Ecart detecte entre les sources (schemas, CSV, anciennes regles) - jamais ecrase silencieusement
+model FormulaVariance {
+  id              Int                   @id @default(autoincrement())
+  formulaId       Int
+  formulaLineId   Int?
+  componentItemId Int?
+  lineNo          Int?
+  sourceA         String
+  valueA          String?
+  sourceB         String
+  valueB          String?
+  delta           String?
+  status          FormulaVarianceStatus @default(OUVERT)
+  resolutionNote  String?
+  resolvedValue   String?
+  resolvedById    Int?
+  resolvedAt      DateTime?
+  detectedAt      DateTime              @default(now())
+
+  formula     Formula      @relation(fields: [formulaId], references: [id], onDelete: Cascade)
+  formulaLine FormulaLine? @relation(fields: [formulaLineId], references: [id], onDelete: Cascade)
+
+  @@index([formulaId])
+  @@index([status])
+}
+
+model Workshop {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  label     String
+  factory   Factory  @default(ADMEDCO)
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  operations         Operation[]
+  workCenters        WorkCenter[]
+  routes             ProductRoute[]
+  employees          Employee[]
+  assignments        Assignment[]
+  workOrders         WorkOrder[]
+  operationSubStocks OperationSubStock[]
+  workSchedules      WorkSchedule[]
+}
+
+model Operation {
+  id                   Int      @id @default(autoincrement())
+  code                 String   @unique
+  label                String
+  factory              Factory
+  workshopId           Int?
+  sequenceOrder        Int      @default(0)
+  description          String?
+  standardTimeMinutes  Decimal  @default(0) @db.Decimal(18, 4)
+  standardLossRate     Decimal  @default(0) @db.Decimal(9, 4)
+  requiresQualityCheck Boolean  @default(false)
+  consumesSemiFinished Boolean  @default(false)
+  producesSemiFinished Boolean  @default(false)
+  isKanbanVisible      Boolean  @default(true)
+  boardOrder           Int      @default(0)
+  isActive             Boolean  @default(true)
+  colorCode            String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  workshop              Workshop?               @relation(fields: [workshopId], references: [id])
+  workCenters           WorkCenter[]
+  routeSteps            RouteStep[]
+  workOrderOperations   WorkOrderOperation[]
+  declarations          OperationDeclaration[]
+  skills                Skill[]
+  assignments           Assignment[]
+  materialOperations    WorkOrderMaterial[]
+  qualityPlans          QualityPlan[]
+  evaluationTargets     PerformanceEvaluation[]
+  stockMovements        StockMovement[]
+  kanbanTransitionsFrom KanbanTransition[]      @relation("KanbanTransitionFromOperation")
+  kanbanTransitionsTo   KanbanTransition[]      @relation("KanbanTransitionToOperation")
+  subStocks             OperationSubStock[]
+  stepTransfers         OperationStepTransfer[]
+
+  @@index([factory])
+  @@index([boardOrder])
+}
+
+model WorkCenter {
+  id                Int     @id @default(autoincrement())
+  code              String  @unique
+  label             String
+  factory           Factory @default(ADMEDCO)
+  workshopId        Int?
+  operationId       Int?
+  location          String?
+  capacityPerHour   Decimal @default(0) @db.Decimal(18, 6)
+  operatorsRequired Int     @default(1)
+  costPerHour       Decimal @default(0) @db.Decimal(18, 4)
+  isActive          Boolean @default(true)
+
+  /// Jeton opaque du QR permanent du poste. Imprime une fois, il identifie le
+  /// poste et rien d'autre : aucun secret de connexion, aucune tache figee.
+  /// Revoquer un poste remplace le jeton et invalide l'ancien QR.
+  qrToken         String?   @unique
+  qrVersion       Int       @default(1)
+  qrGeneratedAt   DateTime?
+  qrRevokedAt     DateTime?
+  qrLastPrintedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workshop            Workshop?              @relation(fields: [workshopId], references: [id])
+  operation           Operation?             @relation(fields: [operationId], references: [id])
+  routeSteps          RouteStep[]
+  workOrderOperations WorkOrderOperation[]
+  plannedAssignments  Assignment[]           @relation("AssignmentPlannedWorkCenter")
+  scannedAssignments  Assignment[]           @relation("AssignmentScannedWorkCenter")
+  subStocks           OperationSubStock[]
+  scans               WorkCenterScan[]
+  declarations        OperationDeclaration[] @relation("DeclarationWorkCenter")
+}
+
+model ProductRoute {
+  id            Int         @id @default(autoincrement())
+  code          String      @unique
+  label         String
+  itemId        Int
+  version       Int         @default(1)
+  status        RouteStatus @default(BROUILLON)
+  factory       Factory     @default(COMMUN)
+  workshopId    Int?
+  isDefault     Boolean     @default(false)
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+  approvedById  Int?
+  approvedAt    DateTime?
+  notes         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  item       Item        @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  workshop   Workshop?   @relation(fields: [workshopId], references: [id])
+  steps      RouteStep[]
+  workOrders WorkOrder[]
+
+  @@unique([itemId, version])
+  @@index([status])
+}
+
+model RouteStep {
+  id                   Int      @id @default(autoincrement())
+  routeId              Int
+  stepNo               Int
+  operationId          Int
+  workCenterId         Int?
+  standardTimeMinutes  Decimal  @default(0) @db.Decimal(18, 4)
+  setupTimeMinutes     Decimal  @default(0) @db.Decimal(18, 4)
+  isQualityGate        Boolean  @default(false)
+  isFinalStep          Boolean  @default(false)
+  consumesSemiFinished Boolean  @default(false)
+  producesSemiFinished Boolean  @default(false)
+  producedItemId       Int?
+  unitCode             String?
+  description          String?
+  instructions         String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  route        ProductRoute   @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  operation    Operation      @relation(fields: [operationId], references: [id])
+  workCenter   WorkCenter?    @relation(fields: [workCenterId], references: [id])
+  producedItem Item?          @relation(fields: [producedItemId], references: [id])
+  unit         UnitOfMeasure? @relation(fields: [unitCode], references: [code])
+
+  @@unique([routeId, stepNo])
+  @@index([operationId])
+}
+
+// =============================================================================
+// 7. STOCKS ET MOUVEMENTS
+// =============================================================================
+
+model StockLot {
+  id               Int         @id @default(autoincrement())
+  itemId           Int
+  warehouseId      Int
+  locationId       Int?
+  lotNumber        String
+  status           StockStatus @default(LIBRE)
+  manufactureDate  DateTime?
+  expirationDate   DateTime?
+  inventoryDate    DateTime?
+  receivedAt       DateTime?
+  supplierId       Int?
+  workOrderId      Int?
+  originCountry    String?
+  blockingReason   String?
+  unitCost         Decimal     @default(0) @db.Decimal(18, 6)
+  isImmobilization Boolean     @default(false)
+  sourceSystem     String?
+  sourceOid        Int?
+  sourceCode       String?
+  sourceSyncId     String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  item      Item        @relation(fields: [itemId], references: [id])
+  warehouse Warehouse   @relation(fields: [warehouseId], references: [id])
+  location  Location?   @relation(fields: [locationId], references: [id])
+  supplier  ThirdParty? @relation(fields: [supplierId], references: [id])
+  workOrder WorkOrder?  @relation(fields: [workOrderId], references: [id])
+
+  balances           StockBalance[]
+  movements          StockMovement[]
+  declarations       OperationDeclaration[]
+  stepTransfers      OperationStepTransfer[]
+  plannedAssignments Assignment[]
+
+  @@unique([itemId, warehouseId, lotNumber])
+  @@unique([sourceSystem, sourceOid])
+  @@index([itemId])
+  @@index([warehouseId])
+  @@index([expirationDate])
+}
+
+/// Grand livre des mouvements de stock : toute variation de stock passe par ici.
+model StockMovement {
+  id           BigInt       @id @default(autoincrement())
+  number       String       @unique
+  type         MovementType
+  itemId       Int
+  warehouseId  Int
+  locationId   Int?
+  lotId        Int?
+  quantity     Decimal      @db.Decimal(18, 6)
+  unitCode     String?
+  unitCost     Decimal      @default(0) @db.Decimal(18, 6)
+  totalCost    Decimal      @default(0) @db.Decimal(18, 6)
+  balanceAfter Decimal?     @db.Decimal(18, 6)
+  status       StockStatus  @default(LIBRE)
+
+  sourceWarehouseId Int?
+  targetWarehouseId Int?
+
+  workOrderId          Int?
+  workOrderOperationId Int?
+  operationId          Int?
+  declarationId        BigInt? @unique
+
+  documentType   String?
+  documentId     String?
+  documentNumber String?
+  thirdPartyId   Int?
+
+  userId        Int?
+  userEmail     String?
+  occurredAt    DateTime @default(now())
+  comment       String?
+  reason        String?
+  justification String?
+
+  isReversal   Boolean        @default(false)
+  reversedById BigInt?        @unique
+  reversalOf   StockMovement? @relation("MovementReversal", fields: [reversedById], references: [id])
+  reverses     StockMovement? @relation("MovementReversal")
+
+  accountingEntryId Int?
+
+  createdAt DateTime @default(now())
+
+  item               Item                  @relation(fields: [itemId], references: [id])
+  warehouse          Warehouse             @relation(fields: [warehouseId], references: [id])
+  location           Location?             @relation(fields: [locationId], references: [id])
+  lot                StockLot?             @relation(fields: [lotId], references: [id])
+  sourceWarehouse    Warehouse?            @relation("MovementSourceWarehouse", fields: [sourceWarehouseId], references: [id])
+  targetWarehouse    Warehouse?            @relation("MovementTargetWarehouse", fields: [targetWarehouseId], references: [id])
+  workOrder          WorkOrder?            @relation(fields: [workOrderId], references: [id])
+  workOrderOperation WorkOrderOperation?   @relation(fields: [workOrderOperationId], references: [id])
+  operation          Operation?            @relation(fields: [operationId], references: [id])
+  thirdParty         ThirdParty?           @relation(fields: [thirdPartyId], references: [id])
+  accountingEntry    AccountingEntry?      @relation(fields: [accountingEntryId], references: [id])
+  declaration        OperationDeclaration? @relation(fields: [declarationId], references: [id])
+
+  @@index([itemId, warehouseId])
+  @@index([type])
+  @@index([occurredAt])
+  @@index([workOrderId])
+  @@index([documentType, documentId])
+}
+
+/// Solde de stock agrege. La quantite physique est toujours derivee des mouvements.
+model StockBalance {
+  id          BigInt      @id @default(autoincrement())
+  /// Cle deterministe item:depot:emplacement:lot:statut garantissant l'unicite
+  /// malgre la presence de colonnes nullables dans la cle.
+  balanceKey  String      @unique
+  itemId      Int
+  warehouseId Int
+  locationId  Int?
+  lotId       Int?
+  status      StockStatus @default(LIBRE)
+
+  quantityPhysical     Decimal @default(0) @db.Decimal(18, 6)
+  quantityReserved     Decimal @default(0) @db.Decimal(18, 6)
+  quantityBlocked      Decimal @default(0) @db.Decimal(18, 6)
+  quantityDamaged      Decimal @default(0) @db.Decimal(18, 6)
+  quantityQuarantine   Decimal @default(0) @db.Decimal(18, 6)
+  quantityInProduction Decimal @default(0) @db.Decimal(18, 6)
+
+  unitCost   Decimal @default(0) @db.Decimal(18, 6)
+  totalValue Decimal @default(0) @db.Decimal(18, 6)
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  item      Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  location  Location? @relation(fields: [locationId], references: [id])
+  lot       StockLot? @relation(fields: [lotId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@index([warehouseId])
+  @@index([itemId, warehouseId])
+}
+
+// =============================================================================
+// 8. PRODUCTION (MES) : ORDRES DE FABRICATION, OPERATIONS, KANBAN
+// =============================================================================
+
+model WorkOrder {
+  id        Int             @id @default(autoincrement())
+  number    String          @unique
+  itemId    Int
+  formulaId Int?
+  routeId   Int?
+  factory   Factory
+  status    WorkOrderStatus @default(BROUILLON)
+  priority  Priority        @default(NORMALE)
+
+  quantityPlanned   Decimal @default(0) @db.Decimal(18, 6)
+  quantityLaunched  Decimal @default(0) @db.Decimal(18, 6)
+  quantityProduced  Decimal @default(0) @db.Decimal(18, 6)
+  quantityConform   Decimal @default(0) @db.Decimal(18, 6)
+  quantityScrapped  Decimal @default(0) @db.Decimal(18, 6)
+  quantityRework    Decimal @default(0) @db.Decimal(18, 6)
+  quantityRemaining Decimal @default(0) @db.Decimal(18, 6)
+
+  sourceWarehouseId Int?
+  targetWarehouseId Int?
+  workshopId        Int?
+
+  salesOrderId     Int?
+  salesOrderLineId Int?
+
+  customerId           Int?
+  customerReference    String?
+  deliveryAddress      String?
+  carrier              String?
+  plannedDeliveryDate  DateTime?
+  deliveryNotes        String?
+
+  plannedStart DateTime?
+  plannedEnd   DateTime?
+  dueDate      DateTime?
+  actualStart  DateTime?
+  actualEnd    DateTime?
+
+  responsibleId  Int?
+  createdById    Int?
+  notes          String?
+  priorityReason String?
+
+  qualityStatus       QualityDecision?
+  qualityReleasedAt   DateTime?
+  qualityReleasedById Int?
+
+  isSemiFinishedOutput Boolean @default(false)
+
+  signatureMagasinierUser    User? @relation("SigMagasinier", fields: [signatureMagasinierBy], references: [id])
+  signatureChefAtelierUser   User? @relation("SigChefAtelier", fields: [signatureChefAtelierBy], references: [id])
+
+  // Signatures electroniques
+  signatureMagasinier    String?
+  signatureMagasinierAt  DateTime?
+  signatureMagasinierBy  Int?
+  signatureChefAtelier   String?
+  signatureChefAtelierAt DateTime?
+  signatureChefAtelierBy Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  item              Item            @relation(fields: [itemId], references: [id])
+  formula           Formula?        @relation(fields: [formulaId], references: [id])
+  route             ProductRoute?   @relation(fields: [routeId], references: [id])
+  sourceWarehouse   Warehouse?      @relation("WorkOrderSourceWarehouse", fields: [sourceWarehouseId], references: [id])
+  targetWarehouse   Warehouse?      @relation("WorkOrderTargetWarehouse", fields: [targetWarehouseId], references: [id])
+  workshop          Workshop?       @relation(fields: [workshopId], references: [id])
+  salesOrder        SalesOrder?     @relation(fields: [salesOrderId], references: [id])
+  salesOrderLine    SalesOrderLine? @relation(fields: [salesOrderLineId], references: [id])
+  customer          ThirdParty?     @relation("WorkOrderCustomer", fields: [customerId], references: [id])
+  responsible       Employee?       @relation("WorkOrderResponsible", fields: [responsibleId], references: [id])
+  createdBy         User?           @relation("WorkOrderCreatedBy", fields: [createdById], references: [id])
+  qualityReleasedBy User?           @relation("WorkOrderQualityReleasedBy", fields: [qualityReleasedById], references: [id])
+
+  operations        WorkOrderOperation[]
+  materials         WorkOrderMaterial[]
+  movements         StockMovement[]
+  declarations      OperationDeclaration[]
+  qualityChecks     QualityCheck[]
+  nonConformities   NonConformity[]
+  kanbanTransitions KanbanTransition[]
+  lots              StockLot[]
+  assignments       Assignment[]
+  evaluationItems   PerformanceEvaluation[]
+  stepTransfers     OperationStepTransfer[]
+
+  @@index([status])
+  @@index([factory])
+  @@index([itemId])
+  @@index([dueDate])
+}
+
+model WorkOrderOperation {
+  id           Int             @id @default(autoincrement())
+  workOrderId  Int
+  stepNo       Int
+  operationId  Int
+  workCenterId Int?
+  status       OperationStatus @default(NON_DEMARREE)
+  boardOrder   Int             @default(0)
+
+  quantityPlanned  Decimal @default(0) @db.Decimal(18, 6)
+  quantityProduced Decimal @default(0) @db.Decimal(18, 6)
+  quantityConform  Decimal @default(0) @db.Decimal(18, 6)
+  quantityScrapped Decimal @default(0) @db.Decimal(18, 6)
+  quantityRework   Decimal @default(0) @db.Decimal(18, 6)
+  quantityConsumed Decimal @default(0) @db.Decimal(18, 6)
+
+  plannedStart  DateTime?
+  plannedEnd    DateTime?
+  actualStart   DateTime?
+  actualEnd     DateTime?
+  pausedAt      DateTime?
+  totalPausedMs BigInt    @default(0)
+
+  operatorId    Int?
+  teamLabel     String?
+  qualityStatus QualityDecision?
+  notes         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workOrder  WorkOrder   @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  operation  Operation   @relation(fields: [operationId], references: [id])
+  workCenter WorkCenter? @relation(fields: [workCenterId], references: [id])
+  operator   Employee?   @relation("OperationOperator", fields: [operatorId], references: [id])
+
+  declarations  OperationDeclaration[]
+  materials     WorkOrderMaterial[]
+  qualityChecks QualityCheck[]
+  kanbanFrom    KanbanTransition[]      @relation("KanbanFrom")
+  kanbanTo      KanbanTransition[]      @relation("KanbanTo")
+  movements     StockMovement[]
+  assignments   Assignment[]
+  stepTransfers OperationStepTransfer[]
+
+  @@unique([workOrderId, stepNo])
+  @@index([status])
+  @@index([operationId])
+}
+
+/// Copie figee de la nomenclature au moment du lancement de l'ordre de fabrication.
+model WorkOrderMaterial {
+  id                   Int  @id @default(autoincrement())
+  workOrderId          Int
+  workOrderOperationId Int?
+  operationId          Int?
+  componentItemId      Int
+  lineNo               Int  @default(0)
+
+  quantityPlanned  Decimal @default(0) @db.Decimal(18, 6)
+  quantityIssued   Decimal @default(0) @db.Decimal(18, 6)
+  quantityConsumed Decimal @default(0) @db.Decimal(18, 6)
+  quantityLost     Decimal @default(0) @db.Decimal(18, 6)
+  quantityReturned Decimal @default(0) @db.Decimal(18, 6)
+
+  unitCode    String?
+  lossRate    Decimal @default(0) @db.Decimal(9, 4)
+  scrapRate   Decimal @default(0) @db.Decimal(9, 4)
+  unitCost    Decimal @default(0) @db.Decimal(18, 6)
+  totalCost   Decimal @default(0) @db.Decimal(18, 6)
+  warehouseId Int?
+
+  snapshotSource String?
+  isLabor        Boolean @default(false)
+  notes          String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workOrder          WorkOrder              @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  workOrderOperation WorkOrderOperation?    @relation(fields: [workOrderOperationId], references: [id], onDelete: SetNull)
+  operation          Operation?             @relation(fields: [operationId], references: [id])
+  componentItem      Item                   @relation(fields: [componentItemId], references: [id])
+  unit               UnitOfMeasure?         @relation(fields: [unitCode], references: [code])
+  declarations       OperationDeclaration[]
+
+  @@index([workOrderId])
+  @@index([componentItemId])
+}
+
+/// Declaration unifiee d'atelier : production, consommation, perte, rebut, reprise, probleme, controle.
+model OperationDeclaration {
+  id                   BigInt            @id @default(autoincrement())
+  workOrderId          Int
+  workOrderOperationId Int
+  operationId          Int
+  employeeId           Int?
+  userId               Int?
+  kind                 DeclarationKind
+  status               DeclarationStatus @default(SAISIE)
+
+  quantity        Decimal @default(0) @db.Decimal(18, 6)
+  quantityConform Decimal @default(0) @db.Decimal(18, 6)
+  unitCode        String?
+
+  itemId          Int?
+  componentItemId Int?
+  lotId           Int?
+  warehouseId     Int?
+  workCenterId    Int?
+  subStockId      Int?
+  materialId      Int?
+
+  lossCategory  LossCategory?
+  lossReason    LossReason?
+  isExceptional Boolean       @default(false)
+
+  occurredAt      DateTime @default(now())
+  durationMinutes Decimal? @db.Decimal(18, 4)
+
+  comment       String?
+  attachmentUrl String?
+
+  validatedById   Int?
+  validatedAt     DateTime?
+  rejectionReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workOrder          WorkOrder               @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  workOrderOperation WorkOrderOperation?     @relation(fields: [workOrderOperationId], references: [id], onDelete: Cascade)
+  operation          Operation               @relation(fields: [operationId], references: [id])
+  workCenter         WorkCenter?             @relation("DeclarationWorkCenter", fields: [workCenterId], references: [id])
+  subStock           OperationSubStock?      @relation(fields: [subStockId], references: [id])
+  employee           Employee?               @relation("DeclarationEmployee", fields: [employeeId], references: [id])
+  validatedBy        Employee?               @relation("DeclarationValidator", fields: [validatedById], references: [id])
+  item               Item?                   @relation("DeclarationItem", fields: [itemId], references: [id])
+  componentItem      Item?                   @relation("DeclarationComponent", fields: [componentItemId], references: [id])
+  lot                StockLot?               @relation(fields: [lotId], references: [id])
+  warehouse          Warehouse?              @relation(fields: [warehouseId], references: [id])
+  unit               UnitOfMeasure?          @relation(fields: [unitCode], references: [code])
+  material           WorkOrderMaterial?      @relation(fields: [materialId], references: [id])
+  stockMovements     StockMovement[]
+  stepTransfers      OperationStepTransfer[]
+
+  @@index([workOrderId])
+  @@index([workOrderOperationId])
+  @@index([kind])
+  @@index([employeeId])
+  @@index([occurredAt])
+}
+
+/// Deplacement Kanban : operation metier controlee et tracee.
+model KanbanTransition {
+  id                       BigInt           @id @default(autoincrement())
+  workOrderId              Int
+  fromOperationId          Int?
+  toOperationId            Int?
+  fromWorkOrderOperationId Int?
+  toWorkOrderOperationId   Int?
+  userId                   Int?
+  employeeId               Int?
+  quantity                 Decimal          @db.Decimal(18, 6)
+  declaredConsumptions     Json?
+  declaredLosses           Json?
+  qualityResult            QualityDecision?
+  comment                  String?
+  occurredAt               DateTime         @default(now())
+
+  workOrder              WorkOrder           @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  fromOperation          Operation?          @relation("KanbanTransitionFromOperation", fields: [fromOperationId], references: [id])
+  toOperation            Operation?          @relation("KanbanTransitionToOperation", fields: [toOperationId], references: [id])
+  fromWorkOrderOperation WorkOrderOperation? @relation("KanbanFrom", fields: [fromWorkOrderOperationId], references: [id])
+  toWorkOrderOperation   WorkOrderOperation? @relation("KanbanTo", fields: [toWorkOrderOperationId], references: [id])
+  employee               Employee?           @relation("KanbanEmployee", fields: [employeeId], references: [id])
+
+  @@index([workOrderId])
+  @@index([occurredAt])
+}
+
+// =============================================================================
+// 9. QUALITE
+// =============================================================================
+
+model QualityPlan {
+  id                    Int      @id @default(autoincrement())
+  code                  String   @unique
+  label                 String
+  itemId                Int?
+  operationId           Int?
+  factory               Factory  @default(COMMUN)
+  isActive              Boolean  @default(true)
+  isMandatoryForRelease Boolean  @default(false)
+  description           String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  item        Item?               @relation(fields: [itemId], references: [id])
+  operation   Operation?          @relation(fields: [operationId], references: [id])
+  checkpoints QualityCheckpoint[]
+  checks      QualityCheck[]
+}
+
+model QualityCheckpoint {
+  id            Int      @id @default(autoincrement())
+  planId        Int
+  code          String
+  label         String
+  checkType     String
+  sequence      Int      @default(0)
+  expectedValue String?
+  toleranceMin  Decimal? @db.Decimal(18, 6)
+  toleranceMax  Decimal? @db.Decimal(18, 6)
+  unitCode      String?
+  isMandatory   Boolean  @default(true)
+  instructions  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  plan   QualityPlan    @relation(fields: [planId], references: [id], onDelete: Cascade)
+  unit   UnitOfMeasure? @relation(fields: [unitCode], references: [code])
+  checks QualityCheck[]
+
+  @@unique([planId, code])
+}
+
+model QualityCheck {
+  id                   Int                @id @default(autoincrement())
+  number               String             @unique
+  planId               Int?
+  checkpointId         Int?
+  itemId               Int?
+  workOrderId          Int?
+  workOrderOperationId Int?
+  goodsReceiptLineId   Int?
+  thirdPartyId         Int?
+  quantityChecked      Decimal            @default(0) @db.Decimal(18, 6)
+  quantityConform      Decimal            @default(0) @db.Decimal(18, 6)
+  quantityRejected     Decimal            @default(0) @db.Decimal(18, 6)
+  measuredValue        Decimal?           @db.Decimal(18, 6)
+  result               QualityCheckResult @default(CONFORME)
+  decision             QualityDecision    @default(ACCEPTE)
+  comment              String?
+  photoUrl             String?
+  checkedById          Int?
+  checkedAt            DateTime           @default(now())
+  createdAt            DateTime           @default(now())
+
+  plan               QualityPlan?        @relation(fields: [planId], references: [id])
+  checkpoint         QualityCheckpoint?  @relation(fields: [checkpointId], references: [id])
+  item               Item?               @relation(fields: [itemId], references: [id])
+  workOrder          WorkOrder?          @relation(fields: [workOrderId], references: [id])
+  workOrderOperation WorkOrderOperation? @relation(fields: [workOrderOperationId], references: [id])
+  goodsReceiptLine   GoodsReceiptLine?   @relation(fields: [goodsReceiptLineId], references: [id])
+  thirdParty         ThirdParty?         @relation(fields: [thirdPartyId], references: [id])
+  checkedBy          Employee?           @relation("QualityChecker", fields: [checkedById], references: [id])
+
+  @@index([workOrderId])
+  @@index([itemId])
+  @@index([decision])
+}
+
+model NonConformity {
+  id               Int                 @id @default(autoincrement())
+  number           String              @unique
+  source           NonConformitySource
+  status           NonConformityStatus @default(OUVERTE)
+  itemId           Int?
+  workOrderId      Int?
+  thirdPartyId     Int?
+  quantity         Decimal             @default(0) @db.Decimal(18, 6)
+  description      String
+  rootCause        String?
+  decision         QualityDecision?
+  correctiveAction String?
+  costImpact       Decimal             @default(0) @db.Decimal(18, 4)
+  detectedById     Int?
+  assignedToId     Int?
+  detectedAt       DateTime            @default(now())
+  resolvedAt       DateTime?
+  closedAt         DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  item       Item?       @relation(fields: [itemId], references: [id])
+  workOrder  WorkOrder?  @relation(fields: [workOrderId], references: [id])
+  thirdParty ThirdParty? @relation(fields: [thirdPartyId], references: [id])
+  detectedBy Employee?   @relation("NonConformityDetector", fields: [detectedById], references: [id])
+  assignedTo Employee?   @relation("NonConformityAssignee", fields: [assignedToId], references: [id])
+
+  @@index([status])
+  @@index([workOrderId])
+}
+
+// =============================================================================
+// 10. RESSOURCES HUMAINES, COMPETENCES, AFFECTATIONS
+// =============================================================================
+
+model Employee {
+  id                   Int       @id @default(autoincrement())
+  matricule            String    @unique
+  firstName            String
+  lastName             String
+  photo                String?
+  phone                String?
+  phone2               String?
+  email                String?
+  jobTitle             String?
+  factory              Factory   @default(COMMUN)
+  workshopId           Int?
+  hireDate             DateTime?
+  endDate              DateTime?
+  isActive             Boolean   @default(true)
+  address              String?
+  city                 String?
+  birthDate            DateTime?
+  gender               String?
+  socialSecurityNumber String?
+  ccp                  String?
+  contractType         String?
+
+  // Donnee salariale protegee : visible uniquement avec la permission RH_SALAIRE_LIRE
+  baseSalary   Decimal? @db.Decimal(18, 4)
+  salaryPerDay Decimal? @db.Decimal(18, 4)
+
+  defaultWarehouseId Int?
+  userId             Int? @unique
+  thirdPartyId       Int? @unique
+
+  sourceSystem String?
+  sourceOid    Int?
+  sourceSyncId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workshop         Workshop?   @relation(fields: [workshopId], references: [id])
+  defaultWarehouse Warehouse?  @relation(fields: [defaultWarehouseId], references: [id])
+  user             User?       @relation("UserEmployee", fields: [userId], references: [id])
+  thirdParty       ThirdParty? @relation("ThirdPartyEmployee", fields: [thirdPartyId], references: [id])
+
+  skills                    EmployeeSkill[]
+  assignments               Assignment[]            @relation("AssignmentEmployee")
+  responsibleForAssignments Assignment[]            @relation("AssignmentResponsible")
+  attendance                Attendance[]
+  evaluations               PerformanceEvaluation[] @relation("EvaluationEmployee")
+  validatedEvaluations      PerformanceEvaluation[] @relation("EvaluationValidator")
+  operationAsOperator       WorkOrderOperation[]    @relation("OperationOperator")
+  declarations              OperationDeclaration[]  @relation("DeclarationEmployee")
+  validatedDeclarations     OperationDeclaration[]  @relation("DeclarationValidator")
+  responsibleWorkOrders     WorkOrder[]             @relation("WorkOrderResponsible")
+  qualityChecks             QualityCheck[]          @relation("QualityChecker")
+  detectedNonConformities   NonConformity[]         @relation("NonConformityDetector")
+  assignedNonConformities   NonConformity[]         @relation("NonConformityAssignee")
+  kanbanTransitions         KanbanTransition[]      @relation("KanbanEmployee")
+  goodsReceipts             GoodsReceipt[]          @relation("ReceiptReceivedBy")
+  deliveryNotes             DeliveryNote[]          @relation("DeliveryPreparedBy")
+  workCenterScans           WorkCenterScan[]
+  schedulesResponsible      WorkSchedule[]          @relation("ScheduleResponsible")
+  schedulesPublished        WorkSchedule[]          @relation("SchedulePublishedBy")
+  stepTransfersValidated    OperationStepTransfer[] @relation("StepTransferValidatedBy")
+  assignmentChanges         AssignmentChange[]      @relation("AssignmentChangeAuthor")
+  settingsApproached        ItemWarehouseSetting[]  @relation("SettingApproachedBy")
+  proposalsValidated        ReplenishmentProposal[] @relation("ProposalValidatedBy")
+
+  @@unique([sourceSystem, sourceOid])
+  @@index([factory])
+  @@index([isActive])
+}
+
+model Skill {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  label       String
+  factory     Factory  @default(COMMUN)
+  operationId Int?
+  itemId      Int?
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  operation      Operation?      @relation(fields: [operationId], references: [id])
+  item           Item?           @relation(fields: [itemId], references: [id])
+  employeeSkills EmployeeSkill[]
+}
+
+model EmployeeSkill {
+  id            Int       @id @default(autoincrement())
+  employeeId    Int
+  skillId       Int
+  level         Int       @default(1)
+  certifiedAt   DateTime?
+  certifiedById Int?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  skill    Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, skillId])
+}
+
+/// Affectation quotidienne : un employe polyvalent peut couvrir plusieurs operations le meme jour.
+model Assignment {
+  id                   Int      @id @default(autoincrement())
+  employeeId           Int
+  date                 DateTime @db.Date
+  factory              Factory
+  operationId          Int
+  workCenterId         Int?
+  workOrderId          Int?
+  workOrderOperationId Int?
+  workshopId           Int?
+  warehouseId          Int?
+
+  plannedStart DateTime?
+  plannedEnd   DateTime?
+  actualStart  DateTime?
+  actualEnd    DateTime?
+  breakMinutes Int       @default(0)
+
+  status        AssignmentStatus @default(PLANIFIEE)
+  responsibleId Int?
+  comment       String?
+  changeReason  String?
+
+  /// Priorite et ordre explicite decides par le responsable : « premiere,
+  /// deuxieme, troisieme tache de la journee ». L'employe polyvalent peut donc
+  /// enchainer plusieurs operations le meme jour, dans l'ordre voulu.
+  priority        Priority @default(NORMALE)
+  sequenceOrder   Int      @default(0)
+  plannedQuantity Decimal  @default(0) @db.Decimal(18, 6)
+  plannedLotId    Int?
+
+  /// Poste effectivement scanne par l'employe, distinct du poste prevu : c'est
+  /// la confrontation des deux que le scan verifie.
+  scannedWorkCenterId Int?
+  scannedAt           DateTime?
+  blockedReason       String?
+
+  /// Programme de travail auquel l'affectation appartient, et date de
+  /// publication. Un programme publie n'est jamais reecrit en silence.
+  scheduleId  Int?
+  publishedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employee           Employee            @relation("AssignmentEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+  responsible        Employee?           @relation("AssignmentResponsible", fields: [responsibleId], references: [id])
+  operation          Operation           @relation(fields: [operationId], references: [id])
+  workCenter         WorkCenter?         @relation("AssignmentPlannedWorkCenter", fields: [workCenterId], references: [id])
+  scannedWorkCenter  WorkCenter?         @relation("AssignmentScannedWorkCenter", fields: [scannedWorkCenterId], references: [id])
+  plannedLot         StockLot?           @relation(fields: [plannedLotId], references: [id])
+  schedule           WorkSchedule?       @relation(fields: [scheduleId], references: [id])
+  changes            AssignmentChange[]
+  workOrder          WorkOrder?          @relation(fields: [workOrderId], references: [id])
+  workOrderOperation WorkOrderOperation? @relation(fields: [workOrderOperationId], references: [id])
+  workshop           Workshop?           @relation(fields: [workshopId], references: [id])
+  warehouse          Warehouse?          @relation(fields: [warehouseId], references: [id])
+
+  @@index([employeeId, date, sequenceOrder])
+  @@index([date])
+  @@index([operationId])
+  @@index([workCenterId, date])
+  @@index([scheduleId])
+}
+
+model Attendance {
+  id            Int              @id @default(autoincrement())
+  employeeId    Int
+  date          DateTime         @db.Date
+  status        AttendanceStatus @default(PRESENT)
+  checkIn       DateTime?
+  checkOut      DateTime?
+  workedHours   Decimal          @default(0) @db.Decimal(9, 4)
+  overtimeHours Decimal          @default(0) @db.Decimal(9, 4)
+  lateMinutes   Int              @default(0)
+  comment       String?
+  recordedById  Int?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, date])
+  @@index([date])
+}
+
+/// Evaluation de performance tenant compte de la polyvalence et de l'operation reelle.
+model PerformanceEvaluation {
+  id          Int                  @id @default(autoincrement())
+  employeeId  Int
+  periodType  EvaluationPeriodType
+  periodStart DateTime
+  periodEnd   DateTime
+  factory     Factory              @default(COMMUN)
+  operationId Int?
+  workOrderId Int?
+
+  productivityScore       Decimal? @db.Decimal(9, 4)
+  qualityScore            Decimal? @db.Decimal(9, 4)
+  materialEfficiencyScore Decimal? @db.Decimal(9, 4)
+  attendanceScore         Decimal? @db.Decimal(9, 4)
+  versatilityScore        Decimal? @db.Decimal(9, 4)
+  globalScore             Decimal? @db.Decimal(9, 4)
+
+  weightsSnapshot Json?
+  rawMetrics      Json?
+
+  assignmentsCount   Int              @default(0)
+  operationsMastered Int              @default(0)
+  reliability        ReliabilityLevel @default(INSUFFISANTE)
+
+  comment          String?
+  isValidated      Boolean   @default(false)
+  validatedById    Int?
+  validatedAt      DateTime?
+  isCorrected      Boolean   @default(false)
+  correctionReason String?
+  correctedById    Int?
+  correctedAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employee    Employee   @relation("EvaluationEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+  operation   Operation? @relation(fields: [operationId], references: [id])
+  workOrder   WorkOrder? @relation(fields: [workOrderId], references: [id])
+  validatedBy Employee?  @relation("EvaluationValidator", fields: [validatedById], references: [id])
+
+  @@index([employeeId, periodType, periodStart])
+  @@index([periodType])
+}
+
+model EvaluationWeight {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  label       String
+  weight      Decimal  @db.Decimal(9, 4)
+  isActive    Boolean  @default(true)
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+// =============================================================================
+// 11. ACHATS
+// =============================================================================
+
+model PurchaseRequest {
+  id            Int                   @id @default(autoincrement())
+  number        String                @unique
+  status        PurchaseRequestStatus @default(BROUILLON)
+  supplierId    Int?
+  requesterId   Int?
+  requestedAt   DateTime              @default(now())
+  neededBy      DateTime?
+  justification String?
+  approvedById  Int?
+  approvedAt    DateTime?
+  notes         String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  supplier ThirdParty?           @relation(fields: [supplierId], references: [id])
+  lines    PurchaseRequestLine[]
+  orders   PurchaseOrder[]
+}
+
+model PurchaseRequestLine {
+  id             Int       @id @default(autoincrement())
+  requestId      Int
+  lineNo         Int
+  itemId         Int
+  quantity       Decimal   @db.Decimal(18, 6)
+  unitCode       String?
+  neededBy       DateTime?
+  estimatedPrice Decimal   @default(0) @db.Decimal(18, 4)
+  notes          String?
+
+  request PurchaseRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  item    Item            @relation(fields: [itemId], references: [id])
+
+  @@index([requestId])
+}
+
+model PurchaseOrder {
+  id           Int                 @id @default(autoincrement())
+  number       String              @unique
+  status       PurchaseOrderStatus @default(BROUILLON)
+  supplierId   Int
+  orderDate    DateTime            @default(now())
+  expectedDate DateTime?
+  requestId    Int?
+
+  currency       String  @default("DZD")
+  discountRate   Decimal @default(0) @db.Decimal(9, 4)
+  subtotalHT     Decimal @default(0) @db.Decimal(18, 4)
+  discountAmount Decimal @default(0) @db.Decimal(18, 4)
+  vatAmount      Decimal @default(0) @db.Decimal(18, 4)
+  totalTTC       Decimal @default(0) @db.Decimal(18, 4)
+
+  paymentTermsDays Int     @default(0)
+  deliveryAddress  String?
+  notes            String?
+
+  approvedById Int?
+  approvedAt   DateTime?
+  createdById  Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  supplier ThirdParty          @relation(fields: [supplierId], references: [id])
+  request  PurchaseRequest?    @relation(fields: [requestId], references: [id])
+  lines    PurchaseOrderLine[]
+  receipts GoodsReceipt[]
+  invoices SupplierInvoice[]
+
+  @@index([status])
+  @@index([supplierId])
+}
+
+model PurchaseOrderLine {
+  id               Int       @id @default(autoincrement())
+  orderId          Int
+  lineNo           Int
+  itemId           Int
+  description      String?
+  quantity         Decimal   @db.Decimal(18, 6)
+  quantityReceived Decimal   @default(0) @db.Decimal(18, 6)
+  quantityInvoiced Decimal   @default(0) @db.Decimal(18, 6)
+  unitCode         String?
+  unitPrice        Decimal   @db.Decimal(18, 4)
+  discountRate     Decimal   @default(0) @db.Decimal(9, 4)
+  vatRateCode      String?
+  vatRate          Decimal   @default(0) @db.Decimal(9, 4)
+  lineHT           Decimal   @default(0) @db.Decimal(18, 4)
+  lineVAT          Decimal   @default(0) @db.Decimal(18, 4)
+  lineTTC          Decimal   @default(0) @db.Decimal(18, 4)
+  expectedDate     DateTime?
+
+  order        PurchaseOrder         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  item         Item                  @relation(fields: [itemId], references: [id])
+  unit         UnitOfMeasure?        @relation(fields: [unitCode], references: [code])
+  vatRateRef   TaxRate?              @relation(fields: [vatRateCode], references: [code])
+  receiptLines GoodsReceiptLine[]
+  invoiceLines SupplierInvoiceLine[]
+
+  @@unique([orderId, lineNo])
+}
+
+model GoodsReceipt {
+  id                 Int           @id @default(autoincrement())
+  number             String        @unique
+  status             ReceiptStatus @default(BROUILLON)
+  supplierId         Int
+  orderId            Int?
+  receiptDate        DateTime      @default(now())
+  warehouseId        Int
+  deliveryNoteNumber String?
+  qualityRequired    Boolean       @default(true)
+  receivedById       Int?
+  notes              String?
+  createdById        Int?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  supplier   ThirdParty         @relation(fields: [supplierId], references: [id])
+  order      PurchaseOrder?     @relation(fields: [orderId], references: [id])
+  warehouse  Warehouse          @relation(fields: [warehouseId], references: [id])
+  receivedBy Employee?          @relation("ReceiptReceivedBy", fields: [receivedById], references: [id])
+  lines      GoodsReceiptLine[]
+  invoices   SupplierInvoice[]
+
+  @@index([status])
+  @@index([supplierId])
+}
+
+model GoodsReceiptLine {
+  id                  Int              @id @default(autoincrement())
+  receiptId           Int
+  lineNo              Int
+  orderLineId         Int?
+  itemId              Int
+  quantityOrdered     Decimal          @default(0) @db.Decimal(18, 6)
+  quantityReceived    Decimal          @db.Decimal(18, 6)
+  quantityAccepted    Decimal          @default(0) @db.Decimal(18, 6)
+  quantityRejected    Decimal          @default(0) @db.Decimal(18, 6)
+  quantityQuarantined Decimal          @default(0) @db.Decimal(18, 6)
+  unitCode            String?
+  unitPrice           Decimal          @db.Decimal(18, 4)
+  lotNumber           String?
+  manufactureDate     DateTime?
+  expirationDate      DateTime?
+  qualityStatus       StockStatus      @default(LIBRE)
+  qualityDecision     QualityDecision?
+  locationId          Int?
+  notes               String?
+  movementId          BigInt?
+
+  receipt       GoodsReceipt          @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  orderLine     PurchaseOrderLine?    @relation(fields: [orderLineId], references: [id])
+  item          Item                  @relation(fields: [itemId], references: [id])
+  unit          UnitOfMeasure?        @relation(fields: [unitCode], references: [code])
+  qualityChecks QualityCheck[]
+  invoiceLines  SupplierInvoiceLine[]
+
+  @@unique([receiptId, lineNo])
+}
+
+model SupplierInvoice {
+  id              Int           @id @default(autoincrement())
+  number          String        @unique
+  supplierRef     String?
+  status          InvoiceStatus @default(BROUILLON)
+  supplierId      Int
+  orderId         Int?
+  receiptId       Int?
+  invoiceDate     DateTime      @default(now())
+  dueDate         DateTime?
+  currency        String        @default("DZD")
+  subtotalHT      Decimal       @default(0) @db.Decimal(18, 4)
+  vatAmount       Decimal       @default(0) @db.Decimal(18, 4)
+  totalTTC        Decimal       @default(0) @db.Decimal(18, 4)
+  paidAmount      Decimal       @default(0) @db.Decimal(18, 4)
+  isCreditNote    Boolean       @default(false)
+  threeWayMatched Boolean       @default(false)
+  matchingNotes   String?
+  postedAt        DateTime?
+  createdById     Int?
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  supplier ThirdParty            @relation(fields: [supplierId], references: [id])
+  order    PurchaseOrder?        @relation(fields: [orderId], references: [id])
+  receipt  GoodsReceipt?         @relation(fields: [receiptId], references: [id])
+  lines    SupplierInvoiceLine[]
+  invoice  Invoice?              @relation("SupplierInvoiceLink")
+
+  @@index([status])
+  @@index([supplierId])
+}
+
+model SupplierInvoiceLine {
+  id               Int     @id @default(autoincrement())
+  invoiceId        Int
+  lineNo           Int
+  orderLineId      Int?
+  receiptLineId    Int?
+  itemId           Int?
+  description      String?
+  quantity         Decimal @db.Decimal(18, 6)
+  unitPrice        Decimal @db.Decimal(18, 4)
+  vatRate          Decimal @default(0) @db.Decimal(9, 4)
+  lineHT           Decimal @default(0) @db.Decimal(18, 4)
+  lineVAT          Decimal @default(0) @db.Decimal(18, 4)
+  lineTTC          Decimal @default(0) @db.Decimal(18, 4)
+  priceVariance    Decimal @default(0) @db.Decimal(18, 4)
+  quantityVariance Decimal @default(0) @db.Decimal(18, 6)
+
+  invoice     SupplierInvoice    @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  orderLine   PurchaseOrderLine? @relation(fields: [orderLineId], references: [id])
+  receiptLine GoodsReceiptLine?  @relation(fields: [receiptLineId], references: [id])
+
+  @@unique([invoiceId, lineNo])
+}
+
+// =============================================================================
+// 12. VENTES
+// =============================================================================
+
+model Quote {
+  id               Int         @id @default(autoincrement())
+  number           String      @unique
+  status           QuoteStatus @default(BROUILLON)
+  customerId       Int
+  quoteDate        DateTime    @default(now())
+  validUntil       DateTime?
+  currency         String      @default("DZD")
+  discountRate     Decimal     @default(0) @db.Decimal(9, 4)
+  subtotalHT       Decimal     @default(0) @db.Decimal(18, 4)
+  discountAmount   Decimal     @default(0) @db.Decimal(18, 4)
+  vatAmount        Decimal     @default(0) @db.Decimal(18, 4)
+  totalTTC         Decimal     @default(0) @db.Decimal(18, 4)
+  paymentTermsDays Int         @default(0)
+  notes            String?
+  convertedOrderId Int?
+  createdById      Int?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  customer ThirdParty  @relation(fields: [customerId], references: [id])
+  lines    QuoteLine[]
+
+  @@index([status])
+  @@index([customerId])
+}
+
+model QuoteLine {
+  id           Int     @id @default(autoincrement())
+  quoteId      Int
+  lineNo       Int
+  itemId       Int
+  description  String?
+  quantity     Decimal @db.Decimal(18, 6)
+  unitCode     String?
+  unitPrice    Decimal @db.Decimal(18, 4)
+  discountRate Decimal @default(0) @db.Decimal(9, 4)
+  vatRateCode  String?
+  vatRate      Decimal @default(0) @db.Decimal(9, 4)
+  lineHT       Decimal @default(0) @db.Decimal(18, 4)
+  lineVAT      Decimal @default(0) @db.Decimal(18, 4)
+  lineTTC      Decimal @default(0) @db.Decimal(18, 4)
+
+  quote      Quote          @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  item       Item           @relation(fields: [itemId], references: [id])
+  unit       UnitOfMeasure? @relation(fields: [unitCode], references: [code])
+  vatRateRef TaxRate?       @relation(fields: [vatRateCode], references: [code])
+
+  @@unique([quoteId, lineNo])
+}
+
+model SalesOrder {
+  id               Int              @id @default(autoincrement())
+  number           String           @unique
+  status           SalesOrderStatus @default(BROUILLON)
+  customerId       Int
+  orderDate        DateTime         @default(now())
+  expectedDate     DateTime?
+  quoteId          Int?
+  currency         String           @default("DZD")
+  discountRate     Decimal          @default(0) @db.Decimal(9, 4)
+  subtotalHT       Decimal          @default(0) @db.Decimal(18, 4)
+  discountAmount   Decimal          @default(0) @db.Decimal(18, 4)
+  vatAmount        Decimal          @default(0) @db.Decimal(18, 4)
+  totalTTC         Decimal          @default(0) @db.Decimal(18, 4)
+  paymentTermsDays Int              @default(0)
+  deliveryAddress  String?
+  customerRef      String?
+  notes            String?
+  createdById      Int?
+  confirmedAt      DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  customer      ThirdParty       @relation(fields: [customerId], references: [id])
+  lines         SalesOrderLine[]
+  workOrders    WorkOrder[]
+  deliveryNotes DeliveryNote[]
+  invoices      Invoice[]
+
+  @@index([status])
+  @@index([customerId])
+}
+
+model SalesOrderLine {
+  id                  Int       @id @default(autoincrement())
+  orderId             Int
+  lineNo              Int
+  itemId              Int
+  description         String?
+  quantity            Decimal   @db.Decimal(18, 6)
+  quantityProduced    Decimal   @default(0) @db.Decimal(18, 6)
+  quantityDelivered   Decimal   @default(0) @db.Decimal(18, 6)
+  quantityInvoiced    Decimal   @default(0) @db.Decimal(18, 6)
+  unitCode            String?
+  unitPrice           Decimal   @db.Decimal(18, 4)
+  discountRate        Decimal   @default(0) @db.Decimal(9, 4)
+  vatRateCode         String?
+  vatRate             Decimal   @default(0) @db.Decimal(9, 4)
+  lineHT              Decimal   @default(0) @db.Decimal(18, 4)
+  lineVAT             Decimal   @default(0) @db.Decimal(18, 4)
+  lineTTC             Decimal   @default(0) @db.Decimal(18, 4)
+  autoCreateWorkOrder Boolean   @default(false)
+  deliveryDate        DateTime?
+
+  order      SalesOrder     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  item       Item           @relation(fields: [itemId], references: [id])
+  unit       UnitOfMeasure? @relation(fields: [unitCode], references: [code])
+  vatRateRef TaxRate?       @relation(fields: [vatRateCode], references: [code])
+
+  deliveryLines DeliveryNoteLine[]
+  invoiceLines  InvoiceLine[]
+  workOrders    WorkOrder[]
+
+  @@unique([orderId, lineNo])
+}
+
+model DeliveryNote {
+  id              Int            @id @default(autoincrement())
+  number          String         @unique
+  status          DeliveryStatus @default(BROUILLON)
+  customerId      Int
+  orderId         Int?
+  deliveryDate    DateTime       @default(now())
+  warehouseId     Int
+  address         String?
+  carrier         String?
+  customerRef     String?
+  qualityReleased Boolean        @default(false)
+  preparedById    Int?
+  notes           String?
+  createdById     Int?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  customer   ThirdParty         @relation(fields: [customerId], references: [id])
+  order      SalesOrder?        @relation(fields: [orderId], references: [id])
+  warehouse  Warehouse          @relation(fields: [warehouseId], references: [id])
+  preparedBy Employee?          @relation("DeliveryPreparedBy", fields: [preparedById], references: [id])
+  lines      DeliveryNoteLine[]
+  invoices   Invoice[]
+
+  @@index([status])
+  @@index([customerId])
+}
+
+model DeliveryNoteLine {
+  id                Int     @id @default(autoincrement())
+  deliveryId        Int
+  lineNo            Int
+  orderLineId       Int?
+  itemId            Int
+  quantityOrdered   Decimal @default(0) @db.Decimal(18, 6)
+  quantityDelivered Decimal @db.Decimal(18, 6)
+  unitCode          String?
+  unitPrice         Decimal @default(0) @db.Decimal(18, 4)
+  lotId             Int?
+  locationId        Int?
+  notes             String?
+  movementId        BigInt?
+
+  delivery     DeliveryNote    @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  orderLine    SalesOrderLine? @relation(fields: [orderLineId], references: [id])
+  item         Item            @relation(fields: [itemId], references: [id])
+  unit         UnitOfMeasure?  @relation(fields: [unitCode], references: [code])
+  invoiceLines InvoiceLine[]
+
+  @@unique([deliveryId, lineNo])
+}
+
+model Invoice {
+  id                Int              @id @default(autoincrement())
+  number            String           @unique
+  direction         InvoiceDirection
+  nature            InvoiceNature    @default(FACTURE)
+  status            InvoiceStatus    @default(BROUILLON)
+  thirdPartyId      Int
+  orderId           Int?
+  deliveryId        Int?
+  supplierInvoiceId Int?             @unique
+  invoiceDate       DateTime         @default(now())
+  dueDate           DateTime?
+  currency          String           @default("DZD")
+  subtotalHT        Decimal          @default(0) @db.Decimal(18, 4)
+  discountAmount    Decimal          @default(0) @db.Decimal(18, 4)
+  vatAmount         Decimal          @default(0) @db.Decimal(18, 4)
+  totalTTC          Decimal          @default(0) @db.Decimal(18, 4)
+  paidAmount        Decimal          @default(0) @db.Decimal(18, 4)
+  balance           Decimal          @default(0) @db.Decimal(18, 4)
+  paymentTermsDays  Int              @default(0)
+  reference         String?
+  notes             String?
+  postedAt          DateTime?
+  postedById        Int?
+  cancelledAt       DateTime?
+  cancelReason      String?
+  originalInvoiceId Int?
+  createdById       Int?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  thirdParty      ThirdParty       @relation(fields: [thirdPartyId], references: [id])
+  order           SalesOrder?      @relation(fields: [orderId], references: [id])
+  delivery        DeliveryNote?    @relation(fields: [deliveryId], references: [id])
+  supplierInvoice SupplierInvoice? @relation("SupplierInvoiceLink", fields: [supplierInvoiceId], references: [id])
+  originalInvoice Invoice?         @relation("InvoiceCorrection", fields: [originalInvoiceId], references: [id])
+  corrections     Invoice[]        @relation("InvoiceCorrection")
+
+  lines             InvoiceLine[]
+  allocations       PaymentAllocation[]
+  accountingEntries AccountingEntry[]
+
+  @@index([status])
+  @@index([thirdPartyId])
+  @@index([direction, nature])
+}
+
+model InvoiceLine {
+  id             Int     @id @default(autoincrement())
+  invoiceId      Int
+  lineNo         Int
+  itemId         Int?
+  description    String?
+  quantity       Decimal @db.Decimal(18, 6)
+  unitCode       String?
+  unitPrice      Decimal @db.Decimal(18, 4)
+  discountRate   Decimal @default(0) @db.Decimal(9, 4)
+  vatRateCode    String?
+  vatRate        Decimal @default(0) @db.Decimal(9, 4)
+  lineHT         Decimal @default(0) @db.Decimal(18, 4)
+  lineVAT        Decimal @default(0) @db.Decimal(18, 4)
+  lineTTC        Decimal @default(0) @db.Decimal(18, 4)
+  orderLineId    Int?
+  deliveryLineId Int?
+
+  invoice      Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  item         Item?             @relation(fields: [itemId], references: [id])
+  unit         UnitOfMeasure?    @relation(fields: [unitCode], references: [code])
+  vatRateRef   TaxRate?          @relation(fields: [vatRateCode], references: [code])
+  orderLine    SalesOrderLine?   @relation(fields: [orderLineId], references: [id])
+  deliveryLine DeliveryNoteLine? @relation(fields: [deliveryLineId], references: [id])
+
+  @@unique([invoiceId, lineNo])
+}
+
+model Payment {
+  id              Int              @id @default(autoincrement())
+  number          String           @unique
+  direction       PaymentDirection
+  status          PaymentStatus    @default(BROUILLON)
+  thirdPartyId    Int
+  method          PaymentMethod    @default(VIREMENT)
+  paymentDate     DateTime         @default(now())
+  amount          Decimal          @db.Decimal(18, 4)
+  allocatedAmount Decimal          @default(0) @db.Decimal(18, 4)
+  currency        String           @default("DZD")
+  reference       String?
+  bankAccount     String?
+  journalId       Int?
+  postedAt        DateTime?
+  cancelledAt     DateTime?
+  cancelReason    String?
+  notes           String?
+  createdById     Int?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  thirdParty        ThirdParty          @relation(fields: [thirdPartyId], references: [id])
+  journal           Journal?            @relation(fields: [journalId], references: [id])
+  allocations       PaymentAllocation[]
+  accountingEntries AccountingEntry[]
+}
+
+model PaymentAllocation {
+  id        Int      @id @default(autoincrement())
+  paymentId Int
+  invoiceId Int
+  amount    Decimal  @db.Decimal(18, 4)
+  createdAt DateTime @default(now())
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([paymentId, invoiceId])
+  @@index([invoiceId])
+}
+
+// =============================================================================
+// 13. COMPTABILITE
+// =============================================================================
+
+model Account {
+  id           Int         @id @default(autoincrement())
+  number       String      @unique
+  label        String
+  type         AccountType
+  parentNumber String?
+  isAnalytic   Boolean     @default(false)
+  isActive     Boolean     @default(true)
+  currency     String      @default("DZD")
+  sourceSystem String?
+  sourceOid    Int?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  lines AccountingEntryLine[]
+
+  @@index([type])
+}
+
+model Journal {
+  id        Int         @id @default(autoincrement())
+  code      String      @unique
+  label     String
+  type      JournalType
+  isActive  Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  entries  AccountingEntry[]
+  payments Payment[]
+}
+
+model FiscalYear {
+  id        Int              @id @default(autoincrement())
+  code      String           @unique
+  label     String
+  startDate DateTime
+  endDate   DateTime
+  status    FiscalYearStatus @default(OUVERT)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  periods AccountingPeriod[]
+}
+
+model AccountingPeriod {
+  id           Int          @id @default(autoincrement())
+  fiscalYearId Int
+  code         String
+  label        String
+  startDate    DateTime
+  endDate      DateTime
+  status       PeriodStatus @default(OUVERT)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  fiscalYear FiscalYear        @relation(fields: [fiscalYearId], references: [id], onDelete: Cascade)
+  entries    AccountingEntry[]
+
+  @@unique([fiscalYearId, code])
+}
+
+model AccountingEntry {
+  id        Int         @id @default(autoincrement())
+  number    String      @unique
+  journalId Int
+  periodId  Int?
+  entryDate DateTime
+  label     String
+  reference String?
+  status    EntryStatus @default(BROUILLON)
+
+  documentType String?
+  documentId   String?
+  eventCode    String?
+
+  totalDebit  Decimal @default(0) @db.Decimal(18, 4)
+  totalCredit Decimal @default(0) @db.Decimal(18, 4)
+
+  invoiceId Int?
+  paymentId Int?
+
+  isReversal     Boolean @default(false)
+  reversalOfId   Int?
+  reversalReason String?
+
+  createdById Int?
+  postedById  Int?
+  postedAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  journal    Journal               @relation(fields: [journalId], references: [id])
+  period     AccountingPeriod?     @relation(fields: [periodId], references: [id])
+  invoice    Invoice?              @relation(fields: [invoiceId], references: [id])
+  payment    Payment?              @relation(fields: [paymentId], references: [id])
+  createdBy  User?                 @relation("EntryCreatedBy", fields: [createdById], references: [id])
+  postedBy   User?                 @relation("EntryPostedBy", fields: [postedById], references: [id])
+  reversalOf AccountingEntry?      @relation("EntryReversal", fields: [reversalOfId], references: [id])
+  reversals  AccountingEntry[]     @relation("EntryReversal")
+  lines      AccountingEntryLine[]
+  movements  StockMovement[]
+
+  @@index([journalId])
+  @@index([entryDate])
+  @@index([status])
+  @@index([documentType, documentId])
+}
+
+model AccountingEntryLine {
+  id            Int       @id @default(autoincrement())
+  entryId       Int
+  lineNo        Int
+  accountId     Int
+  accountNumber String
+  label         String?
+  debit         Decimal   @default(0) @db.Decimal(18, 4)
+  credit        Decimal   @default(0) @db.Decimal(18, 4)
+  thirdPartyId  Int?
+  matchingCode  String?
+  isMatched     Boolean   @default(false)
+  analyticCode  String?
+  dueDate       DateTime?
+
+  entry      AccountingEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  account    Account         @relation(fields: [accountId], references: [id])
+  thirdParty ThirdParty?     @relation(fields: [thirdPartyId], references: [id])
+
+  @@unique([entryId, lineNo])
+  @@index([accountId])
+  @@index([thirdPartyId])
+}
+
+/// Regles d'ecriture configurables : aucun compte n'est code en dur dans les services.
+model AccountingRule {
+  id                  Int      @id @default(autoincrement())
+  eventCode           String   @unique
+  label               String
+  journalCode         String
+  debitAccountNumber  String
+  creditAccountNumber String
+  vatAccountNumber    String?
+  vatRateCode         String?
+  isActive            Boolean  @default(true)
+  description         String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+// =============================================================================
+// 14. IMPORT DE DONNEES SOURCES
+// =============================================================================
+
+model ImportJob {
+  id            Int              @id @default(autoincrement())
+  fileName      String
+  entityType    ImportEntityType
+  status        ImportJobStatus  @default(EN_COURS)
+  totalRows     Int              @default(0)
+  insertedRows  Int              @default(0)
+  updatedRows   Int              @default(0)
+  skippedRows   Int              @default(0)
+  protectedRows Int              @default(0)
+  rejectedRows  Int              @default(0)
+  startedAt     DateTime         @default(now())
+  finishedAt    DateTime?
+  durationMs    Int?
+  userId        Int?
+  options       Json?
+  summary       Json?
+  errorMessage  String?
+  createdAt     DateTime         @default(now())
+
+  user   User?            @relation(fields: [userId], references: [id])
+  errors ImportErrorLog[]
+
+  @@index([entityType])
+  @@index([status])
+  @@index([startedAt])
+}
+
+model ImportErrorLog {
+  id         BigInt           @id @default(autoincrement())
+  jobId      Int
+  rowNumber  Int
+  entityType ImportEntityType
+  sourceOid  Int?
+  sourceCode String?
+  itemId     Int?
+  field      String?
+  message    String
+  rawLine    String?
+  action     ImportRowAction  @default(REJETE)
+  createdAt  DateTime         @default(now())
+
+  job  ImportJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  item Item?     @relation(fields: [itemId], references: [id])
+
+  @@index([jobId])
+  @@index([entityType])
+}
+
+/// Correspondance configurable entre un code present dans les donnees sources
+/// et la valeur utilisee par la plateforme. Aucune correspondance n'est devinee
+/// silencieusement : tant qu'une valeur n'est pas confirmee par l'administrateur,
+/// la donnee source est conservee telle quelle et signalee comme a confirmer.
+model ImportValueMapping {
+  id           Int      @id @default(autoincrement())
+  sourceEntity String
+  sourceField  String
+  sourceValue  String
+  targetValue  String
+  label        String?
+  isConfirmed  Boolean  @default(false)
+  comment      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([sourceEntity, sourceField, sourceValue])
+  @@index([sourceEntity, sourceField])
+}
+
+/// Copie brute d'une ligne source importee.
+/// Elle permet de retrouver la valeur d'origine en cas de contradiction,
+/// et sert de reference temporelle pour detecter qu'une fiche a ete modifiee
+/// dans la plateforme apres l'import : une nouvelle importation ne doit jamais
+/// ecraser silencieusement une saisie locale.
+model ImportRowSnapshot {
+  id           BigInt   @id @default(autoincrement())
+  sourceSystem String
+  sourceEntity String
+  sourceOid    Int
+  sourceSyncId String?
+  fileName     String
+  jobId        Int?
+  payload      Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([sourceSystem, sourceEntity, sourceOid])
+  @@index([sourceEntity])
+  @@index([jobId])
+}
+
+// =============================================================================
+// 17. MES AVANCE
+//     Sous-stocks par operation, postes a QR permanent, programmes de travail.
+//
+//     Principe : les sous-stocks ne sont PAS un second moteur de stock. Ce sont
+//     des emplacements (Location) des depots d'en-cours, auxquels on donne une
+//     identite metier. Les quantites officielles restent dans StockBalance et
+//     tout mouvement reste dans le grand livre StockMovement.
+// =============================================================================
+
+/// Nature d'un sous-stock operationnel.
+enum SubStockKind {
+  ENTREE_OPERATION
+  SORTIE_OPERATION
+  TAMPON
+  ATTENTE_QUALITE
+}
+
+/// Resultat d'un scan de poste de travail.
+enum ScanResult {
+  ACCEPTE
+  REFUSE
+}
+
+/// Etat d'un programme de travail, journalier ou hebdomadaire.
+enum ScheduleStatus {
+  BROUILLON
+  PUBLIE
+  ARCHIVE
+}
+
+/// Sous-stock d'une operation : l'emplacement ou la production conforme se
+/// depose avant le passage a l'etape suivante.
+///
+/// Aucune quantite n'est stockee ici. La quantite vit dans StockBalance, indexee
+/// sur `locationId`. Ce modele porte l'identite metier : quelle operation, quel
+/// atelier, quel poste, et a quelle etape de la gamme.
+model OperationSubStock {
+  id            Int          @id @default(autoincrement())
+  code          String       @unique
+  label         String
+  operationId   Int
+  factory       Factory      @default(ADMEDCO)
+  workshopId    Int?
+  workCenterId  Int?
+  warehouseId   Int
+  locationId    Int
+  kind          SubStockKind @default(SORTIE_OPERATION)
+  sequenceOrder Int          @default(0)
+  isActive      Boolean      @default(true)
+  description   String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  operation  Operation   @relation(fields: [operationId], references: [id])
+  workshop   Workshop?   @relation(fields: [workshopId], references: [id])
+  workCenter WorkCenter? @relation(fields: [workCenterId], references: [id])
+  warehouse  Warehouse   @relation(fields: [warehouseId], references: [id])
+  location   Location    @relation(fields: [locationId], references: [id])
+
+  outgoingLinks OperationSubStockLink[] @relation("SubStockLinkFrom")
+  incomingLinks OperationSubStockLink[] @relation("SubStockLinkTo")
+  transfersOut  OperationStepTransfer[] @relation("StepTransferFrom")
+  transfersIn   OperationStepTransfer[] @relation("StepTransferTo")
+  declarations  OperationDeclaration[]
+
+  @@unique([operationId, warehouseId])
+  @@index([factory])
+  @@index([sequenceOrder])
+}
+
+/// Dependance entre deux sous-stocks.
+///
+/// C'est ce qui permet les branches paralleles : la couture et la preparation
+/// du bois alimentent toutes deux l'assemblage final, sans etre forcees dans une
+/// chaine unique. L'assemblage attend que toutes ses branches requises aient la
+/// quantite necessaire.
+model OperationSubStockLink {
+  id             Int      @id @default(autoincrement())
+  fromSubStockId Int
+  toSubStockId   Int
+  isRequired     Boolean  @default(true)
+  quantityRatio  Decimal  @default(1) @db.Decimal(18, 6)
+  note           String?
+  createdAt      DateTime @default(now())
+
+  fromSubStock OperationSubStock @relation("SubStockLinkFrom", fields: [fromSubStockId], references: [id], onDelete: Cascade)
+  toSubStock   OperationSubStock @relation("SubStockLinkTo", fields: [toSubStockId], references: [id], onDelete: Cascade)
+
+  @@unique([fromSubStockId, toSubStockId])
+  @@index([toSubStockId])
+}
+
+/// Passage trace d'une quantite conforme d'un sous-stock vers l'etape suivante.
+///
+/// `transferKey` est deterministe : elle combine l'operation de l'OF, les deux
+/// sous-stocks, l'article et le lot. Un meme passage ne peut donc jamais etre
+/// enregistre deux fois — ni par un double clic, ni par un rejeu de requete, ni
+/// par une seconde validation. La contrainte d'unicite fait le travail, la
+/// transaction garantit que les deux mouvements vont ensemble ou pas du tout.
+model OperationStepTransfer {
+  id                   BigInt @id @default(autoincrement())
+  transferKey          String @unique
+  workOrderId          Int
+  workOrderOperationId Int
+  operationId          Int
+  fromSubStockId       Int
+  toSubStockId         Int
+  itemId               Int
+  lotId                Int?
+
+  quantity Decimal @default(0) @db.Decimal(18, 6)
+  unitCode String?
+
+  /// Les deux ecritures du grand livre engendrees par le passage. Renseignees
+  /// dans la meme transaction que le transfert lui-meme.
+  outMovementId BigInt?
+  inMovementId  BigInt?
+
+  declarationId BigInt?
+  validatedById Int?
+  validatedAt   DateTime?
+  occurredAt    DateTime  @default(now())
+  comment       String?
+  createdAt     DateTime  @default(now())
+
+  workOrder          WorkOrder             @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  workOrderOperation WorkOrderOperation    @relation(fields: [workOrderOperationId], references: [id], onDelete: Cascade)
+  operation          Operation             @relation(fields: [operationId], references: [id])
+  fromSubStock       OperationSubStock     @relation("StepTransferFrom", fields: [fromSubStockId], references: [id])
+  toSubStock         OperationSubStock     @relation("StepTransferTo", fields: [toSubStockId], references: [id])
+  item               Item                  @relation(fields: [itemId], references: [id])
+  lot                StockLot?             @relation(fields: [lotId], references: [id])
+  declaration        OperationDeclaration? @relation(fields: [declarationId], references: [id])
+  validatedBy        Employee?             @relation("StepTransferValidatedBy", fields: [validatedById], references: [id])
+
+  @@index([workOrderId])
+  @@index([workOrderOperationId])
+  @@index([occurredAt])
+}
+
+/// Trace d'un scan de QR de poste. Conserve meme les refus : un scan refuse est
+/// une information, pas un evenement a jeter.
+model WorkCenterScan {
+  id           BigInt     @id @default(autoincrement())
+  workCenterId Int
+  employeeId   Int?
+  userId       Int?
+  factory      Factory
+  result       ScanResult
+  reason       String?
+  userAgent    String?
+  scannedAt    DateTime   @default(now())
+
+  workCenter WorkCenter @relation(fields: [workCenterId], references: [id], onDelete: Cascade)
+  employee   Employee?  @relation(fields: [employeeId], references: [id])
+
+  @@index([workCenterId, scannedAt])
+  @@index([employeeId, scannedAt])
+}
+
+/// Programme de travail d'un atelier, sur un jour ou une semaine.
+///
+/// Le programme publie est la reference : le modifier ne reecrit pas
+/// l'historique, il cree une revision (`replacesId`).
+model WorkSchedule {
+  id            Int            @id @default(autoincrement())
+  code          String         @unique
+  label         String
+  factory       Factory
+  workshopId    Int?
+  periodStart   DateTime       @db.Date
+  periodEnd     DateTime       @db.Date
+  status        ScheduleStatus @default(BROUILLON)
+  responsibleId Int?
+  publishedById Int?
+  publishedAt   DateTime?
+  note          String?
+  replacesId    Int?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  workshop    Workshop?      @relation(fields: [workshopId], references: [id])
+  responsible Employee?      @relation("ScheduleResponsible", fields: [responsibleId], references: [id])
+  publishedBy Employee?      @relation("SchedulePublishedBy", fields: [publishedById], references: [id])
+  replaces    WorkSchedule?  @relation("ScheduleRevision", fields: [replacesId], references: [id])
+  replacedBy  WorkSchedule[] @relation("ScheduleRevision")
+
+  assignments Assignment[]
+
+  @@index([factory, periodStart])
+  @@index([status])
+  @@index([workshopId, periodStart])
+}
+
+/// Historique des modifications d'une affectation.
+///
+/// Toute reaffectation en cours de journee laisse une trace : qui, quand,
+/// pourquoi, et ce qui a change. L'historique n'est jamais reecrit.
+model AssignmentChange {
+  id                   Int       @id @default(autoincrement())
+  assignmentId         Int
+  changeType           String
+  previousEmployeeId   Int?
+  newEmployeeId        Int?
+  previousWorkCenterId Int?
+  newWorkCenterId      Int?
+  previousPriority     Priority?
+  newPriority          Priority?
+  previousSequence     Int?
+  newSequence          Int?
+  reason               String?
+  /// Auteur du changement. `changedById` porte l'employe quand le geste vient
+  /// d'une fiche RH ; `changedByUserId` porte le compte connecte dans tous les
+  /// cas, y compris quand l'auteur n'est pas un employe (planificateur,
+  /// responsable d'atelier).
+  changedById          Int?
+  changedByUserId      Int?
+  changedAt            DateTime  @default(now())
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  changedBy  Employee?  @relation("AssignmentChangeAuthor", fields: [changedById], references: [id])
+
+  @@index([assignmentId])
+  @@index([changedAt])
+}
