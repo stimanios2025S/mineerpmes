@@ -4,10 +4,8 @@ import { exigerPermission } from "@/lib/rbac/guard";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
 import { EnTetePage, Etiquette } from "@/components/ui";
 import { formatDate, formatQuantite } from "@/lib/format";
-import { actionConfirmerLivraison } from "@/actions/lancement";
 import { BoutonImprimer } from "@/components/bouton-imprimer";
 import { SignatureMagasinier, SignatureChefAtelier } from "@/components/signature-bci";
-import { FormulaireAction } from "@/components/interactif";
 
 export const metadata = { title: "Bon de Commande Interne" };
 
@@ -101,7 +99,7 @@ export default async function PageBCI({
             </tr>
           </thead>
           <tbody>
-            {of.materials.map((mat: any, i: number) => (
+            {of.materials.map((mat, i) => (
               <tr key={mat.id}>
                 <td>{i + 1}</td>
                 <td className="font-mono">{mat.componentItem.code}</td>
@@ -110,9 +108,9 @@ export default async function PageBCI({
                 <td className="text-right">{formatQuantite(mat.quantityPlanned)}</td>
                 <td className="text-right">{formatQuantite(mat.quantityIssued)}</td>
                 <td className="text-center">
-                  {mat.quantityIssued >= mat.quantityPlanned ? (
+                  {Number(mat.quantityIssued) >= Number(mat.quantityPlanned) ? (
                     <Etiquette ton="succes">Livree</Etiquette>
-                  ) : mat.quantityIssued > 0 ? (
+                  ) : Number(mat.quantityIssued) > 0 ? (
                     <Etiquette ton="alerte">Partielle</Etiquette>
                   ) : (
                     <Etiquette ton="info">En attente</Etiquette>

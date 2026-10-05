@@ -14,10 +14,10 @@ export default async function PageMonCompte() {
   const parModule = new Map<string, string[]>();
   for (const definition of PERMISSION_DEFINITIONS) {
     if (!utilisateur.permissions.includes(definition.code)) continue;
-    const module = definition.module;
-    const liste = parModule.get(module) ?? [];
+    const domaine = definition.module;
+    const liste = parModule.get(domaine) ?? [];
     liste.push(definition.label);
-    parModule.set(module, liste);
+    parModule.set(domaine, liste);
   }
 
   return (

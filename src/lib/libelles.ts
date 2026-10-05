@@ -382,6 +382,7 @@ export const LIBELLES_ENTITE_IMPORT: Record<string, string> = {
   FORMULA_LINE: "Lignes de nomenclature",
   BATCH: "Lots et stocks",
   THIRD_PARTY: "Tiers",
+  EMPLOYEE: "Employes",
   SUPPLIER_PRICE: "Tarifs fournisseurs",
   ACCOUNT: "Comptes comptables",
 };

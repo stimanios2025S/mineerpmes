@@ -15,7 +15,7 @@
 1. [Ce qu'est la plateforme](#1-ce-quest-la-plateforme)
 2. [Démarrer et se connecter](#2-démarrer-et-se-connecter)
 3. [Comment fonctionne l'accès](#3-comment-fonctionne-laccès)
-4. [Les 18 rôles](#4-les-18-rôles)
+4. [Les 25 rôles](#4-les-25-rôles)
 5. [Les sections, une par une](#5-les-sections-une-par-une)
 6. [Les trois circuits principaux](#6-les-trois-circuits-principaux)
 7. [Les règles qui gouvernent tout](#7-les-règles-qui-gouvernent-tout)
@@ -39,8 +39,8 @@ divisions vivent dans la même base :
 | **MOBILIX** | Bois, couture et garnissage | Ateliers, postes, opérations |
 | **COMMUN** | Transverse | Direction, stock, achats, ventes, finance, RH |
 
-**Chiffres clés** : ~80 pages, 76 modèles de données, **92 permissions**,
-**18 rôles**, 3 dépôts (`DEP-MP`, `DEP-MP-MBX`, `DEP-PF`).
+**Chiffres clés** : 108 pages, 83 modèles de données, **99 permissions**,
+**25 rôles**, 3 dépôts (`DEP-MP`, `DEP-MP-MBX`, `DEP-PF`).
 
 **Principe fondateur — aucune donnée simulée.** Chaque valeur affichée vient de
 la base PostgreSQL. Aucun tableau de démonstration, aucun stock calculé dans le
@@ -84,7 +84,7 @@ npm run dev
 
 | Déjà installé par `npm run setup` | À importer ou à saisir par vous |
 |---|---|
-| Les 18 rôles et 92 permissions | **Les employés** |
+| Les 25 rôles et 99 permissions | **Les employés** |
 | Unités, taux de TVA, paramètres | **Les articles** (hors catalogue de base) |
 | Les 3 dépôts et leurs emplacements | Les clients et fournisseurs |
 | Ateliers, opérations, postes de travail | Les nomenclatures et gammes |
@@ -115,7 +115,7 @@ c'est le cloisonnement qui fonctionne.
 
 ### Les trois niveaux de cloisonnement
 
-1. **Par permission** — 92 permissions fines (`STOCK_LIRE`,
+1. **Par permission** — 99 permissions fines (`STOCK_LIRE`,
    `PRODUCTION_VALIDER_DECLARATION`, `COMPTABILITE_LIRE`…). Un rôle possède une
    liste de permissions.
 2. **Par usine** — un rôle `ADMEDCO` ne voit jamais une donnée `MOBILIX`, même
@@ -148,7 +148,7 @@ Les permissions sont relues en base à chaque requête.**
 
 ---
 
-## 4. Les 18 rôles
+## 4. Les 25 rôles
 
 | Code | Libellé | Portée | Ouvre |
 |---|---|---|---|
@@ -563,7 +563,7 @@ mots** :
 > `password` · `motdepasse` · `azerty` · `qwerty` · `123456` · `admin` ·
 > `erpmes` · `admedco` · `mobilix`
 
-**C'est le piège le plus courant.** Un mot de passe comme `Admin-Admedco-2026!`
+**C'est le piège le plus courant.** Un mot de passe comme `<mot-de-passe-refuse>`
 est **refusé** : il contient `admin` *et* `admedco`. Le script de comptes ne
 proteste pas, il **génère un autre mot de passe à la place** et l'affiche une
 seule fois.
@@ -592,8 +592,12 @@ npm run import:csv -- --executer --maj
 npm run import:all
 ```
 
+L'import crée aussi les **fiches de personnel** à partir des tiers de nature
+« employé » (aucun compte d'accès n'est créé).
+
 **Ordre des dépendances** (respecté automatiquement) : familles d'articles →
-articles → tiers → nomenclatures/formules → composants → lots et stocks.
+articles → tiers → fiches de personnel → nomenclatures/formules → composants →
+lots et stocks.
 
 **Garanties de l'import** :
 
@@ -884,7 +888,7 @@ npm run verify                 # typecheck + tests
 |---|---|
 | `.env` | Configuration locale : base, secret de session, accès rapide. **Jamais versionné.** |
 | `.env.example` | Modèle de configuration |
-| `prisma/schema.prisma` | Les 76 modèles de données |
+| `prisma/schema.prisma` | Les 83 modèles de données |
 | `prisma/seed.ts` | Référentiel de base installé par `npm run setup` |
 | `scripts/acces-direct.ts` | Outil `npm run acces` |
 | `scripts/comptes.ts` | Outil `npm run comptes` |

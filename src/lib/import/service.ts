@@ -601,6 +601,7 @@ const COLONNES_ARTICLE = [
   "Brand", "Remark", "Note", "VWAP", "VWAPphysical", "Quantity", "QuantityMin",
   "QuantityMin2", "QuantityMax", "QuantityMax2", "IsOutOfService",
   "UseNegativeStock", "UnitValue", "UnitWeight", "IsRawMaterial", "UnitOfMeasure",
+  "IsBOM", "IsComposableOnly", "LPP", "MinSP", "MaxSP",
   "Location", "Width", "Height", "Length", "Thickness", "DefaultFormula",
   "IsSemiFinished", "StockAccount", "ProductionAccount", "ConsumptionAccount",
   "DefaultPacking", "Image", "LastModificationDate",
@@ -609,6 +610,62 @@ const COLONNES_ARTICLE = [
 /** Repli lorsque le code de type source n'est pas encore confirme. */
 const TYPE_ARTICLE_REPLI: ItemType = "COMPOSANT";
 
+/**
+ * Indicateurs commerciaux et industriels d'un article, derives des colonnes
+ * explicites du fichier source.
+ *
+ * L'import ne devine rien : chaque indicateur provient d'une colonne nommee du
+ * fichier, ou reste a faux. Ces indicateurs conditionnent l'apparition de
+ * l'article dans les achats (achetable), les ventes (vendable) et les ordres de
+ * fabrication (fabricable) :
+ *
+ *   - `IsRawMaterial` ..... l'article est une matiere premiere -> achetable ;
+ *   - `IsComposableOnly` .. l'article n'est utilise que comme composant d'une
+ *                           nomenclature, il est donc procure -> achetable ;
+ *   - `IsBOM` ............. l'article est assemble a partir d'une nomenclature
+ *                           -> fabricable ;
+ *   - prix de vente ....... `LPP`, `MinSP` ou `MaxSP` renseigne -> vendable ;
+ *   - un article hors service n'est jamais vendable.
+ *
+ * Ces regles sont deterministes : relancer l'import donne exactement les memes
+ * indicateurs, et l'administrateur peut les ajuster article par article.
+ */
+/**
+ * Reconnait un article de main d'oeuvre : son code commence par « MD » ou son
+ * libelle contient « MAIN D'OEUVRE ». La main d'oeuvre n'est pas un article de
+ * stock : elle se valorise dans le cout, elle ne se consomme pas d'un depot.
+ */
+function estMainOeuvre(ligne: LigneCsv): boolean {
+  const code = texte(ligne.valeurs.Code) ?? "";
+  const label = texte(ligne.valeurs.Label1) ?? "";
+  return /^MD\d/i.test(code) || /MAIN D.OEUVRE/i.test(label);
+}
+
+function indicateursArticle(ligne: LigneCsv): {
+  isPurchasable: boolean;
+  isSellable: boolean;
+  isProducible: boolean;
+  isMainOeuvre: boolean;
+} {
+  const horsService = booleen(ligne.valeurs.IsOutOfService);
+  const matierePremiere = booleen(ligne.valeurs.IsRawMaterial);
+  const composantSeul = booleen(ligne.valeurs.IsComposableOnly);
+  const assemble = booleen(ligne.valeurs.IsBOM);
+  const mainOeuvre = estMainOeuvre(ligne);
+  const prixVente =
+    D.gt(decimal(ligne.valeurs.LPP), 0) ||
+    D.gt(decimal(ligne.valeurs.MinSP), 0) ||
+    D.gt(decimal(ligne.valeurs.MaxSP), 0);
+
+  return {
+    // La main d'oeuvre se valorise, mais ne s'achete pas, ne se vend pas et ne
+    // se fabrique pas : elle ne doit jamais entrer dans un flux de stock.
+    isPurchasable: mainOeuvre ? false : matierePremiere || composantSeul,
+    isSellable: mainOeuvre ? false : prixVente && !horsService,
+    isProducible: mainOeuvre ? false : assemble,
+    isMainOeuvre: mainOeuvre,
+  };
+}
 function statutArticle(ligne: LigneCsv): ItemStatus {
   if (booleen(ligne.valeurs.IsOutOfService)) return "NON_COMMERCIALISABLE";
   return "ACTIF";
@@ -679,16 +736,20 @@ export async function importerArticles(
           db,
           async (tx) => {
             const typeSource = texte(ligne.valeurs.Type);
-            const type = typeSource
-              ? ((await resoudreCorrespondance(
-                  tx,
-                  "ITEM",
-                  "Type",
-                  typeSource,
-                  TYPE_ARTICLE_REPLI,
-                  suivi,
-                )) as ItemType)
-              : TYPE_ARTICLE_REPLI;
+            // Un article de main d'oeuvre est toujours de type MAIN_OEUVRE,
+            // quelle que soit la correspondance du code source.
+            const type = estMainOeuvre(ligne)
+              ? "MAIN_OEUVRE"
+              : typeSource
+                  ? ((await resoudreCorrespondance(
+                      tx,
+                      "ITEM",
+                      "Type",
+                      typeSource,
+                      TYPE_ARTICLE_REPLI,
+                      suivi,
+                    )) as ItemType)
+                  : TYPE_ARTICLE_REPLI;
 
             const uniteSource = texte(ligne.valeurs.UnitOfMeasure);
             let unitCode: string | null = null;
@@ -732,6 +793,7 @@ export async function importerArticles(
               isRawMaterial: booleen(ligne.valeurs.IsRawMaterial),
               isSemiFinished: booleen(ligne.valeurs.IsSemiFinished),
               isOutOfService: booleen(ligne.valeurs.IsOutOfService),
+              ...indicateursArticle(ligne),
               useNegativeStock: booleen(ligne.valeurs.UseNegativeStock),
               vwap: D.round(decimal(ligne.valeurs.VWAP) ?? D.ZERO, 6),
               vwapPhysical: D.round(decimal(ligne.valeurs.VWAPphysical) ?? D.ZERO, 6),
@@ -1146,6 +1208,212 @@ export async function importerTiers(
 }
 
 // -----------------------------------------------------------------------------
+// Fiches de personnel (COM_ThirdParty.csv, tiers de nature employe)
+// -----------------------------------------------------------------------------
+
+/**
+ * Cree les fiches de personnel a partir des tiers de nature « employe ».
+ *
+ * L'ancien ERP ne tient pas de registre du personnel distinct : les personnes
+ * physiques sont rangees dans la table des tiers et distinguees par leur nature
+ * (`Type`), que l'administrateur confirme via les correspondances d'import.
+ * Cette etape ne cree donc une fiche employe que pour les tiers dont la nature
+ * vaut explicitement EMPLOYE : aucune personne n'est devinee.
+ *
+ * Regles tenues :
+ *   - aucun compte utilisateur n'est cree : ouvrir un acces reste un acte
+ *     separe et nominatif (voir la gestion des comptes) ;
+ *   - la cle stable (sourceSystem + sourceOid) rend l'import re-executable ;
+ *   - une fiche modifiee dans la plateforme n'est jamais ecrasee ;
+ *   - le matricule et le nom viennent de la source ; quand le prenom manque, la
+ *     fiche est creee, signalee et a completer, jamais inventee.
+ */
+export async function importerEmployes(
+  contexte: ContexteImport,
+): Promise<ResultatImport> {
+  const debut = Date.now();
+  const colonnes = verifierColonnes(contexte.fichier, COLONNES_TIERS, ["Oid", "Code", "Label1"]);
+  if (!colonnes.conforme) {
+    throw validation(
+      "Le fichier des tiers ne contient pas les colonnes obligatoires (Oid, Code, Label1) : les fiches de personnel ne peuvent pas etre importees.",
+    );
+  }
+
+  const db = contexte.db ?? prisma;
+
+  const jobId = await ouvrirJob(
+    db,
+    "EMPLOYEE",
+    contexte.nomFichier,
+    contexte.acteur,
+    { simulation: contexte.simulation ?? false },
+    contexte.fichier.lignes.length,
+  );
+  const suivi = new SuiviImport(jobId, "EMPLOYEE");
+  const messages: string[] = [];
+  let prenomsManquants = 0;
+  let fichesCreees = 0;
+
+  try {
+    for (const ligne of contexte.fichier.lignes) {
+      suivi.compteurs.lues += 1;
+
+      const oid = entier(ligne.valeurs.Oid);
+      const code = texte(ligne.valeurs.Code);
+      const label1 = texte(ligne.valeurs.Label1);
+
+      if (oid === null || !code || !label1) {
+        suivi.ignorer(
+          ligne,
+          "Ligne sans identifiant, sans code ou sans libelle : aucune fiche de personnel a creer.",
+        );
+        continue;
+      }
+
+      try {
+        await enTransaction(
+          db,
+          async (tx) => {
+            const profil = await resoudreProfilTiers(tx, ligne, suivi);
+            if (!profil.isEmployee) {
+              suivi.ignorer(
+                ligne,
+                `Tiers ${code} : nature « ${profil.type} » et non « employe » : aucune fiche de personnel creee.`,
+              );
+              return;
+            }
+
+            const tiers = await tx.thirdParty.findFirst({
+              where: { sourceSystem: SYSTEME_SOURCE, sourceOid: oid },
+              select: { id: true, label1: true },
+            });
+            if (!tiers) {
+              suivi.rejeter(
+                ligne,
+                `Fiche de personnel ${code} : le tiers source ${oid} n'existe pas. Importez d'abord les tiers.`,
+                "Oid",
+              );
+              return;
+            }
+
+            const prenom = texte(ligne.valeurs.FirstName);
+            const nom = texte(ligne.valeurs.LastName) ?? label1;
+            if (!prenom) prenomsManquants += 1;
+
+            const donnees = {
+              matricule: code,
+              firstName: prenom ?? "",
+              lastName: nom,
+              factory: "COMMUN" as const,
+              jobTitle: texte(ligne.valeurs.Activity),
+              email: texte(ligne.valeurs.Email),
+              phone: texte(ligne.valeurs.Tel1),
+              phone2: texte(ligne.valeurs.Tel2),
+              address: texte(ligne.valeurs.Address1),
+              city: texte(ligne.valeurs.City) ?? texte(ligne.valeurs.Commune),
+              birthDate: date(ligne.valeurs.BirthDate),
+              gender: texte(ligne.valeurs.Gender),
+              socialSecurityNumber: texte(ligne.valeurs.SocialSecurityNumber),
+              ccp: texte(ligne.valeurs.CCPNum),
+              thirdPartyId: tiers.id,
+              sourceSystem: SYSTEME_SOURCE,
+              sourceOid: oid,
+              sourceSyncId: texte(ligne.valeurs.SyncId),
+            };
+
+            const parSource = await tx.employee.findFirst({
+              where: { sourceSystem: SYSTEME_SOURCE, sourceOid: oid },
+            });
+            const parMatricule = await tx.employee.findUnique({ where: { matricule: code } });
+            const existant = parSource ?? parMatricule;
+
+            if (!existant) {
+              await tx.employee.create({ data: donnees });
+              fichesCreees += 1;
+              suivi.compteurs.inserees += 1;
+              await enregistrerInstantane(tx, "EMPLOYEE", ligne, jobId, contexte.nomFichier);
+              return;
+            }
+
+            const instantane = await lireInstantane(tx, "EMPLOYEE", oid);
+            const modifieLocalement =
+              instantane && existant.updatedAt.getTime() > instantane.updatedAt.getTime();
+
+            if (modifieLocalement && !contexte.miseAJourAutorisee) {
+              suivi.compteurs.protegees += 1;
+              suivi.journaliser(
+                ligne,
+                `Fiche de personnel « ${code} » modifiee dans la plateforme apres le dernier import : mise a jour refusee.`,
+                "PROTEGE",
+              );
+              return;
+            }
+
+            await tx.employee.update({ where: { id: existant.id }, data: donnees });
+            suivi.compteurs.misesAJour += 1;
+            await enregistrerInstantane(tx, "EMPLOYEE", ligne, jobId, contexte.nomFichier);
+          },
+          { timeout: 30_000 },
+        );
+      } catch (erreur) {
+        suivi.rejeter(
+          ligne,
+          `Fiche de personnel ${code} : ${erreur instanceof Error ? erreur.message : String(erreur)}`,
+        );
+      }
+    }
+  } catch (erreur) {
+    await cloturerJob(db, jobId, suivi, debut, erreur);
+    throw erreur;
+  }
+
+  await cloturerJob(db, jobId, suivi, debut);
+
+  if (prenomsManquants > 0) {
+    suivi.avertir(
+      `${prenomsManquants} fiche(s) de personnel sans prenom dans la source : le nom et le matricule sont repris tels quels, completez le prenom dans Ressources humaines.`,
+    );
+  }
+  if (fichesCreees > 0) {
+    suivi.avertir(
+      `${fichesCreees} fiche(s) de personnel importee(s) en portee COMMUN : precisez l'usine (ADMEDCO ou MOBILIX) avant de les affecter en atelier.`,
+    );
+  }
+  messages.push(
+    "Aucun compte d'acces n'est cree par cette etape : chaque operateur recoit son compte nominatif separement.",
+  );
+
+  await enregistrerAudit(
+    {
+      action: ACTIONS_AUDIT.IMPORT,
+      module: MODULES_AUDIT.IMPORT,
+      entity: "ImportJob",
+      entityId: String(jobId),
+      userId: contexte.acteur.id,
+      userEmail: contexte.acteur.email,
+      newValue: {
+        fichier: contexte.nomFichier,
+        entite: "EMPLOYEE",
+        ...suivi.compteurs,
+        avertissements: suivi.avertissements.length,
+      },
+    },
+    db,
+  );
+
+  return {
+    jobId,
+    fichier: contexte.nomFichier,
+    entite: "EMPLOYEE",
+    compteurs: suivi.compteurs,
+    colonnes,
+    avertissements: suivi.avertissements,
+    messages,
+    dureeMs: Date.now() - debut,
+  };
+}
+
+// -----------------------------------------------------------------------------
 // Formules et nomenclatures (COM_Formula.csv + COM_BOM.csv)
 // -----------------------------------------------------------------------------
 
@@ -1216,7 +1484,7 @@ export async function importerNomenclatures(
     (
       await db.item.findMany({
         where: { sourceSystem: SYSTEME_SOURCE, sourceOid: { not: null } },
-        select: { id: true, sourceOid: true, code: true },
+        select: { id: true, sourceOid: true, code: true, isMainOeuvre: true },
       })
     ).map((article) => [article.sourceOid as number, article]),
   );
@@ -1481,6 +1749,9 @@ export async function importerNomenclatures(
               apartFromCost: booleen(ligne.valeurs.ApartFromtheCost),
               lineClass: texte(ligne.valeurs.Class),
               inProcess: booleen(ligne.valeurs.InProcess),
+              // Une ligne de main d'oeuvre se valorise mais ne sort pas de
+              // stock : le drapeau permet a la production de l'ignorer.
+              isLabor: composant.isMainOeuvre === true,
               label1: texte(ligne.valeurs.Label1),
               rate: decimal(ligne.valeurs.Rate),
               taux: decimal(ligne.valeurs.Taux),

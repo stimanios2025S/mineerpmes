@@ -89,7 +89,7 @@ export async function enregistrerReglement(
     throw validation("Le montant du reglement doit etre strictement positif.");
   }
 
-  return prisma.$transaction(
+  const resultat = await prisma.$transaction(
     async (tx) => {
       const tiers = await tx.thirdParty.findUnique({
         where: { id: entree.thirdPartyId },
@@ -291,9 +291,6 @@ export async function enregistrerReglement(
         data: { status: "POSTE", postedAt: new Date() },
       });
 
-      await validerEcriture(ecriture.entryId, entree.acteur);
-      await posterEcriture(ecriture.entryId, entree.acteur);
-
       await majSoldeTiers(tx, entree.thirdPartyId);
 
       const montantNonAffecte = D.roundAmount(D.sub(montant, montantAffecte));
@@ -347,6 +344,15 @@ export async function enregistrerReglement(
     },
     { timeout: 60_000 },
   );
+
+  // La validation puis le postage de l'ecriture sont des transitions d'etat a
+  // part entiere : elles ouvrent leur propre transaction. Les executer depuis
+  // la transaction du reglement les rendait invisibles a elles-memes, car une
+  // ecriture non encore validee n'existe pas pour une transaction distincte.
+  await validerEcriture(resultat.entryId, entree.acteur);
+  await posterEcriture(resultat.entryId, entree.acteur);
+
+  return resultat;
 }
 
 /**

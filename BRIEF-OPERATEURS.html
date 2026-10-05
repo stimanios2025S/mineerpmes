@@ -792,50 +792,30 @@
       <section class="block" id="s7">
         <h2><span class="n">7</span>État réel de la base aujourd'hui</h2>
 
-        <h3>Comptes utilisateurs : 11</h3>
+        <h3>Comptes utilisateurs : 9, tous de bureau</h3>
         <ul>
-          <li><strong>9 comptes de bureau</strong>, tous sans fiche employé (normal : les rôles de bureau n'en ont pas besoin) — administrateur système, direction, responsable production, responsable stock, responsable qualité, acheteur, commercial, comptable, responsable RH.</li>
-          <li><strong>2 comptes d'atelier de test</strong>, créés pour valider le portail : <code>operateur.admedco@admedco.dz</code> (n° 10, <code>OPERATEUR_ADMEDCO</code>) et <code>operateur.mobilix@admedco.dz</code> (n° 11, <code>OPERATEUR_MOBILIX</code>).</li>
+          <li>Les <strong>9 comptes de bureau</strong> sont les comptes de travail réels, tous sans fiche employé (normal : les rôles de bureau n'en ont pas besoin) — administrateur système, direction, responsable production, responsable stock, responsable qualité, acheteur, commercial, comptable, responsable RH.</li>
+          <li>Les comptes et fiches d'atelier de test ont été retirés avec <code>npm run demo:purge</code>.</li>
         </ul>
 
-        <h3>Fiches employés : 2, toutes deux techniques et provisoires</h3>
-        <div class="scroll">
-          <table>
-            <thead>
-              <tr><th>Matricule</th><th>Nom</th><th>Poste</th><th>Usine</th><th>Problème</th></tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><span class="mono">ACC-0001</span></td>
-                <td>Operateur TEST-ADMEDCO</td>
-                <td>Compte d'acces direct (developpement)</td>
-                <td><span class="tag warn">COMMUN</span></td>
-                <td>Devrait être ADMEDCO</td>
-              </tr>
-              <tr>
-                <td><span class="mono">ACC-0002</span></td>
-                <td>Operateur TEST-MOBILIX</td>
-                <td>Compte d'acces direct (developpement)</td>
-                <td><span class="tag warn">COMMUN</span></td>
-                <td>Devrait être MOBILIX</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <h3>Fiches employés : aucune</h3>
+        <p>
+          Aucune fiche employé n'existe en base : les fiches repères de
+          développement ont été retirées. Les vraies fiches se créent soit par la
+          6e étape d'import (<code>npm run import:csv</code>, tiers de nature
+          « employé »), soit à la main dans Ressources humaines vers Employés.
+          Chaque fiche doit porter un matricule réel et la bonne usine
+          (ADMEDCO ou MOBILIX) avant d'être affectée en atelier.
+        </p>
 
         <div class="callout is-critical">
           <h3>Le point le plus important de ce document</h3>
           <p>
-            <strong>Aucune fiche employé réelle n'existe.</strong> Les deux fiches
-            présentes ont été fabriquées par
-            <code>scripts/acces-direct.ts --creer-fiche</code>, un outil de
-            développement qui produit volontairement un repère : matricule
-            <code>ACC-xxxx</code>, poste marqué « developpement », usine
-            <code>COMMUN</code>.
-          </p>
-          <p>
-            Elles doivent être corrigées ou supprimées avant toute mise en service,
-            sinon les effectifs, les présences et les états RH seront faux.
+            <strong>Aucune fiche employé n'existe en base.</strong>
+            Le nettoyage des données de test les a retirées, et la 6e étape
+            d'import crée les vraies fiches à partir des tiers de nature
+            « employé ». Un compte opérateur exige au préalable une fiche
+            employé réelle, avec son matricule et son usine.
           </p>
         </div>
 
@@ -978,10 +958,10 @@
 
         <h3>d. Trancher la contradiction de quantité <code>TB403010</code></h3>
 
-        <h3>e. Décider du sort des deux comptes de test</h3>
+        <h3>e. Créer les fiches employés réelles</h3>
         <p>
-          Et des fiches <code>ACC-0001</code> / <code>ACC-0002</code> : correction
-          (identité, matricule réel, usine) ou suppression.
+          Par l'import (6e étape) ou la saisie RH, puis rattacher chaque
+          opérateur à son compte nominatif.
         </p>
 
         <h3>f. Corriger, le cas échéant, les 188 lignes rejetées</h3>
@@ -1073,12 +1053,12 @@ npm test</pre>
               <tr><td><span class="mono">src/components/navigation.ts</span></td><td>Menu, filtrage, page d'accueil par rôle</td></tr>
               <tr><td><span class="mono">src/app/(app)/portail/page.tsx</span></td><td>Le portail employé</td></tr>
               <tr><td><span class="mono">src/app/(app)/tableau-de-bord/page.tsx</span></td><td>Tableau de bord à blocs conditionnels</td></tr>
-              <tr><td><span class="mono">src/lib/import/service.ts</span></td><td>Les cinq importateurs</td></tr>
-              <tr><td><span class="mono">prisma/schema.prisma</span></td><td>~76 modèles</td></tr>
+              <tr><td><span class="mono">src/lib/import/service.ts</span></td><td>Les six importateurs (familles, articles, tiers, personnel, nomenclatures, lots)</td></tr>
+              <tr><td><span class="mono">prisma/schema.prisma</span></td><td>83 modèles</td></tr>
               <tr><td><span class="mono">prisma/seed.ts</span></td><td>Matérialisation des rôles et du référentiel</td></tr>
               <tr><td><span class="mono">scripts/acces-direct.ts</span></td><td>Création de comptes en ligne de commande</td></tr>
               <tr><td><span class="mono">creer-comptes-bureau.cmd</span></td><td>Les 9 comptes de bureau, un clic</td></tr>
-              <tr><td><span class="mono">creer-comptes-atelier.cmd</span></td><td>Les 2 comptes d'atelier de test, un clic</td></tr>
+              <tr><td><span class="mono">npm run demo:purge</span></td><td>Retire les données de démonstration / de test</td></tr>
             </tbody>
           </table>
         </div>
@@ -1131,8 +1111,8 @@ npm test</pre>
           <li>Le portail offre 7 actions plus la clôture d'ordre, sur un écran tactile. Il ne montre que les données de la personne connectée, jamais les salaires.</li>
           <li>Déclarer une perte ne bouge pas le stock : c'est un signalement, pas un mouvement. Règle de conception, pas un manque.</li>
           <li>Pour qu'un opérateur travaille : fiche employé → compte rattaché → affectation du jour → ordre de fabrication, donc article fabriquable.</li>
-          <li><strong>Aucune fiche employé réelle n'existe.</strong> L'import ne crée pas d'employés. Deux fiches techniques <code>ACC-0001</code> et <code>ACC-0002</code> servent à valider le portail.</li>
-          <li>Bloquants actuels : correspondance des tiers à confirmer, indicateurs commerciaux et industriels à activer — sans quoi aucun document métier n'est créable.</li>
+          <li><strong>Aucune fiche employé n'existe</strong> : le nettoyage des données de test les a retirées, et la 6e étape d'import les crée à partir des tiers de nature « employé ».</li>
+          <li>Bloquants restants : confirmer la correspondance du <code>Type</code> des tiers, et créer les vraies fiches employés. Les indicateurs commerciaux et industriels sont désormais déduits de la source à l'import.</li>
         </ol>
       </section>
 

@@ -41,7 +41,7 @@ import {
  *    numero de compte code en dur.
  */
 
-export interface ActeurAchat extends ActeurStock {}
+export type ActeurAchat = ActeurStock;
 
 // -----------------------------------------------------------------------------
 // Utilitaires internes
@@ -516,7 +516,7 @@ export async function creerCommandeFournisseur(
       }
 
       let lignes = entree.lines;
-      let requestId = entree.requestId ?? null;
+      const requestId = entree.requestId ?? null;
 
       if (entree.depuisDemande) {
         if (!requestId) {

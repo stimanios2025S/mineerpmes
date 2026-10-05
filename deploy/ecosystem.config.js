@@ -1,4 +1,5 @@
-﻿/**
+/* eslint-disable @typescript-eslint/no-require-imports */
+/**
  * Configuration PM2 dediee a l'ERP MES.
  *
  * Cette configuration ne modifie pas les autres applications du serveur.

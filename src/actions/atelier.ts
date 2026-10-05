@@ -51,10 +51,15 @@ import { instantMetier, jourCivilMetier } from "@/lib/mes/jour";
 interface Acteur {
   id: number;
   email: string;
+  userId: number;
 }
 
 function acteurDe(utilisateur: SessionUser): Acteur {
-  return { id: utilisateur.id, email: utilisateur.email };
+  return {
+    id: utilisateur.id,
+    email: utilisateur.email,
+    userId: utilisateur.id,
+  };
 }
 
 function lireIdentifiant(
@@ -244,7 +249,7 @@ export async function actionOuvrirProgramme(
           workshopId: entierOu(formData.get("workshopId")),
           reference,
           portee,
-          label: texteOuNull(formData.get("label")),
+          label: texteOuNull(formData.get("label")) ?? undefined,
           responsableId: entierOu(formData.get("responsableId")),
           note: texteOuNull(formData.get("note")),
         },

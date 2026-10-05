@@ -1436,37 +1436,39 @@ describe("fin de chaine POUDRAGE", () => {
         .quantityProduced.toFixed(6),
     ).toBe("24.000000");
 
-    // Limite du service, verifiee et non masquee : `declarerConsommation` et
-    // `declarerPerte` ne controlent ni l'etat de l'ordre ni celui de l'operation
-    // (contrairement a `declarerProduction`). Une consommation tardive reste donc
-    // acceptee apres la fin de la chaine, et le mouvement correspondant est
-    // ecrit. Le test fige ce comportement reel pour qu'il soit visible.
+    // Les memes controles d'etat s'appliquent a la consommation et a la perte :
+    // une declaration d'atelier tardive est refusee et n'ecrit aucun mouvement.
     const matiereCoupe = await matiereDeLOperation(ordre.workOrderId, coupe.id, itemAcier.id);
-    const consommationTardive = await declarerConsommation({
-      workOrderOperationId: coupe.id,
-      materialId: matiereCoupe.id,
-      quantite: "1",
-      acteur,
-      commentaire: "Consommation declaree apres la fin de la chaine",
-    });
-    expect(consommationTardive.categorie).toBe("SURCONSOMMATION");
-    const mouvementTardif = await prisma.stockMovement.findFirstOrThrow({
-      where: { declarationId: consommationTardive.declarationId },
-    });
-    expect(mouvementTardif.type).toBe("CONSOMMATION_OPERATION");
-    expect(mouvementTardif.quantity.toFixed(6)).toBe("-1.000000");
-    expect(mouvementTardif.workOrderId).toBe(ordre.workOrderId);
-    expect(
-      D.sub(
-        (await prisma.workOrderMaterial.findUniqueOrThrow({ where: { id: matiereCoupe.id } }))
-          .quantityConsumed,
-        matiereCoupe.quantityConsumed,
-      ).toFixed(6),
-    ).toBe("1.000000");
+    await expect(
+      declarerConsommation({
+        workOrderOperationId: coupe.id,
+        materialId: matiereCoupe.id,
+        quantite: "1",
+        acteur,
+        commentaire: "Consommation declaree apres la fin de la chaine",
+      }),
+    ).rejects.toMatchObject({ code: "ETAT_INVALIDE" });
+    await expect(
+      declarerPerte({
+        workOrderOperationId: coupe.id,
+        itemId: itemAcier.id,
+        quantite: "1",
+        categorie: "PERTE_NORMALE",
+        motif: "CHUTE_NORMALE",
+        materialId: matiereCoupe.id,
+        warehouseId: depotMP.id,
+        sortirDuStock: true,
+        acteur,
+      }),
+    ).rejects.toMatchObject({ code: "ETAT_INVALIDE" });
     expect(
       await prisma.stockMovement.count({ where: { workOrderId: ordre.workOrderId } }),
-      "Cette declaration tardive est la seule ecriture supplementaire",
-    ).toBe(mouvementsAvant + 1);
+      "Aucune declaration tardive n'a ecrit de mouvement",
+    ).toBe(mouvementsAvant);
+    expect(
+      (await prisma.workOrderMaterial.findUniqueOrThrow({ where: { id: matiereCoupe.id } }))
+        .quantityConsumed.toFixed(6),
+    ).toBe(matiereCoupe.quantityConsumed.toFixed(6));
 
     // En revanche, aucune production ne peut plus etre declaree ni aucune carte
     // deplacee : le cumul de l'ordre reste fige.
@@ -1835,12 +1837,17 @@ describe("semi-fini du transfert inter-divisions", () => {
     });
     expect(regleApres.producedItemId).toBe(cree!.id);
 
+    // La base de test est reutilisee entre les executions : on ne relit jamais
+    // une trace d'une execution precedente. Le journal est filtre sur l'acteur
+    // courant et sur la trace la plus recente.
     const trace = await prisma.auditLog.findFirst({
       where: {
         entity: "DivisionTransferRule",
         entityId: String(regleTransfert.id),
         action: "MODIFICATION",
+        userId: acteur.id,
       },
+      orderBy: { id: "desc" },
     });
     expect(trace?.userId).toBe(acteur.id);
 

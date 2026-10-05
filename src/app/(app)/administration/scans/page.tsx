@@ -67,7 +67,7 @@ function nomAppareil(userAgent: string | null): string {
 }
 
 export default async function PageScans() {
-  await exigerPermission(PERMISSIONS.ADMINISTRER_SYSTEME);
+  await exigerPermission(PERMISSIONS.SYSTEME_ADMIN);
 
   const scans = await prisma.workCenterScan.findMany({
     include: {

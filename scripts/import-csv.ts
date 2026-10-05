@@ -17,6 +17,7 @@ import { PrismaClient } from "@prisma/client";
 import {
   analyserDossierSource,
   importerArticles,
+  importerEmployes,
   importerFamilles,
   importerLotsEtStocks,
   importerNomenclatures,
@@ -175,6 +176,15 @@ async function principal() {
       titre: "Tiers (clients, fournisseurs, employes)",
       executer: () =>
         importerTiers({
+          ...base,
+          fichier: lireSource(options.dossier, FICHIERS_SOURCE.THIRD_PARTY),
+          nomFichier: FICHIERS_SOURCE.THIRD_PARTY,
+        }),
+    },
+    {
+      titre: "Fiches de personnel",
+      executer: () =>
+        importerEmployes({
           ...base,
           fichier: lireSource(options.dossier, FICHIERS_SOURCE.THIRD_PARTY),
           nomFichier: FICHIERS_SOURCE.THIRD_PARTY,

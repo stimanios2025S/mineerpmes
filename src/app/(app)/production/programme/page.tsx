@@ -25,6 +25,7 @@ import {
   programmeDeLaSemaine,
   programmeDuJour,
   proposerAffectations,
+  versTacheProgrammee,
   type PropositionAffectation,
 } from "@/lib/mes/programme";
 import { jourCivilDecale, jourCivilMetier, jourMetier, semaineIso } from "@/lib/mes/jour";
@@ -501,7 +502,7 @@ export default async function PageProgramme({
             <div className="mt-4 grid gap-4">
               {[...tachesParEmploye.entries()].map(([nom, taches]) => (
                 <div key={nom}>
-                  <ProgrammeTaches taches={taches} titre={nom} />
+                  <ProgrammeTaches taches={taches.map(versTacheProgrammee)} titre={nom} />
                 </div>
               ))}
             </div>

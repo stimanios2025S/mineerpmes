@@ -52,7 +52,7 @@ export async function reserverStockPourOF(
     include: {
       lines: {
         include: {
-          componentItem: { select: { id: true, code: true, label1: true } },
+          componentItem: { select: { id: true, code: true, label1: true, isMainOeuvre: true, type: true } },
           unit: { select: { code: true } },
         },
         orderBy: { lineNo: "asc" },
@@ -71,11 +71,14 @@ export async function reserverStockPourOF(
   const quantiteOF = D.of(of.quantityPlanned);
 
   for (const ligne of formule.lines) {
-    // Ignorer la main d'oeuvre
-    const isMainOeuvre =
-      ligne.componentItem.code.startsWith("MD") ||
-      ligne.componentItem.code.includes("MAIN D'OEUVRE");
-    if (isMainOeuvre) continue;
+    // La classification metier fait foi : MDF est une matiere, pas de la main d'oeuvre.
+    if (
+      ligne.isLabor ||
+      ligne.componentItem.isMainOeuvre ||
+      ligne.componentItem.type === "MAIN_OEUVRE"
+    ) {
+      continue;
+    }
 
     // Calculer la quantite requise avec marge de perte
     const qtyBase = D.mul(ligne.quantity, quantiteOF);

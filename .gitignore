@@ -43,3 +43,9 @@ prisma/migrations/**/migration_lock.toml.bak
 
 # deployment logs
 /logs
+
+# QR codes generes (artefacts d'impression, regeneres depuis la base)
+/qr-codes
+
+# Configuration locale des agents (peut contenir des commandes avec identifiants)
+/.claude/

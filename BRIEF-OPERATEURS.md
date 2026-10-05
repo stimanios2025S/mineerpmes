@@ -1,5 +1,7 @@
 # Brief plateforme — état des lieux et portail atelier
 
+> Etat courant : voir `ETAT-MISE-EN-SERVICE.md`. Ce document conserve des chiffres et conclusions historiques ; il ne certifie pas une mise en production.
+
 **Destinataire** : un tiers (développeur, architecte ou assistant) qui n'a jamais
 vu ce projet et doit proposer des modifications.
 
@@ -39,7 +41,7 @@ en base porte ce flux.
 | Tailwind CSS | 4 |
 | Tests / exécution de scripts | Vitest, tsx |
 
-**Ampleur** : ~76 modèles Prisma, ~80 pages, 92 permissions, 18 rôles,
+**Ampleur** : 83 modèles Prisma, 108 pages, 99 permissions, 25 rôles,
 12 modules, 4 migrations.
 
 Interface entièrement en français. Le code, les commentaires et les messages de
@@ -87,13 +89,13 @@ relancer le seed ne change rien — c'est le piège numéro un de ce dépôt.
 
 ## 3. Le modèle d'accès
 
-- **92 permissions** fines, réparties en 12 modules : Système (10), Référentiel
+- **99 permissions** fines, réparties en 12 modules : Système (10), Référentiel
   (11), Nomenclature (5), Stocks (9), Production (9), Qualité (6), Achats (7),
   Ventes (7), Finance (10), Ressources humaines (11), Portail (1), Rapports et
   pilotage (6).
 - **3 permissions de portée** : `PORTEE_TOUTES_USINES`, `PORTEE_ADMEDCO`,
   `PORTEE_MOBILIX`.
-- **18 rôles**, chacun avec une portée d'usine par défaut (`ADMEDCO`, `MOBILIX`
+- **25 rôles**, chacun avec une portée d'usine par défaut (`ADMEDCO`, `MOBILIX`
   ou `COMMUN`).
 
 Le cloisonnement s'exerce à quatre niveaux : par permission, par usine (un rôle
@@ -235,31 +237,23 @@ une fiche qui possède déjà un compte. Le script refuse explicitement. Donc :
 
 ## 7. État réel de la base aujourd'hui
 
-**Comptes utilisateurs : 11.**
+**Comptes utilisateurs : 9, tous de bureau.**
 
-- 9 comptes de bureau, tous sans fiche employé (normal : les rôles de bureau
-  n'en ont pas besoin) : administrateur système, direction, responsable
-  production, responsable stock, responsable qualité, acheteur, commercial,
-  comptable, responsable RH.
-- **2 comptes d'atelier de test**, créés pour valider le portail :
-  `operateur.admedco@admedco.dz` (n° 10, `OPERATEUR_ADMEDCO`) et
-  `operateur.mobilix@admedco.dz` (n° 11, `OPERATEUR_MOBILIX`).
+Les 9 comptes de bureau sont les comptes de travail réels, tous sans fiche
+employé (normal : les rôles de bureau n'en ont pas besoin) : administrateur
+système, direction, responsable production, responsable stock, responsable
+qualité, acheteur, commercial, comptable, responsable RH.
 
-**Fiches employés : 2, toutes deux techniques et provisoires.**
+Les comptes et fiches d'atelier de test ont été retirés avec
+`npm run demo:purge`.
 
-| Matricule | Nom | Poste | Usine | Problème |
-|---|---|---|---|---|
-| `ACC-0001` | Operateur TEST-ADMEDCO | « Compte d'acces direct (developpement) » | `COMMUN` | L'usine devrait être ADMEDCO |
-| `ACC-0002` | Operateur TEST-MOBILIX | « Compte d'acces direct (developpement) » | `COMMUN` | L'usine devrait être MOBILIX |
+**Fiches employés : aucune.** C'est le point le plus important de ce document.
 
-**Aucune fiche employé réelle n'existe.** C'est le point le plus important de ce
-document.
-
-Les deux fiches ont été créées par `scripts/acces-direct.ts --creer-fiche`, un
-outil de développement qui fabrique volontairement une fiche repère — maturité
-`ACC-xxxx`, poste marqué « developpement », usine `COMMUN`. Elles doivent être
-corrigées ou supprimées avant toute mise en service, sinon les effectifs, les
-présences et les états RH seront faux.
+Aucune fiche employé n'existe en base : les fiches repères de développement ont
+été retirées. Les vraies fiches se créent soit par la 6e étape d'import (`npm run
+import:csv`, tiers de nature « employé »), soit à la main dans Ressources humaines
+→ Employés. Chaque fiche doit porter un matricule réel et la bonne usine
+(ADMEDCO ou MOBILIX) avant d'être affectée en atelier.
 
 **Référentiel importé** (depuis un ancien système, dossier `E:/Massiexporte`) :
 
@@ -280,11 +274,14 @@ avertissement « Correspondance a confirmer ». La correspondance se règle dans
 **Pourquoi tous les articles sont en `COMPOSANT`** : même mécanisme, même repli
 documenté.
 
-**Indicateurs commerciaux et industriels : tous à `false`.** Les champs
-`isPurchasable`, `isSellable`, `isProducible` ne sont **jamais** renseignés par
-l'import. Le schéma porte le commentaire « activables par l'administrateur ».
-Conséquence directe : **aucun devis, aucune commande, aucun ordre de fabrication
-n'est créable en l'état.**
+**Indicateurs commerciaux et industriels : déduits de la source.** Les champs
+`isPurchasable`, `isSellable`, `isProducible` sont désormais renseignés par
+l'import à partir des colonnes explicites du fichier : `IsRawMaterial` ou
+`IsComposableOnly` rend l'article achetable, `IsBOM` le rend fabricable, et un
+prix de vente (`LPP`, `MinSP`, `MaxSP`) le rend vendable. Aucune valeur n'est
+devinnée : l'administrateur ajuste article par article si besoin. Sur le
+référentiel importé, cela ouvre environ 350 articles achetables, 280 fabricables
+et 420 vendables.
 
 **Objets métier : aucun.** Zéro ordre de fabrication, zéro affectation, zéro
 devis, zéro commande, zéro facture. Seuls le référentiel et les stocks existent.
@@ -351,13 +348,13 @@ Trois voies possibles, non exclusives :
 dans Administration → Import, puis relancer l'import avec `--maj`. Sans cela,
 aucun document commercial n'est créable.
 
-**c. Activer `isPurchasable`, `isSellable`, `isProducible`** sur les articles
-réellement utilisés. Sans cela, ni commande ni ordre de fabrication.
+**c. Ajuster, si besoin, les indicateurs `isPurchasable`, `isSellable`,
+`isProducible`** — ils sont déjà déduits de la source à l'import ; corrigez-les
+article par article si une règle ne convient pas.
 
 **d. Trancher la contradiction de quantité `TB403010`.**
 
-**e. Décider du sort des deux comptes de test** et des fiches `ACC-0001` /
-`ACC-0002` : correction (identité, matricule réel, usine) ou suppression.
+**e. Créer les fiches employés réelles** (import 6e étape ou saisie RH), puis rattacher chaque opérateur à son compte nominatif.
 
 **f. Corriger, le cas échéant, les 188 lignes rejetées** — visible une par une,
 avec son motif, dans Administration → Import.
@@ -424,19 +421,19 @@ port 3000 libre, et **le serveur de développement arrêté avant `db:generate`*
 | Chemin | Contenu |
 |---|---|
 | `GUIDE-PLATEFORME.md` | Guide utilisateur complet, 12 sections |
-| `src/lib/rbac/roles.ts` | Les 18 rôles et leurs permissions |
-| `src/lib/rbac/permissions.ts` | Les 92 permissions et les 3 portées |
+| `src/lib/rbac/roles.ts` | Les 25 rôles et leurs permissions |
+| `src/lib/rbac/permissions.ts` | Les 99 permissions et les 3 portées |
 | `src/lib/rbac/guard.ts` | Garde serveur |
 | `src/lib/auth/session.ts` | Contenu de la session (`SessionUser`) |
 | `src/components/navigation.ts` | Menu, filtrage, page d'accueil par rôle |
 | `src/app/(app)/portail/page.tsx` | Le portail employé |
 | `src/app/(app)/tableau-de-bord/page.tsx` | Tableau de bord à blocs conditionnels |
-| `src/lib/import/service.ts` | Les cinq importateurs |
-| `prisma/schema.prisma` | ~76 modèles |
+| `src/lib/import/service.ts` | Les six importateurs (familles, articles, tiers, personnel, nomenclatures, lots) |
+| `prisma/schema.prisma` | 83 modèles |
 | `prisma/seed.ts` | Matérialisation des rôles et du référentiel |
 | `scripts/acces-direct.ts` | Création de comptes en ligne de commande |
 | `creer-comptes-bureau.cmd` | Les 9 comptes de bureau, un clic |
-| `creer-comptes-atelier.cmd` | Les 2 comptes d'atelier de test, un clic |
+| `npm run demo:purge` | Retire les données de démonstration / de test |
 
 ---
 
@@ -471,7 +468,7 @@ unilatéralement : c'est à l'administrateur de confirmer la correspondance.
    reliées par un flux de châssis.
 2. Le cloisonnement est vérifié côté serveur, à quatre niveaux. Masquer ne
    protège rien ; rendre conditionnellement, oui.
-3. 92 permissions, 18 rôles, 3 portées d'usine. Les rôles sont définis dans le
+3. 99 permissions, 25 rôles, 3 portées d'usine. Les rôles sont définis dans le
    code et matérialisés par `npm run db:seed`, qui ajoute **et retire**.
 4. Chaque rôle a sa propre page d'accueil. Il n'y a pas d'écran commun.
 5. Deux rôles d'atelier seulement : `OPERATEUR_ADMEDCO` et `OPERATEUR_MOBILIX`,
@@ -482,8 +479,11 @@ unilatéralement : c'est à l'administrateur de confirmer la correspondance.
    mouvement. Règle de conception, pas un manque.
 8. Pour qu'un opérateur travaille : fiche employé → compte rattaché →
    affectation du jour → ordre de fabrication (donc article fabriquable).
-9. **Aucune fiche employé réelle n'existe.** L'import ne crée pas d'employés.
-   Deux fiches techniques `ACC-0001` / `ACC-0002` servent à valider le portail.
-10. Bloquants actuels : correspondance des tiers à confirmer, indicateurs
-    commerciaux et industriels à activer — sans quoi aucun document métier
-    n'est créable.
+9. **Aucune fiche employé n'existe** : le nettoyage des données de test les a
+   retirées, et la 6e étape d'import les crée à partir des tiers de nature
+   « employé ».
+10. Bloquants restants : confirmer la correspondance du `Type` des tiers, et
+    créer les vraies fiches employés. Les indicateurs commerciaux et industriels
+    sont désormais déduits de la source à l'import.
+
+> Mise a jour de securite : `demo:purge` est en lecture seule. `--executer` est refuse. Voir `ETAT-MISE-EN-SERVICE.md`.

@@ -124,7 +124,7 @@ export async function calculerBesoinsIntelligents(
     where: { itemId, status: "ACTIVE" },
     include: {
       lines: {
-        include: { componentItem: { select: { id: true, code: true, label1: true } } },
+        include: { componentItem: { select: { id: true, code: true, label1: true, isMainOeuvre: true, type: true } } },
         orderBy: { lineNo: "asc" },
       },
     },
@@ -142,7 +142,14 @@ export async function calculerBesoinsIntelligents(
 
   for (const ligne of formule.lines) {
     const code = ligne.componentItem.code;
-    if (code.startsWith("MD") || code.includes("MAIN D'OEUVRE")) continue;
+    // Ne pas exclure une matiere comme MDF sur la seule base de son code.
+    if (
+      ligne.isLabor ||
+      ligne.componentItem.isMainOeuvre ||
+      ligne.componentItem.type === "MAIN_OEUVRE"
+    ) {
+      continue;
+    }
 
     const apprentissage = await quantiteProposee(
       itemId,

@@ -1,5 +1,7 @@
 # ERPMES — ADMEDCO / MOBILIX
 
+> Etat courant : voir `ETAT-MISE-EN-SERVICE.md`. Ce document conserve des chiffres et conclusions historiques ; il ne certifie pas une mise en production.
+
 ## Rapport final de développement
 
 Plateforme ERP + MES (gestion industrielle, stocks, production, qualité, achats,
@@ -14,52 +16,37 @@ d'un dossier vide.
 |---|---|
 | Application Full Stack (Next.js + React + TypeScript) | Terminée |
 | Architecture frontend / backend / domaine / persistance / sécurité | Terminée |
-| PostgreSQL + Prisma + migrations versionnées | Terminée (3 migrations) |
+| PostgreSQL + Prisma + migrations versionnées | Terminée (8 migrations) |
 | Authentification, sessions, rôles et permissions | Terminée |
-| Modèles métier (76 modèles Prisma) | Terminés |
+| Modèles métier (83 modèles Prisma) | Terminés |
 | APIs, actions métier et validations | Terminées |
-| Pages et interfaces en français | Terminées (~80 routes) |
+| Pages et interfaces en français | Terminées (108 routes) |
 | Mouvements de stock, production, ventes, achats, comptabilité | Terminés |
 | Import des données réelles (9 fichiers CSV) | Terminé |
-| Tests automatisés (154 tests, 9 fichiers) | **Écrits — non exécutés** (voir ci-dessous) |
+| Tests automatisés (158 tests, 9 fichiers) | **Exécutés — 158/158 verts** |
 | Vérification de typage TypeScript | **Réussie — 0 erreur** |
-| Exécution de la suite de tests | **Bloquée : PostgreSQL/Docker non démarré** |
+| Exécution de la suite de tests | **Réussie : 158 tests verts, y compris sur base réutilisée** |
+| Build de production (`npm run build`) | **Vérifié — 86 pages rendues** |
 
-### Blocage à lever par l'utilisateur
+### Execution verifiee dans cet environnement
 
-La suite de tests d'intégration exige PostgreSQL (conteneur `erpmes-postgres`,
-port 5433). Docker Desktop est installé
-(`C:\Users\stimanios\AppData\Local\Programs\DockerDesktop\Docker Desktop.exe`)
-mais **n'est pas démarré** et son moteur n'est pas accessible :
+PostgreSQL est disponible (conteneur `erpmes-postgres`, port 5433) et la suite
+complete a ete rejouee : **158 tests verts sur 9 fichiers**, y compris lors
+d'une seconde execution sur la meme base (l'isolation des tests est verifiee),
+ainsi que la verification de typage (`npm run typecheck`), le lint
+(`npx eslint`, 0 erreur) et le build de production (`npm run build`, 86 pages).
 
-```
-failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine
-```
+Le point de sante `GET /api/health` repond `200` en mode production et la page
+`/connexion` est servie : la plateforme demarre correctement.
 
-Le démarrage de Docker Desktop a été refusé par le classifieur de permissions de
-la session ; il doit être lancé manuellement. **Séquence de déblocage complète**,
-dans cet ordre (chaque étape correspond à une erreur réellement observée) :
+### Prerequis pour relancer localement
 
-| Ordre | Commande | Erreur levée si l'étape est sautée |
-|---|---|---|
-| 1 | démarrer **Docker Desktop** et attendre « Engine running » | `failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine` |
-| 2 | `docker start erpmes-postgres` (si le conteneur n'existe pas, utiliser le `docker run` du §10) | `P1001: Can't reach database server at localhost:5433` |
-| 3 | arrêter le serveur de développement qui occupe le port 3000 | `EPERM: operation not permitted, rename … query_engine-windows.dll.node` (le serveur tient la DLL du moteur Prisma) |
-| 4 | `npm run setup` | aucune table : le référentiel n'est pas chargé |
-| 5 | `npm run comptes -- --amorcer --domaine=admedco.dz` | aucun compte : impossible de se connecter |
-| 6 | `npm run dev` puis `http://localhost:3000/connexion` | `EADDRINUSE :::3000` si l'ancien serveur tourne encore |
+1. **Docker Desktop** demarre, conteneur `erpmes-postgres` actif (port 5433).
+2. `npm install` puis `npm run setup` (migrations + referentiel).
+3. `npm run comptes -- --amorcer --domaine=admedco.dz` pour les comptes.
+4. `npm run dev` puis `http://localhost:3000/connexion`.
 
-Sortie réelle de `npm test` dans cet état (9 fichiers en échec, 0 test exécuté) :
-
-```
-Error: Migrations impossibles sur la base de test :
-  Command failed: node node_modules/prisma/build/index.js migrate deploy
-Error: P1001: Can't reach database server at `localhost:5433`
-```
-
-Tant que ce point n'est pas fait, **aucun test n'a pu être exécuté** et l'import
-réel des CSV n'a pas pu être rejoué. Tout le reste est vérifié statiquement
-(typage TypeScript : 0 erreur, vérifié).
+Si le port 3000 est occupe, arreter le serveur precedent (`EADDRINUSE :::3000`).
 
 ---
 
@@ -115,8 +102,8 @@ src/
     audit.ts                journal d'audit
   actions/                  actions serveur (administration, etc.)
 prisma/
-  schema.prisma             76 modèles
-  migrations/               3 migrations
+  schema.prisma             83 modèles
+  migrations/               8 migrations
   seed.ts                   référentiel de base (dépôts, unités, TVA, opérations, postes, règles d'écriture, rôles)
 scripts/
   bootstrap-admin.ts        création sécurisée du premier administrateur
@@ -212,8 +199,9 @@ scripts/
     L'employé ne peut pas modifier une opération validée, ni le stock, ni les
     nomenclatures, ni les coûts, ni voir les salaires des autres, ni la
     comptabilité complète, ni les autres ateliers sans permission.
-15. **Import de données réelles** — 9 fichiers (familles, articles,
-    nomenclatures, formules, composants, tiers, lots/stocks), séparateur `;`,
+15. **Import de données réelles** — 6 étapes sur 9 fichiers (familles,
+    articles, tiers, fiches de personnel, nomenclatures, formules,
+    composants, lots/stocks), séparateur `;`,
     accents et libellés d'origine préservés, clé stable d'origine,
     ré-exécutable sans doublon, journal d'import, lignes rejetées conservées,
     rapport de correspondances, simulation sans écriture. Une fiche absente du
@@ -255,7 +243,7 @@ messages d'erreur et de validation, statuts, notifications).
 
 ## 7. Tests automatisés
 
-154 tests répartis en 9 fichiers, exécutés contre la vraie base PostgreSQL de
+158 tests répartis en 9 fichiers, exécutés contre la vraie base PostgreSQL de
 test (`erpmes_test`, créée et migrée par `src/tests/setup.ts`) — aucun service
 métier n'est simulé.
 
@@ -269,11 +257,11 @@ métier n'est simulé.
 | `achat.test.ts` | 21 | demande → commande → réception → contrôle → facture → règlement, rapprochement trois voies |
 | `vente.test.ts` | 19 | devis → commande → OF automatique → livraison → facture → avoir → règlement, libération qualité avant livraison |
 | `comptabilite.test.ts` | 15 | écritures, validation/postage, contre-passation, avoirs, périodes |
-| `import.test.ts` | 19 | lecture CSV, familles, articles, tiers, nomenclatures et écarts, lots/stocks, simulation |
+| `import.test.ts` | 23 | lecture CSV, familles, articles, tiers, nomenclatures et écarts, lots/stocks, simulation |
 
 Tests obligatoires imposés par le cahier des charges : tous couverts.
 
-**Statut : écrits, non exécutés** — PostgreSQL doit être démarré (voir §1).
+**Statut : exécutés — 158/158 verts**, y compris sur base réutilisée (voir §1).
 
 ---
 

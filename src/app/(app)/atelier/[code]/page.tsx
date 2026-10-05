@@ -1,4 +1,4 @@
-﻿import { notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { prisma as p } from "@/lib/db";
 import { exigerPermission } from "@/lib/rbac/guard";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
@@ -164,7 +164,7 @@ export default async function PageAtelier({
                     <span key="o"><Link href={`/production/${of.id}`} className="lien-nav font-mono">{of.number}</Link></span>,
                     <span key="a">{of.item.code}</span>,
                     <span key="q">{formatQuantite(of.quantityPlanned)}</span>,
-                    <span key="e">{op ? `Etape ${op.stepNo} (${op.workCenter.code})` : "-"}</span>,
+                    <span key="e">{op ? `Etape ${op.stepNo} (${op.workCenter?.code ?? "poste non precise"})` : "-"}</span>,
                     <span key="v">{formatQuantite(op?.quantityConform ?? 0)} / {formatQuantite(op?.quantityPlanned ?? 0)}</span>,
                   ],
                 };

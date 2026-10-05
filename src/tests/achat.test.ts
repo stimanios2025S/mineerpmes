@@ -736,12 +736,9 @@ describe("Controle qualite a la reception", () => {
       where: { itemId: article.id, source: "RECEPTION" },
     });
     expect(nonConformite.status).toBe("OUVERTE");
-    // Comportement reel constate : la non-conformite est ouverte avec la quantite
-    // rejetee, ou a defaut la quantite conforme. Pour une decision « Quarantaine »
-    // sans rejet ni liberte, la quantite enregistree est donc nulle alors que la
-    // marchandise reste en quarantaine : la quantite mise en cause n'est pas
-    // tracee. A arbitrer cote qualite.
-    expect(Number(nonConformite.quantity)).toBe(0);
+    // La quantite mise en cause est tracee : la marchandise maintenue en
+    // quarantaine est integralement portee par la non-conformite.
+    expect(Number(nonConformite.quantity)).toBe(5);
 
     // Une sortie sur le stock libre est refusee faute de disponible...
     expect(
@@ -826,10 +823,12 @@ describe("Controle qualite a la reception", () => {
     ).toBe("STOCK_INSUFFISANT");
   });
 
-  it("constat : la reception reste « En controle qualite » apres la decision", async () => {
+  it("cloture l'entete de reception quand toutes les lignes sont decidees", async () => {
     const article = await creerArticle();
     const { reception, ligneReception } = await receptionnerEnControle(article.id, 3);
 
+    // Une seule ligne, entierement acceptee : la reception quitte la liste des
+    // receptions en attente de qualite et bascule au statut ACCEPTE.
     await controlerReception({
       goodsReceiptLineId: ligneReception.id,
       quantityChecked: 3,
@@ -839,22 +838,22 @@ describe("Controle qualite a la reception", () => {
       acteur: demandeur,
     });
 
-    // Comportement reel constate : la ligne porte bien la decision et le stock a
-    // reellement ete libere, mais l'entete de la reception n'est jamais mise a
-    // jour par le controle qualite. Les statuts ACCEPTE, PARTIELLEMENT_ACCEPTE et
-    // REJETE restent donc inatteignables, et la reception continue d'apparaitre
-    // dans la liste des receptions en attente de qualite.
     const apres = await prisma.goodsReceipt.findUniqueOrThrow({
       where: { id: reception.receiptId },
     });
-    expect(apres.status).toBe("EN_CONTROLE_QUALITE");
-    expect(
-      (await prisma.goodsReceiptLine.findUniqueOrThrow({ where: { id: ligneReception.id } }))
-        .qualityStatus,
-    ).toBe("LIBRE");
+    expect(apres.status).toBe("ACCEPTE");
 
+    const ligneApres = await prisma.goodsReceiptLine.findUniqueOrThrow({
+      where: { id: ligneReception.id },
+    });
+    expect(ligneApres.qualityStatus).toBe("LIBRE");
+    expect(ligneApres.qualityDecision).toBe("ACCEPTE");
+    expect(Number(ligneApres.quantityAccepted)).toBe(3);
+    expect(Number(ligneApres.quantityQuarantined)).toBe(0);
+
+    // La reception ne figure plus dans les receptions a controler.
     const enAttente = await receptionsEnAttenteQualite();
-    expect(enAttente.some((ligne) => ligne.id === reception.receiptId)).toBe(true);
+    expect(enAttente.some((ligne) => ligne.id === reception.receiptId)).toBe(false);
   });
 });
 
@@ -1094,43 +1093,46 @@ describe("Reglement fournisseur", () => {
     ).toBe("VALIDATION");
   });
 
-  it("constat : le reglement est bloque par la comptabilisation de son ecriture", async () => {
+  it("regle partiellement une facture fournisseur comptabilisee", async () => {
     const article = await creerArticle();
-    const { facture } = await facturerEtValider(article.id, 10, 100, "FF-REGLEMENT-BLOCAGE");
+    const { facture } = await facturerEtValider(article.id, 10, 100, "FF-REGLEMENT-PARTIEL");
     await validerFactureFournisseur(
       { supplierInvoiceId: facture.supplierInvoiceId },
       demandeur,
     );
 
-    // Comportement reel constate : la facture est bien comptabilisee, mais tout
-    // reglement echoue sur « L'ecriture comptable est introuvable ». Le defaut
-    // est situe hors du domaine achats, dans le service de reglement
-    // (src/lib/comptabilite/reglement.ts : l'ecriture est validee puis postee
-    // depuis l'interieur de la transaction qui vient de la creer, si bien que la
-    // transaction ouverte pour la valider ne voit pas encore la ligne).
-    const erreur = await erreurAttendue(() =>
-      reglerFactureFournisseur(
-        { supplierInvoiceId: facture.supplierInvoiceId, method: "VIREMENT", amount: 500 },
-        demandeur,
-      ),
+    // La facture est comptabilisee : un reglement partiel de 500 sur 1190 est
+    // enregistre, valide et poste par le service de reglement.
+    const reglement = await reglerFactureFournisseur(
+      { supplierInvoiceId: facture.supplierInvoiceId, method: "VIREMENT", amount: 500 },
+      demandeur,
     );
-    expect(erreur.code).toBe("NON_TROUVE");
-    expect(erreur.message).toContain("ecriture comptable");
+    expect(D.toFixed(reglement.montant, 2)).toBe("500.00");
+    expect(D.toFixed(reglement.montantAffecte, 2)).toBe("500.00");
 
-    // Le refus est total et sans effet de bord : aucun reglement n'est
-    // enregistre et la facture reste strictement dans son etat comptabilise.
-    // Des que le defaut est corrige, ce constat doit devenir un veritable test
-    // de reglement partiel (500 encaisses, solde restant de 690.00).
-    expect(await prisma.payment.count({ where: { thirdPartyId: fournisseurId } })).toBe(0);
+    // Le reglement est bien poste et son ecriture existe reellement.
+    const paiement = await prisma.payment.findUniqueOrThrow({
+      where: { id: reglement.paymentId },
+    });
+    expect(paiement.status).toBe("POSTE");
+    expect(paiement.postedAt).not.toBeNull();
+    expect(D.toFixed(paiement.amount, 2)).toBe("500.00");
 
-    const intacte = await prisma.supplierInvoice.findUniqueOrThrow({
+    const ecriture = await prisma.accountingEntry.findFirstOrThrow({
+      where: { documentType: "REGLEMENT", documentId: String(paiement.id) },
+    });
+    expect(ecriture.status).toBe("POSTEE");
+
+    // La facture fournisseur passe en reglement partiel : 500 encaisses,
+    // solde restant de 690.00 sur les 1190.00 initiaux.
+    const partielle = await prisma.supplierInvoice.findUniqueOrThrow({
       where: { id: facture.supplierInvoiceId },
       include: { invoice: true },
     });
-    expect(intacte.status).toBe("POSTEE");
-    expect(D.toFixed(intacte.paidAmount, 2)).toBe("0.00");
-    expect(intacte.invoice?.status).toBe("POSTEE");
-    expect(D.toFixed(intacte.invoice?.balance, 2)).toBe("1190.00");
+    expect(partielle.status).toBe("PARTIELLEMENT_REGLEE");
+    expect(D.toFixed(partielle.paidAmount, 2)).toBe("500.00");
+    expect(partielle.invoice?.status).toBe("PARTIELLEMENT_REGLEE");
+    expect(D.toFixed(partielle.invoice?.balance, 2)).toBe("690.00");
   });
 });
 
@@ -1344,8 +1346,8 @@ describe("Verrouillage des documents engages", () => {
   it("n'expose aucune fonction de modification ou de suppression d'un document d'achat", async () => {
     // Un document engage n'est jamais reecrit ni efface : il est contre-passe par
     // un nouveau document (retour, avoir, annulation avec contre-passation).
-    const module = (await import("@/lib/achat/service")) as Record<string, unknown>;
-    const mutations = Object.keys(module).filter((nom) =>
+    const service = (await import("@/lib/achat/service")) as Record<string, unknown>;
+    const mutations = Object.keys(service).filter((nom) =>
       /^(modifier|supprimer|mettreAJour|editer|effacer)/i.test(nom),
     );
     expect(mutations).toEqual([]);

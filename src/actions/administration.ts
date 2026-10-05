@@ -18,6 +18,7 @@ import { adopterArticleChassisPeint } from "@/lib/production/chassis-peint";
 import {
   FICHIERS_SOURCE,
   importerArticles,
+  importerEmployes,
   importerFamilles,
   importerLotsEtStocks,
   importerNomenclatures,
@@ -561,7 +562,13 @@ export async function actionBasculerActivationRole(formData: FormData): Promise<
 // Import des donnees sources
 // -----------------------------------------------------------------------------
 
-type TypeImport = "FAMILLES" | "ARTICLES" | "TIERS" | "NOMENCLATURES" | "LOTS";
+type TypeImport =
+  | "FAMILLES"
+  | "ARTICLES"
+  | "TIERS"
+  | "EMPLOYES"
+  | "NOMENCLATURES"
+  | "LOTS";
 
 function resumeImport(resultat: ResultatImport): string {
   const compteurs = resultat.compteurs;
@@ -599,6 +606,7 @@ export async function actionLancerImport(formData: FormData): Promise<ResultatAc
     "FAMILLES",
     "ARTICLES",
     "TIERS",
+    "EMPLOYES",
     "NOMENCLATURES",
     "LOTS",
   ];
@@ -615,7 +623,9 @@ export async function actionLancerImport(formData: FormData): Promise<ResultatAc
         ? [FICHIERS_SOURCE.ITEM]
         : type === "TIERS"
           ? [FICHIERS_SOURCE.THIRD_PARTY]
-          : type === "NOMENCLATURES"
+          : type === "EMPLOYES"
+            ? [FICHIERS_SOURCE.THIRD_PARTY]
+            : type === "NOMENCLATURES"
             ? [FICHIERS_SOURCE.FORMULA, FICHIERS_SOURCE.FORMULA_LINE]
             : [FICHIERS_SOURCE.BATCH];
 
@@ -652,6 +662,8 @@ export async function actionLancerImport(formData: FormData): Promise<ResultatAc
           return importerArticles(contexte(FICHIERS_SOURCE.ITEM, db));
         case "TIERS":
           return importerTiers(contexte(FICHIERS_SOURCE.THIRD_PARTY, db));
+        case "EMPLOYES":
+          return importerEmployes(contexte(FICHIERS_SOURCE.THIRD_PARTY, db));
         case "NOMENCLATURES":
           return importerNomenclatures(
             contexte(FICHIERS_SOURCE.FORMULA, db),

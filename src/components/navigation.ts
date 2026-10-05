@@ -4,10 +4,14 @@ import { PERMISSIONS } from "@/lib/rbac/permissions";
 /**
  * Definition centrale de la navigation.
  *
- * Chaque entree declare la permission reellement exigee par la page qu'elle
- * pointe. Le filtrage affiche ici est un confort d'usage : la meme permission
- * est verifiee de nouveau dans la page, dans l'action serveur et dans l'API.
- * Masquer une entree ne protege donc jamais une donnee.
+ * Deux niveaux de filtrage, purement d'affichage :
+ *  1. la PERMISSION exigee par la page (verifiee aussi dans la page) ;
+ *  2. le PROFIL DE MENU du role (PROFIL_MENU), qui decide quelles sections
+ *     apparaissent pour chaque metier.
+ *
+ * Le profil de menu ne protege rien : il organise. Masquer un onglet ne donne
+ * aucun droit, et l'afficher n'en donne aucun non plus. La securite reste dans
+ * la page, l'action serveur et la requete.
  */
 
 export interface EntreeNavigation {
@@ -18,6 +22,7 @@ export interface EntreeNavigation {
   /** Permissions alternatives : l'une d'elles suffit. */
   permissionsAlternatives?: string[];
   description?: string;
+  /** Restreint l'entree a certains roles (en plus de la permission). */
   rolesVisibles?: string[];
 }
 
@@ -25,7 +30,6 @@ export interface SectionNavigation {
   code: string;
   titre: string;
   entrees: EntreeNavigation[];
-  rolesVisibles?: string[];
 }
 
 export const NAVIGATION: SectionNavigation[] = [
@@ -35,7 +39,7 @@ export const NAVIGATION: SectionNavigation[] = [
     entrees: [
       {
         chemin: "/tableau-de-bord",
-        libelle: "Tableau de bord",
+        libelle: "Tableau de bord general",
         permission: PERMISSIONS.TABLEAU_BORD_LIRE,
         description: "Indicateurs consolides des deux divisions",
       },
@@ -43,11 +47,13 @@ export const NAVIGATION: SectionNavigation[] = [
         chemin: "/direction/admedco",
         libelle: "Direction ADMEDCO",
         permission: PERMISSIONS.TABLEAU_BORD_LIRE,
+        description: "Pilotage de la division metallurgie",
       },
       {
         chemin: "/direction/mobilix",
         libelle: "Direction MOBILIX",
         permission: PERMISSIONS.TABLEAU_BORD_LIRE,
+        description: "Pilotage de la division bois et garnissage",
       },
       {
         chemin: "/tableau-de-bord/production",
@@ -72,28 +78,33 @@ export const NAVIGATION: SectionNavigation[] = [
     entrees: [
       {
         chemin: "/atelier/ADM-A01",
-        libelle: "ADMEDCO A01 — Coupe avec centrage",
+        libelle: "ADMEDCO A01 - Coupe avec centrage",
         permission: PERMISSIONS.TABLEAU_BORD_PRODUCTION,
+        rolesVisibles: ["ADMIN_SYSTEME", "RESPONSABLE_USINE", "RESPONSABLE_ADMEDCO", "RESPONSABLE_PRODUCTION", "CHEF_ADM_A01"],
       },
       {
         chemin: "/atelier/ADM-A02",
-        libelle: "ADMEDCO A02 — Coupe sans centrage",
+        libelle: "ADMEDCO A02 - Coupe sans centrage",
         permission: PERMISSIONS.TABLEAU_BORD_PRODUCTION,
+        rolesVisibles: ["ADMIN_SYSTEME", "RESPONSABLE_USINE", "RESPONSABLE_ADMEDCO", "RESPONSABLE_PRODUCTION", "CHEF_ADM_A02"],
       },
       {
         chemin: "/atelier/ADM-A03",
-        libelle: "ADMEDCO A03 — Poudrage et emballage",
+        libelle: "ADMEDCO A03 - Poudrage et emballage",
         permission: PERMISSIONS.TABLEAU_BORD_PRODUCTION,
+        rolesVisibles: ["ADMIN_SYSTEME", "RESPONSABLE_USINE", "RESPONSABLE_ADMEDCO", "RESPONSABLE_PRODUCTION", "CHEF_ADM_A03"],
       },
       {
         chemin: "/atelier/MBX-A01",
-        libelle: "MOBILIX A01 — Decoupe bois",
+        libelle: "MOBILIX A01 - Decoupe bois",
         permission: PERMISSIONS.TABLEAU_BORD_PRODUCTION,
+        rolesVisibles: ["ADMIN_SYSTEME", "RESPONSABLE_USINE", "RESPONSABLE_MOBILIX", "RESPONSABLE_PRODUCTION", "CHEF_MBX_A01"],
       },
       {
         chemin: "/atelier/MBX-A02",
-        libelle: "MOBILIX A02 — Tapissage",
+        libelle: "MOBILIX A02 - Tapissage",
         permission: PERMISSIONS.TABLEAU_BORD_PRODUCTION,
+        rolesVisibles: ["ADMIN_SYSTEME", "RESPONSABLE_USINE", "RESPONSABLE_MOBILIX", "RESPONSABLE_PRODUCTION", "CHEF_MBX_A02"],
       },
     ],
   },
@@ -105,7 +116,7 @@ export const NAVIGATION: SectionNavigation[] = [
         chemin: "/portail",
         libelle: "Portail employe",
         permission: PERMISSIONS.PORTAIL_EMPLOYE,
-        description: "Mes ordres de fabrication, mes declarations, mes pointages",
+        description: "Mes ordres, mes declarations, mon pointage",
       },
       {
         chemin: "/portail/operations",
@@ -113,12 +124,23 @@ export const NAVIGATION: SectionNavigation[] = [
         permission: PERMISSIONS.PORTAIL_EMPLOYE,
         description: "Un espace dedie a chaque etape qui vous est affectee",
       },
+      {
+        chemin: "/portail/admedco",
+        libelle: "Portail ADMEDCO",
+        permission: PERMISSIONS.PORTAIL_EMPLOYE,
+        rolesVisibles: ["ADMIN_SYSTEME", "OPERATEUR_ADMEDCO"],
+      },
+      {
+        chemin: "/portail/mobilix",
+        libelle: "Portail MOBILIX",
+        permission: PERMISSIONS.PORTAIL_EMPLOYE,
+        rolesVisibles: ["ADMIN_SYSTEME", "OPERATEUR_MOBILIX"],
+      },
     ],
   },
   {
     code: "referentiel",
     titre: "Referentiel",
-    rolesVisibles: [],
     entrees: [
       {
         chemin: "/referentiel/articles",
@@ -150,7 +172,6 @@ export const NAVIGATION: SectionNavigation[] = [
   {
     code: "nomenclature",
     titre: "Nomenclature et gammes",
-    rolesVisibles: [],
     entrees: [
       {
         chemin: "/nomenclature",
@@ -161,7 +182,7 @@ export const NAVIGATION: SectionNavigation[] = [
         chemin: "/nomenclature/ecarts",
         libelle: "Ecarts de quantite",
         permission: PERMISSIONS.NOMENCLATURE_LIRE,
-        description: "Contradictions de quantite a arbitrer, jamais corrigees automatiquement",
+        description: "Contradictions de quantite a arbitrer",
       },
       {
         chemin: "/nomenclature/gammes",
@@ -172,8 +193,7 @@ export const NAVIGATION: SectionNavigation[] = [
   },
   {
     code: "stock",
-    titre: "Stocks",
-    rolesVisibles: [],
+    titre: "Stocks et depots",
     entrees: [
       {
         chemin: "/stock",
@@ -196,36 +216,33 @@ export const NAVIGATION: SectionNavigation[] = [
         permission: PERMISSIONS.STOCK_INVENTAIRE,
       },
       {
-        chemin: "/stock/bci",
-        libelle: "BCI (Bons de commande internes)",
-        permission: PERMISSIONS.STOCK_LIRE,
+        chemin: "/stock/lots",
+        libelle: "Lots et tracabilite",
+        permission: PERMISSIONS.STOCK_LOT_GERER,
       },
       {
         chemin: "/magasinier/admedco",
         libelle: "Magasinier ADMEDCO",
         permission: PERMISSIONS.STOCK_LIRE,
+        description: "Stocks et BCI de la division ADMEDCO",
       },
       {
         chemin: "/magasinier/mobilix",
         libelle: "Magasinier MOBILIX",
         permission: PERMISSIONS.STOCK_LIRE,
+        description: "Stocks et BCI de la division MOBILIX",
       },
       {
         chemin: "/magasinier",
-        libelle: "Magasinier",
+        libelle: "Magasinier central",
         permission: PERMISSIONS.STOCK_LIRE,
-      },
-      {
-        chemin: "/stock/lots",
-        libelle: "Lots et tracabilite",
-        permission: PERMISSIONS.STOCK_LOT_GERER,
+        description: "Cumul des deux usines",
       },
     ],
   },
   {
     code: "production",
     titre: "Production",
-    rolesVisibles: [],
     entrees: [
       {
         chemin: "/production",
@@ -238,11 +255,6 @@ export const NAVIGATION: SectionNavigation[] = [
         permission: PERMISSIONS.PRODUCTION_LIRE,
       },
       {
-        chemin: "/production/declarations",
-        libelle: "Declarations a valider",
-        permission: PERMISSIONS.PRODUCTION_VALIDER_DECLARATION,
-      },
-      {
         chemin: "/production/programme",
         libelle: "Programme de travail",
         permission: PERMISSIONS.PRODUCTION_PLANNING_LIRE,
@@ -253,6 +265,11 @@ export const NAVIGATION: SectionNavigation[] = [
         libelle: "Feuille de route",
         permission: PERMISSIONS.PRODUCTION_LIRE,
         description: "Ou en sont reellement les quantites, etape par etape",
+      },
+      {
+        chemin: "/production/declarations",
+        libelle: "Declarations a valider",
+        permission: PERMISSIONS.PRODUCTION_VALIDER_DECLARATION,
       },
       {
         chemin: "/production/sous-stocks",
@@ -269,7 +286,6 @@ export const NAVIGATION: SectionNavigation[] = [
   {
     code: "qualite",
     titre: "Qualite",
-    rolesVisibles: [],
     entrees: [
       {
         chemin: "/qualite",
@@ -290,8 +306,7 @@ export const NAVIGATION: SectionNavigation[] = [
   },
   {
     code: "achats",
-    titre: "Achats",
-    rolesVisibles: [],
+    titre: "Achats et fournisseurs",
     entrees: [
       {
         chemin: "/achats/demandes",
@@ -317,8 +332,7 @@ export const NAVIGATION: SectionNavigation[] = [
   },
   {
     code: "ventes",
-    titre: "Ventes",
-    rolesVisibles: [],
+    titre: "Ventes et clients",
     entrees: [
       {
         chemin: "/ventes/devis",
@@ -345,7 +359,6 @@ export const NAVIGATION: SectionNavigation[] = [
   {
     code: "finance",
     titre: "Finance et comptabilite",
-    rolesVisibles: [],
     entrees: [
       {
         chemin: "/comptabilite/ecritures",
@@ -377,7 +390,6 @@ export const NAVIGATION: SectionNavigation[] = [
   {
     code: "rh",
     titre: "Ressources humaines",
-    rolesVisibles: [],
     entrees: [
       {
         chemin: "/rh/employes",
@@ -409,7 +421,6 @@ export const NAVIGATION: SectionNavigation[] = [
   {
     code: "administration",
     titre: "Administration",
-    rolesVisibles: [],
     entrees: [
       {
         chemin: "/administration/utilisateurs",
@@ -427,14 +438,14 @@ export const NAVIGATION: SectionNavigation[] = [
         permission: PERMISSIONS.CONFIG_LIRE,
       },
       {
-        chemin: "/administration/scans",
-        libelle: "Historique des scans QR",
-        permission: PERMISSIONS.ADMINISTRER_SYSTEME,
-      },
-      {
         chemin: "/administration/qr-codes",
         libelle: "QR Codes des postes",
-        permission: PERMISSIONS.ADMINISTRER_SYSTEME,
+        permission: PERMISSIONS.SYSTEME_ADMIN,
+      },
+      {
+        chemin: "/administration/scans",
+        libelle: "Historique des scans QR",
+        permission: PERMISSIONS.SYSTEME_ADMIN,
       },
       {
         chemin: "/administration/import",
@@ -450,11 +461,89 @@ export const NAVIGATION: SectionNavigation[] = [
   },
 ];
 
-/** Une entree est visible si l'utilisateur detient la permission declaree. */
+/**
+ * Profil de menu par role : quelles sections apparaissent.
+ *
+ * C'est un choix d'ergonomie, pas de securite. Un role absent de cette table
+ * retombe sur le filtrage par permission, afin qu'aucune section ne disparaisse
+ * par oubli.
+ *
+ * Seul ADMIN_SYSTEME voit les 13 sections.
+ */
+const TOUT = ["pilotage", "ateliers", "portail", "referentiel", "nomenclature", "stock", "production", "qualite", "achats", "ventes", "finance", "rh", "administration"];
+
+export const PROFIL_MENU: Record<string, string[]> = {
+  ADMIN_SYSTEME: TOUT,
+
+  DIRECTION: [
+    "pilotage", "referentiel", "nomenclature", "stock", "production",
+    "qualite", "achats", "ventes", "finance", "rh", "administration",
+  ],
+
+  RESPONSABLE_USINE: [
+    "pilotage", "ateliers", "referentiel", "nomenclature", "stock",
+    "production", "qualite", "achats", "rh",
+  ],
+  RESPONSABLE_ADMEDCO: [
+    "pilotage", "ateliers", "referentiel", "nomenclature", "stock",
+    "production", "qualite", "achats", "rh",
+  ],
+  RESPONSABLE_MOBILIX: [
+    "pilotage", "ateliers", "referentiel", "nomenclature", "stock",
+    "production", "qualite", "achats", "rh",
+  ],
+  RESPONSABLE_PRODUCTION: [
+    "ateliers", "referentiel", "nomenclature", "stock", "production",
+    "qualite", "rh",
+  ],
+
+  CHEF_ADM_A01: ["ateliers", "production", "qualite", "stock", "rh"],
+  CHEF_ADM_A02: ["ateliers", "production", "qualite", "stock", "rh"],
+  CHEF_ADM_A03: ["ateliers", "production", "qualite", "stock", "rh"],
+  CHEF_MBX_A01: ["ateliers", "production", "qualite", "stock", "rh"],
+  CHEF_MBX_A02: ["ateliers", "production", "qualite", "stock", "rh"],
+
+  OPERATEUR_ADMEDCO: ["portail"],
+  OPERATEUR_MOBILIX: ["portail"],
+
+  RESPONSABLE_STOCK: [
+    "pilotage", "referentiel", "nomenclature", "stock", "production", "qualite",
+  ],
+  MAGASINIER: ["referentiel", "nomenclature", "stock", "production", "qualite"],
+  MAGASINIER_ADMEDCO: ["referentiel", "nomenclature", "stock", "production"],
+  MAGASINIER_MOBILIX: ["referentiel", "nomenclature", "stock", "production"],
+
+  RESPONSABLE_QUALITE: [
+    "pilotage", "referentiel", "nomenclature", "stock", "production", "qualite",
+  ],
+  ACHETEUR: ["pilotage", "referentiel", "nomenclature", "stock", "achats"],
+  COMMERCIAL: ["pilotage", "referentiel", "nomenclature", "stock", "ventes"],
+  COMPTABLE: [
+    "pilotage", "referentiel", "nomenclature", "stock", "achats", "ventes", "finance",
+  ],
+  RESPONSABLE_FINANCIER: [
+    "pilotage", "referentiel", "nomenclature", "stock", "achats", "ventes",
+    "finance", "administration",
+  ],
+  RESPONSABLE_RH: ["pilotage", "rh"],
+
+  AUDITEUR: [
+    "pilotage", "referentiel", "nomenclature", "stock", "production",
+    "qualite", "achats", "ventes", "finance", "rh", "administration",
+  ],
+  LECTURE_SEULE: ["referentiel", "nomenclature", "stock", "production"],
+};
+
+/** Une entree est visible si la permission ET, le cas echeant, le role concordent. */
 export function entreeAutorisee(
   utilisateur: SessionUser,
   entree: EntreeNavigation,
 ): boolean {
+  if (entree.rolesVisibles && entree.rolesVisibles.length > 0) {
+    const codes = utilisateur.roles.map((role) => role.code);
+    if (!codes.some((code) => entree.rolesVisibles!.includes(code))) return false;
+  }
+
   if (entree.permission) return utilisateur.permissions.includes(entree.permission);
   if (entree.permissionsAlternatives && entree.permissionsAlternatives.length > 0) {
     return entree.permissionsAlternatives.some((permission) =>
@@ -466,44 +555,53 @@ export function entreeAutorisee(
 }
 
 /**
- * Navigation reellement accessible a l'utilisateur, sections vides retirees.
- * L'ordre de declaration est conserve.
+ * Sections de menu visibles par l'utilisateur.
+ *
+ * Un role dont le profil est declare restreint l'affichage aux sections de ce
+ * profil. Un role inconnu conserve le filtrage par permission seul.
  */
 export function navigationAutorisee(utilisateur: SessionUser): SectionNavigation[] {
-  const roleCodes = utilisateur.roles.map((r: { code: string }) => r.code);
-  const estOperateur = roleCodes.some(
-    (r: string) => r === "OPERATEUR_ADMEDCO" || r === "OPERATEUR_MOBILIX",
-  );
+  const codes = utilisateur.roles.map((role) => role.code);
+
+  const profilsConnus = codes
+    .map((code) => PROFIL_MENU[code])
+    .filter((profil): profil is string[] => Array.isArray(profil));
+
+  const sectionsAutorisees =
+    profilsConnus.length === 0 ? null : new Set(profilsConnus.flat());
+
   return NAVIGATION.map((section) => ({
     ...section,
     entrees: section.entrees.filter((entree) => entreeAutorisee(utilisateur, entree)),
   })).filter((section) => {
     if (section.entrees.length === 0) return false;
-    if (estOperateur && section.rolesVisibles && section.rolesVisibles.length === 0) return false;
+    if (sectionsAutorisees && !sectionsAutorisees.has(section.code)) return false;
     return true;
   });
 }
 
 /**
- * Page d'accueil par metier.
- *
- * Chaque role arrive sur son propre ecran, pas sur un tableau de bord commun :
- * un tableau de bord partage donne a tout le monde l'illusion de voir la meme
- * chose, et noie chaque metier sous les chiffres des autres.
- *
+ * Page d'accueil par metier : chaque role arrive sur son propre ecran.
  * Un role absent de cette table retombe sur sa premiere page accessible.
  */
 const ACCUEIL_PAR_ROLE: Record<string, string> = {
   ADMIN_SYSTEME: "/tableau-de-bord",
   DIRECTION: "/tableau-de-bord",
   RESPONSABLE_USINE: "/tableau-de-bord/production",
-  RESPONSABLE_ADMEDCO: "/tableau-de-bord/production",
-  RESPONSABLE_MOBILIX: "/tableau-de-bord/production",
+  RESPONSABLE_ADMEDCO: "/direction/admedco",
+  RESPONSABLE_MOBILIX: "/direction/mobilix",
   RESPONSABLE_PRODUCTION: "/production",
   OPERATEUR_ADMEDCO: "/portail/admedco",
   OPERATEUR_MOBILIX: "/portail/mobilix",
-  RESPONSABLE_STOCK: "/stock",
-  MAGASINIER: "/stock",
+  RESPONSABLE_STOCK: "/magasinier",
+  MAGASINIER: "/magasinier",
+  MAGASINIER_ADMEDCO: "/magasinier/admedco",
+  MAGASINIER_MOBILIX: "/magasinier/mobilix",
+  CHEF_ADM_A01: "/atelier/ADM-A01",
+  CHEF_ADM_A02: "/atelier/ADM-A02",
+  CHEF_ADM_A03: "/atelier/ADM-A03",
+  CHEF_MBX_A01: "/atelier/MBX-A01",
+  CHEF_MBX_A02: "/atelier/MBX-A02",
   RESPONSABLE_QUALITE: "/qualite",
   ACHETEUR: "/achats/demandes",
   COMMERCIAL: "/ventes/devis",
@@ -516,10 +614,7 @@ const ACCUEIL_PAR_ROLE: Record<string, string> = {
 
 /**
  * Premiere page accessible : utilisee pour rediriger apres connexion.
- *
- * L'accueil du metier n'est retenu que si l'interesse peut reellement ouvrir la
- * page. Si une permission lui a ete retiree, on retombe sur sa premiere page
- * accessible au lieu de l'envoyer sur un refus d'acces des la connexion.
+ * L'accueil du metier n'est retenu que si l'interesse peut reellement l'ouvrir.
  */
 export function premierCheminAccessible(utilisateur: SessionUser): string | null {
   const sections = navigationAutorisee(utilisateur);

@@ -32,7 +32,7 @@ export async function declarerEtApprendre(params: {
   // 2. Lire la nomenclature pour comparer
   const of = await prisma.workOrder.findUnique({
     where: { id: params.workOrderId },
-    select: { itemId: true, quantityPlanned: true },
+    select: { itemId: true, quantityPlanned: true, factory: true },
   });
 
   if (!of) return;
@@ -65,6 +65,7 @@ export async function declarerEtApprendre(params: {
       quantiteOF: Number(of.quantityPlanned),
       workOrderId: params.workOrderId,
       date: new Date(),
+      factory: of.factory,
     });
   }
 }

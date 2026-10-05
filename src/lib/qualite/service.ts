@@ -21,7 +21,7 @@ import { changerStatutStock, enregistrerMouvement, type ActeurStock } from "@/li
  * Aucune sortie de quarantaine ne se fait sans decision tracee.
  */
 
-export interface ActeurQualite extends ActeurStock {}
+export type ActeurQualite = ActeurStock;
 
 // -----------------------------------------------------------------------------
 // Plans de controle
@@ -398,14 +398,71 @@ export async function controlerReception(
               ? "QUARANTAINE"
               : "LIBRE",
         qualityDecision: entree.decision,
+        quantityAccepted: D.roundQuantity(D.add(ligne.quantityAccepted, conforme)),
+        quantityRejected: D.roundQuantity(D.add(ligne.quantityRejected, rejetee)),
+        quantityQuarantined: D.roundQuantity(
+          D.max(
+            D.ZERO,
+            D.sub(
+              D.sub(ligne.quantityReceived, D.add(ligne.quantityAccepted, conforme)),
+              D.add(ligne.quantityRejected, rejetee),
+            ),
+          ),
+        ),
       },
     });
 
+    // Statut de l'entete de reception : il ne bascule que lorsque TOUTES les
+    // lignes ont recu une decision. Tant qu'une ligne reste sans decision, la
+    // reception demeure en controle qualite : aucune decision n'est prise a la
+    // place d'un humain.
+    const lignesApres = await tx.goodsReceiptLine.findMany({
+      where: { receiptId: ligne.receipt.id },
+      select: {
+        qualityDecision: true,
+        quantityAccepted: true,
+        quantityRejected: true,
+        quantityQuarantined: true,
+      },
+    });
+    const toutesDecidees = lignesApres.every((item) => item.qualityDecision !== null);
+    // Une quantite encore en quarantaine n'est pas tranchee : la reception reste
+    // ouverte tant qu'un humain n'a pas statue. Aucune decision silencieuse.
+    const resteEnQuarantaine = lignesApres.some((item) =>
+      D.gt(item.quantityQuarantined, 0),
+    );
+    if (toutesDecidees && !resteEnQuarantaine) {
+      const accepte = lignesApres.reduce(
+        (total, item) => D.add(total, item.quantityAccepted),
+        D.ZERO,
+      );
+      const refuse = lignesApres.reduce(
+        (total, item) => D.add(total, item.quantityRejected),
+        D.ZERO,
+      );
+      const statutEntete =
+        D.lte(accepte, 0) && D.gt(refuse, 0)
+          ? "REJETE"
+          : D.gt(accepte, 0) && D.gt(refuse, 0)
+            ? "PARTIELLEMENT_ACCEPTE"
+            : D.gt(accepte, 0)
+              ? "ACCEPTE"
+              : "EN_CONTROLE_QUALITE";
+      await tx.goodsReceipt.update({
+        where: { id: ligne.receipt.id },
+        data: { status: statutEntete },
+      });
+    }
+
     if (entree.decision !== "ACCEPTE" && entree.decision !== "ACCEPTE_SOUS_RESERVE") {
+      // Quantite reellement mise en cause : ce qui n'a pas ete libere vers le
+      // stock libre (rejet + maintien en quarantaine). La quantite controlee
+      // n'est donc jamais perdue, meme lorsqu'aucun rejet n'est enregistre.
+      const quantiteMiseEnCause = D.max(rejetee, D.sub(controlee, conforme));
       await creerNonConformiteInterne(tx, {
         source: "RECEPTION",
         itemId: ligne.itemId,
-        quantite: D.gt(rejetee, 0) ? rejetee : conforme,
+        quantite: quantiteMiseEnCause,
         description:
           entree.commentaire ??
           `Controle de reception ${numero} : decision « ${LIBELLES_DECISION[entree.decision]} ».`,
@@ -599,6 +656,40 @@ export async function controlerProduction(
 // Liberation qualite d'un produit fini
 // -----------------------------------------------------------------------------
 
+/**
+ * Cout de revient unitaire du produit fini libere.
+ *
+ * Les matieres reellement consommees sont valorisees au cout fige de l'ordre
+ * (`unitCost`), auquel s'ajoute la main-d'oeuvre figee par la nomenclature.
+ * Le cout total est reparti sur la quantite conforme liberee : c'est ce cout
+ * qui valorise l'entree en stock, et donc la sortie de livraison. Sans lui, le
+ * produit fini entrerait a zero et sa livraison ne pourrait pas etre
+ * comptabilisee.
+ */
+async function coutRevientUnitaire(
+  tx: Db,
+  workOrderId: number,
+  quantite: Prisma.Decimal,
+): Promise<Prisma.Decimal> {
+  if (D.lte(quantite, 0)) return D.ZERO;
+
+  const matieres = await tx.workOrderMaterial.findMany({
+    where: { workOrderId },
+    select: { quantityConsumed: true, quantityPlanned: true, unitCost: true, isLabor: true },
+  });
+
+  const coutTotal = matieres.reduce((total, matiere) => {
+    // La main-d'oeuvre ne genere aucun mouvement de stock : sa quantite
+    // consommee n'est donc pas tenue, elle est valorisee sur la quantite figee.
+    const quantiteValorisee = matiere.isLabor
+      ? D.of(matiere.quantityPlanned)
+      : D.of(matiere.quantityConsumed);
+    return D.add(total, D.mul(quantiteValorisee, matiere.unitCost));
+  }, D.ZERO);
+
+  return D.roundAmount(D.div(coutTotal, quantite));
+}
+
 export interface LiberationInput {
   workOrderId: number;
   quantiteLiberee: Prisma.Decimal | string | number;
@@ -686,13 +777,16 @@ export async function libererProduitFini(entree: LiberationInput): Promise<{
     });
 
     if (decision !== "REJETE") {
-      // Le produit fini entre en stock libre : il devient vendable.
+      // Le produit fini entre en stock libre, valorise a son cout de revient :
+      // c'est ce cout qui permet de comptabiliser la sortie de livraison.
+      const coutRevient = await coutRevientUnitaire(tx, ordre.id, quantite);
       await enregistrerMouvement(tx, {
         type: "PRODUCTION_PRODUIT_FINI",
         itemId: ordre.itemId,
         warehouseId: depotId,
         lotId: entree.lotId ?? ordre.lots[0]?.id ?? null,
         quantity: quantite,
+        unitCost: coutRevient,
         unitCode: null,
         workOrderId: ordre.id,
         documentType: "ORDRE_FABRICATION",

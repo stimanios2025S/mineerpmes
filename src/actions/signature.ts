@@ -16,7 +16,7 @@ export async function actionSignerMagasinier(
     data: {
       signatureMagasinier: signature,
       signatureMagasinierAt: new Date(),
-      signatureMagasinierBy: utilisateur.userId,
+      signatureMagasinierBy: utilisateur.id,
     },
   });
 
@@ -35,7 +35,7 @@ export async function actionSignerChefAtelier(
     data: {
       signatureChefAtelier: signature,
       signatureChefAtelierAt: new Date(),
-      signatureChefAtelierBy: utilisateur.userId,
+      signatureChefAtelierBy: utilisateur.id,
     },
   });
 

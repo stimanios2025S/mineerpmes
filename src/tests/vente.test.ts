@@ -1232,9 +1232,9 @@ describe("Libelles francais et protection du domaine", () => {
   });
 
   it("n'expose aucune fonction de suppression ou de modification directe d'un document", async () => {
-    const module = await import("@/lib/vente/service");
+    const service = await import("@/lib/vente/service");
 
-    for (const nom of Object.keys(module)) {
+    for (const nom of Object.keys(service)) {
       expect(nom, `l'export ${nom} ne doit pas permettre d'effacer un document`).not.toMatch(
         /supprim|delete|remove|efface|purge/i,
       );

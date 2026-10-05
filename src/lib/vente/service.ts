@@ -46,7 +46,7 @@ import { creerOrdreFabrication } from "@/lib/production/service";
  *    numeros de comptes codes en dur.
  */
 
-export interface ActeurVente extends ActeurStock {}
+export type ActeurVente = ActeurStock;
 
 // -----------------------------------------------------------------------------
 // Utilitaires internes
@@ -1673,7 +1673,7 @@ export async function creerFactureClient(
         };
       }
 
-      let commandeId = entree.orderId ?? livraison?.orderId ?? null;
+      const commandeId = entree.orderId ?? livraison?.orderId ?? null;
       let delaiPaiement = entree.paymentTermsDays ?? client.deadlineDays ?? 0;
 
       if (commandeId && !entree.paymentTermsDays) {

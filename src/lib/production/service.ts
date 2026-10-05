@@ -155,8 +155,8 @@ export async function creerOrdreFabrication(
     // reste valide. Lorsqu'un lien commercial est declare, il doit etre coherent
     // avec la ligne, l'article et le client selectionnes.
     let customerId = entree.customerId ?? null;
-    let salesOrderId = entree.salesOrderId ?? null;
-    let salesOrderLineId = entree.salesOrderLineId ?? null;
+    const salesOrderId = entree.salesOrderId ?? null;
+    const salesOrderLineId = entree.salesOrderLineId ?? null;
 
     if (salesOrderLineId && !salesOrderId) {
       throw validation(
@@ -1042,6 +1042,27 @@ export async function declarerConsommation(
 
     const operation = await chargerOperation(tx, entree.workOrderOperationId);
 
+    // Memes controles d'etat que la declaration de production : un ordre
+    // termine ou cloture n'accepte plus aucune nouvelle consommation ni perte.
+    // Sans cette garde, une consommation tardive ecrirait un mouvement apres
+    // la fin de la chaine et faussrait le grand livre.
+    if (operation.workOrder.status === "ANNULE") {
+      throw etatInvalide("L'ordre de fabrication est annule.");
+    }
+    if (operation.workOrder.status === "CLOTURE") {
+      throw etatInvalide("L'ordre de fabrication est cloture.");
+    }
+    if (operation.status === "NON_DEMARREE") {
+      throw etatInvalide(
+        "Demarrez l'operation avant d'enregistrer une declaration d'atelier.",
+      );
+    }
+    if (["TERMINEE", "VALIDEE", "ANNULEE"].includes(operation.status)) {
+      throw etatInvalide(
+        "Cette operation est terminee : aucune declaration supplementaire ne peut y etre enregistree.",
+      );
+    }
+
     const restantTheorique = D.sub(matiere.quantityPlanned, matiere.quantityConsumed);
     const categorie: LossCategory = D.gt(quantite, restantTheorique)
       ? "SURCONSOMMATION"
@@ -1171,6 +1192,28 @@ export async function declarerPerte(
     const operation = await chargerOperation(tx, entree.workOrderOperationId);
     const article = await tx.item.findUnique({ where: { id: entree.itemId } });
     if (!article) throw nonTrouve("L'article");
+
+    // Memes controles d'etat que la declaration de production : un ordre
+    // termine ou cloture n'accepte plus aucune nouvelle consommation ni perte.
+    // Sans cette garde, une consommation tardive ecrirait un mouvement apres
+    // la fin de la chaine et faussrait le grand livre.
+    if (operation.workOrder.status === "ANNULE") {
+      throw etatInvalide("L'ordre de fabrication est annule.");
+    }
+    if (operation.workOrder.status === "CLOTURE") {
+      throw etatInvalide("L'ordre de fabrication est cloture.");
+    }
+    if (operation.status === "NON_DEMARREE") {
+      throw etatInvalide(
+        "Demarrez l'operation avant d'enregistrer une declaration d'atelier.",
+      );
+    }
+    if (["TERMINEE", "VALIDEE", "ANNULEE"].includes(operation.status)) {
+      throw etatInvalide(
+        "Cette operation est terminee : aucune declaration supplementaire ne peut y etre enregistree.",
+      );
+    }
+
 
     const seuil = await lireParametreNombre(
       CLE_PARAMETRE.SEUIL_PERTE_EXCEPTIONNELLE_POURCENT,

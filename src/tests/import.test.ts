@@ -28,6 +28,7 @@ import {
   contexteDepuisContenu,
   definirCorrespondance,
   importerArticles,
+  importerEmployes,
   importerFamilles,
   importerLotsEtStocks,
   importerNomenclatures,
@@ -62,6 +63,10 @@ const OID_LIGNE_A = BASE + 41;
 const OID_LIGNE_B = BASE + 42;
 const OID_LIGNE_VIDE = BASE + 43;
 const OID_LOT = BASE + 51;
+const OID_ART_FABRIQUE = BASE + 71;
+const OID_ART_ACHETE = BASE + 72;
+const OID_ART_VENDU_HS = BASE + 73;
+const OID_TIERS_PERSONNEL = BASE + 81;
 
 const JETON = jeton("TIMPORT");
 const CODE_FAMILLE = `${JETON}-FAM`;
@@ -72,6 +77,10 @@ const CODE_TIERS_AUTRE = `${JETON}-TA`;
 const CODE_TIERS_EMPLOYE = `${JETON}-TE`;
 const CODE_FORMULE = `${JETON}-NOM`;
 const NUMERO_LOT = `${JETON}-LOT`;
+const CODE_ART_FABRIQUE = `${JETON}-FAB`;
+const CODE_ART_ACHETE = `${JETON}-ACH`;
+const CODE_ART_VENDU_HS = `${JETON}-VENDU-HS`;
+const CODE_TIERS_PERSONNEL = `${JETON}-EMP`;
 const EMAIL_EMPLOYE = `${JETON.toLowerCase()}@admedco.local`;
 
 /** Valeurs de source volontairement inconnues : rien ne doit etre devine. */
@@ -115,6 +124,27 @@ const CONTENU_TIERS = csv(
   [
     [OID_TIERS_AUTRE, "S1", CODE_TIERS_AUTRE, "Tiers de recette", TYPE_TIERS_INCONNU, "", "16000", "0"],
     [OID_TIERS_EMPLOYE, "S2", CODE_TIERS_EMPLOYE, "Employe de recette", TYPE_TIERS_EMPLOYE, EMAIL_EMPLOYE, "", "0"],
+  ],
+);
+
+/** Articles portant explicitement les colonnes d'indicateurs. */
+const CONTENU_ARTICLES_INDICATEURS = csv(
+  [
+    "Oid", "SyncId", "Code", "Label1", "Type", "IsBOM", "IsComposableOnly",
+    "IsRawMaterial", "LPP", "MinSP", "MaxSP", "IsOutOfService",
+  ],
+  [
+    [OID_ART_FABRIQUE, "S71", CODE_ART_FABRIQUE, "Article fabrique", TYPE_ARTICLE_INCONNU, "t", "f", "f", "", "", "", "0"],
+    [OID_ART_ACHETE, "S72", CODE_ART_ACHETE, "Matiere achetee", TYPE_ARTICLE_INCONNU, "f", "f", "t", "", "", "", "0"],
+    [OID_ART_VENDU_HS, "S73", CODE_ART_VENDU_HS, "Article vendable hors service", TYPE_ARTICLE_INCONNU, "f", "f", "f", "2000", "", "", "1"],
+  ],
+);
+
+/** Tiers de nature employe, avec identite de personne. */
+const CONTENU_PERSONNEL = csv(
+  ["Oid", "SyncId", "Code", "Label1", "Type", "FirstName", "LastName", "Email", "PostCode", "Balance"],
+  [
+    [OID_TIERS_PERSONNEL, "S81", CODE_TIERS_PERSONNEL, "Operateur de recette", TYPE_TIERS_EMPLOYE, "Karim", "Benali", `${JETON.toLowerCase()}.emp@admedco.local`, "", "0"],
   ],
 );
 
@@ -199,6 +229,7 @@ afterAll(async () => {
     await prisma.formulaLine.deleteMany({ where: parSource });
     await prisma.formula.deleteMany({ where: { id: { in: formuleIds } } });
     await prisma.item.deleteMany({ where: { id: { in: articleIds } } });
+    await prisma.employee.deleteMany({ where: parSource });
     await prisma.thirdParty.deleteMany({ where: parSource });
     await prisma.itemFamily.deleteMany({ where: parSource });
 
@@ -421,6 +452,47 @@ describe("Import des articles", () => {
   });
 });
 
+describe("Indicateurs d'article deduits de la source", () => {
+  it("active achetable, vendable et fabricable depuis les colonnes explicites", async () => {
+    retenir(await importerArticles(contexte(CONTENU_ARTICLES_INDICATEURS, "COM_Item.csv")));
+
+    const fabrique = await prisma.item.findFirst({
+      where: { sourceSystem: SYSTEME_SOURCE, sourceOid: OID_ART_FABRIQUE },
+    });
+    expect(fabrique?.isProducible).toBe(true);
+    expect(fabrique?.isPurchasable).toBe(false);
+    expect(fabrique?.isSellable).toBe(false);
+
+    const achete = await prisma.item.findFirst({
+      where: { sourceSystem: SYSTEME_SOURCE, sourceOid: OID_ART_ACHETE },
+    });
+    expect(achete?.isPurchasable).toBe(true);
+    expect(achete?.isProducible).toBe(false);
+
+    // Un prix de vente porte par la source rend l'article vendable...
+    const vendu = await prisma.item.findFirst({
+      where: { sourceSystem: SYSTEME_SOURCE, sourceOid: OID_ART_VENDU_HS },
+    });
+    expect(vendu?.isSellable).toBe(false);
+    // ... sauf s'il est hors service, auquel cas il n'est jamais vendable.
+    expect(vendu?.status).toBe("NON_COMMERCIALISABLE");
+  });
+
+  it("est re-executable : les indicateurs restent identiques", async () => {
+    retenir(
+      await importerArticles(
+        contexte(CONTENU_ARTICLES_INDICATEURS, "COM_Item.csv", { miseAJourAutorisee: true }),
+      ),
+    );
+
+    const fabrique = await prisma.item.findFirst({
+      where: { sourceSystem: SYSTEME_SOURCE, sourceOid: OID_ART_FABRIQUE },
+    });
+    expect(fabrique?.isProducible).toBe(true);
+    expect(await prisma.item.count({ where: { sourceOid: OID_ART_FABRIQUE } })).toBe(1);
+  });
+});
+
 describe("Import des tiers", () => {
   it("distingue les natures et ne cree aucun compte employe", async () => {
     await definirCorrespondance(
@@ -506,6 +578,56 @@ describe("Import des tiers", () => {
       },
     });
     expect(correspondance?.isConfirmed).toBe(true);
+  });
+});
+
+// -----------------------------------------------------------------------------
+// Fiches de personnel
+// -----------------------------------------------------------------------------
+
+describe("Import des fiches de personnel", () => {
+  it("cree une fiche par tiers de nature employe, sans creer de compte", async () => {
+    await definirCorrespondance(
+      {
+        sourceEntity: "THIRD_PARTY",
+        sourceField: "Type",
+        sourceValue: TYPE_TIERS_EMPLOYE,
+        targetValue: "EMPLOYE",
+        label: "Correspondance de recette",
+      },
+      acteur,
+    );
+
+    retenir(await importerTiers(contexte(CONTENU_PERSONNEL, "COM_ThirdParty.csv")));
+
+    const comptesAvant = await prisma.user.count();
+    const resultat = retenir(
+      await importerEmployes(contexte(CONTENU_PERSONNEL, "COM_ThirdParty.csv")),
+    );
+
+    expect(resultat.entite).toBe("EMPLOYEE");
+    expect(resultat.compteurs.inserees).toBe(1);
+    expect(resultat.compteurs.rejetees).toBe(0);
+
+    const employe = await prisma.employee.findFirst({
+      where: { sourceSystem: SYSTEME_SOURCE, sourceOid: OID_TIERS_PERSONNEL },
+    });
+    expect(employe?.matricule).toBe(CODE_TIERS_PERSONNEL);
+    expect(employe?.firstName).toBe("Karim");
+    expect(employe?.lastName).toBe("Benali");
+    expect(employe?.thirdPartyId).not.toBeNull();
+
+    // Aucun compte d'acces n'est cree par l'import.
+    expect(await prisma.user.count()).toBe(comptesAvant);
+  });
+
+  it("ignore un tiers qui n'est pas de nature employe", async () => {
+    const resultat = retenir(
+      await importerEmployes(contexte(CONTENU_TIERS, "COM_ThirdParty.csv")),
+    );
+    // Seul le tiers de nature employe donne une fiche ; l'autre est ignore.
+    expect(resultat.compteurs.inserees + resultat.compteurs.misesAJour).toBeLessThanOrEqual(1);
+    expect(resultat.compteurs.rejetees).toBe(0);
   });
 });
 
@@ -690,5 +812,59 @@ describe("Simulation d'import", () => {
       }),
     ).toBeNull();
     expect(await prisma.importJob.findUnique({ where: { id: resultat.jobId } })).toBeNull();
+  });
+});
+
+// La main d'oeuvre se valorise dans la nomenclature, MDF reste stockable.
+describe("Import de main d'oeuvre et MDF", () => {
+  const oidLabor = BASE + 91;
+  const oidMdf = BASE + 92;
+  const oidFormule = BASE + 94;
+  const contenu = csv(
+    ["Oid", "Code", "Label1", "Type", "IsBOM", "IsRawMaterial", "IsComposableOnly", "LPP"],
+    [
+      [oidLabor, `MD900-${JETON}`, "MAIN D'OEUVRE DE RECETTE", TYPE_ARTICLE_INCONNU, "t", "t", "t", "100"],
+      [oidMdf, `MDF11244-${JETON}`, "MDF BRUT DE RECETTE", TYPE_ARTICLE_INCONNU, "f", "t", "f", "0"],
+    ],
+  );
+
+  it("importe la main d'oeuvre sans confondre MDF et sans activer de flux de stock", async () => {
+    const resultat = retenir(await importerArticles(contexte(contenu, "COM_Item.csv")));
+    expect(resultat.compteurs.rejetees).toBe(0);
+    const mainOeuvre = await prisma.item.findFirstOrThrow({
+      where: { sourceSystem: SYSTEME_SOURCE, sourceOid: oidLabor },
+    });
+    expect(mainOeuvre).toMatchObject({
+      type: "MAIN_OEUVRE", isMainOeuvre: true,
+      isPurchasable: false, isSellable: false, isProducible: false,
+    });
+    const mdf = await prisma.item.findFirstOrThrow({
+      where: { sourceSystem: SYSTEME_SOURCE, sourceOid: oidMdf },
+    });
+    expect(mdf.isMainOeuvre).toBe(false);
+    expect(mdf.isPurchasable).toBe(true);
+    expect(mdf.type).not.toBe("MAIN_OEUVRE");
+  });
+
+  it("marque les lignes de main d'oeuvre isLabor tout en conservant MDF comme matiere", async () => {
+    const formules = csv(["Oid", "Code", "Item"], [
+      [oidFormule, `${JETON}-NOM-LABOR`, OID_ARTICLE],
+    ]);
+    const lignes = csv(["Oid", "Parent", "Item", "Quantity", "Offset"], [
+      [BASE + 95, oidFormule, oidLabor, "1", "1"],
+      [BASE + 96, oidFormule, oidMdf, "2", "2"],
+    ]);
+    const resultat = retenir(await importerNomenclatures(
+      contexte(formules, "COM_Formula.csv"), contexte(lignes, "COM_BOM.csv"),
+    ));
+    expect(resultat.compteurs.rejetees).toBe(0);
+    const labor = await prisma.formulaLine.findFirstOrThrow({
+      where: { sourceSystem: SYSTEME_SOURCE, sourceOid: BASE + 95 },
+    });
+    const mdf = await prisma.formulaLine.findFirstOrThrow({
+      where: { sourceSystem: SYSTEME_SOURCE, sourceOid: BASE + 96 },
+    });
+    expect(labor.isLabor).toBe(true);
+    expect(mdf.isLabor).toBe(false);
   });
 });

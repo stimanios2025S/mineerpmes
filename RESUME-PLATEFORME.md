@@ -1,5 +1,7 @@
 # RESUME DE LA PLATEFORME — ERP + MES ADMEDCO / MOBILIX
 
+> Etat courant : voir `ETAT-MISE-EN-SERVICE.md`. Ce document conserve des chiffres et conclusions historiques ; il ne certifie pas une mise en production.
+
 Document de reference. Etat au 28 septembre 2026.
 Tous les chiffres proviennent du code et des comptes rendus d'execution du depot.
 
@@ -121,7 +123,7 @@ section dont toutes les entrees sont refusees disparait entierement du menu.
 
 ---
 
-## 6. Les 18 roles et leur page d'accueil
+## 6. Les 25 roles et leur page d'accueil
 
 | Role | Code | Portee d'usine | Arrive sur |
 |---|---|---|---|
@@ -156,7 +158,7 @@ d'acces des la connexion.
 
 Il s'exerce a **quatre niveaux**, et il est verifie **cote serveur** :
 
-1. **Par permission** — 92 permissions fines, regroupees en 12 modules.
+1. **Par permission** — 99 permissions fines, regroupees en 12 modules.
 2. **Par usine** — un role `ADMEDCO` ne voit jamais une donnee `MOBILIX`, meme en
    tapant l'URL a la main. Trois portees : `PORTEE_TOUTES_USINES`,
    `PORTEE_ADMEDCO`, `PORTEE_MOBILIX`.
@@ -282,24 +284,22 @@ de ce depot.
 
 ## 8. Etat reel de la base aujourd'hui
 
-### Comptes : 11
+### Comptes : 9, tous de bureau
 
-- **9 comptes de bureau** : administrateur systeme, direction, responsable production,
-  responsable stock, responsable qualite, acheteur, commercial, comptable, responsable
-  RH. Aucun n'a de fiche employe — normal, ces roles n'en ont pas besoin.
-- **2 comptes d'atelier de test** : `operateur.admedco@admedco.dz` (n° 10,
-  `OPERATEUR_ADMEDCO`) et `operateur.mobilix@admedco.dz` (n° 11, `OPERATEUR_MOBILIX`).
+Les **9 comptes de bureau** sont les comptes de travail reels : administrateur
+systeme, direction, responsable production, responsable stock, responsable qualite,
+acheteur, commercial, comptable, responsable RH. Aucun n'a de fiche employe — normal,
+ces roles n'en ont pas besoin.
 
-### Fiches employes : 2, toutes deux techniques et provisoires
+Les comptes et fiches d'atelier de test (operateurs, chefs, magasiniers) ont ete
+retires : `npm run demo:purge` nettoie ces donnees de demonstration et de test.
 
-| Matricule | Nom | Poste | Usine | Probleme |
-|---|---|---|---|---|
-| `ACC-0001` | Operateur TEST-ADMEDCO | Compte d'acces direct (developpement) | COMMUN | Devrait etre ADMEDCO |
-| `ACC-0002` | Operateur TEST-MOBILIX | Compte d'acces direct (developpement) | COMMUN | Devrait etre MOBILIX |
+### Fiches employes : aucune
 
-**Aucune fiche employe reelle n'existe.** Les deux presentes sont des reperes produits
-par `scripts/acces-direct.ts --creer-fiche`, un outil de developpement. A corriger ou
-supprimer avant toute mise en service.
+**Aucune fiche employe n'existe en base.** C'est voulu : les fiches se creent soit
+par la 6e etape d'import (`npm run import:csv`, tiers de nature « employe »), soit a
+la main dans Ressources humaines vers Employes. Un compte operateur exige au
+prealable une fiche employe reelle, avec son matricule et son usine.
 
 ### Referentiel importe
 
@@ -322,11 +322,21 @@ correspondance se regle dans **Administration vers Import** (modele
 `ImportValueMapping`, champ `isConfirmed`). Les articles suivent exactement le meme
 mecanisme, avec le repli `COMPOSANT`.
 
-### Indicateurs commerciaux et industriels : tous a faux
+### Indicateurs commerciaux et industriels : deduits de la source
 
-`isPurchasable`, `isSellable` et `isProducible` ne sont **jamais** renseignes par
-l'import. Consequence directe : **aucun devis, aucune commande, aucun ordre de
-fabrication n'est creable en l'etat.**
+L'import renseigne desormais `isPurchasable`, `isSellable` et `isProducible` a
+partir des colonnes explicites du fichier source, sans rien deviner :
+
+| Indicateur | Regle appliquee par l'import |
+|---|---|
+| `isPurchasable` (achetable) | `IsRawMaterial` ou `IsComposableOnly` vrai |
+| `isProducible` (fabriquable) | `IsBOM` vrai (article assemble par une nomenclature) |
+| `isSellable` (vendable) | un prix de vente (`LPP`, `MinSP` ou `MaxSP`) renseigne, hors article hors service |
+
+Sur le referentiel importe, cela ouvre environ 350 articles achetables, 280
+fabricables et 420 vendables. Les devis, commandes et ordres de fabrication sont
+donc creables sur ces articles ; l'administrateur ajuste article par article si
+besoin.
 
 ### Objets metier : aucun
 
@@ -343,7 +353,7 @@ Verifie dans le schema et le code. Ces points n'existent pas.
 |---|---|
 | **Sous-stock par etape d'operation** | **Absent.** Aucune quantite intermediaire n'est tenue entre deux etapes, et aucune valeur ne declenche quoi que ce soit. Ce qui existe : les drapeaux `Operation.consumesSemiFinished` / `producesSemiFinished` et `Article.isSemiFinished` — le concept est prevu dans le modele, mais sans quantite ni seuil. |
 | **Declenchement automatique sur seuil** | **Absent.** Les seuls seuils sont `Operation.standardLossRate` (taux de perte theorique, pour le cout) et `Article.reorderPoint` (point de commande par article). Aucun des deux ne provoque d'action : ils servent a l'affichage. |
-| **Import de fiches employes** | **Absent.** L'import compte 5 etapes : familles, articles, tiers, nomenclatures, lots. Aucune ne cree d'employe. A noter : `COM_FormulaEmpoyees.csv` existe dans le dossier source, mais sert au **cout de main-d'oeuvre des nomenclatures**, pas de registre du personnel. |
+| **Import de fiches employes** | **Present (6e etape).** L'import compte desormais 6 etapes : familles, articles, tiers, **fiches de personnel**, nomenclatures, lots. L'etape « fiches de personnel » cree une fiche `Employee` pour chaque tiers dont la nature vaut EXPLICITEMENT `EMPLOYE` (correspondance confirmee par l'administrateur) ; elle ne cree **aucun compte d'acces** et ne devine aucune personne. A noter : `COM_FormulaEmpoyees.csv` reste reserve au **cout de main-d'oeuvre des nomenclatures**, pas au registre du personnel. |
 | **Routes API** | **Aucune route `/api`.** Les operations serveur passent par 11 fichiers d'actions serveur. |
 | **Comptes partages** | **Interdits par construction.** Une fiche qui possede deja un `userId` est refusee par le script de creation de compte. |
 
@@ -399,35 +409,35 @@ npm test
 | `GUIDE-PLATEFORME.md` | Guide utilisateur complet, 12 sections |
 | `BRIEF-OPERATEURS.md` | Brief de transmission centre sur les operateurs |
 | `RESUME-PLATEFORME.md` | Ce document : inventaire et logique |
-| `src/lib/rbac/roles.ts` | Les 18 roles et leurs permissions |
-| `src/lib/rbac/permissions.ts` | Les 92 permissions et les 12 modules |
+| `src/lib/rbac/roles.ts` | Les 25 roles et leurs permissions |
+| `src/lib/rbac/permissions.ts` | Les 99 permissions et les 12 modules |
 | `src/lib/rbac/guard.ts` | Garde serveur |
 | `src/lib/auth/session.ts` | Contenu de la session (`SessionUser`) |
 | `src/components/navigation.ts` | Menu, filtrage, accueil par role |
 | `src/app/(app)/portail/page.tsx` | Le portail employe |
 | `src/app/(app)/tableau-de-bord/page.tsx` | Tableau de bord a blocs conditionnels |
-| `src/lib/import/service.ts` | Les 5 importateurs |
+| `src/lib/import/service.ts` | Les 6 importateurs (familles, articles, tiers, personnel, nomenclatures, lots) |
 | `src/lib/production/service.ts` | Logique des ordres de fabrication |
 | `src/lib/stock/service.ts` | Logique du stock |
-| `prisma/schema.prisma` | ~76 modeles |
+| `prisma/schema.prisma` | 83 modeles |
 | `prisma/seed.ts` | Referentiel, 9 depots, regle de transfert, roles |
 | `creer-comptes-bureau.cmd` | Les 9 comptes de bureau, un clic |
-| `creer-comptes-atelier.cmd` | Les 2 comptes d'atelier de test, un clic |
+| `npm run demo:purge` | Retire les donnees de demonstration / de test (audit en lecture seule ; suppression desactivee) |
 
 ---
 
 ## 13. Les decisions en attente
 
-1. **Comment faire entrer les vrais employes** — trois voies : saisie manuelle dans RH
-   vers Employes ; ecriture d'une 6e etape d'import (a confirmer, voir ci-dessus) ; ou
-   correction des deux fiches de test pour en faire les premieres fiches reelles.
-2. **Confirmer la correspondance du champ `Type` des tiers** — codes `0` et `1`, puis
-   relancer l'import avec `--maj`.
-3. **Activer `isPurchasable`, `isSellable`, `isProducible`** sur les articles
-   reellement utilises.
+1. **Confirmer la correspondance du champ `Type` des tiers** — codes `0` et `1` :
+   la nature « employe » doit etre confirmee pour que la 6e etape d'import cree les
+   fiches de personnel. Une fois confirmee, relancer l'import avec `--maj`.
+2. **Preciser l'usine des fiches de personnel importees** — elles arrivent en portee
+   `COMMUN` ; indiquez `ADMEDCO` ou `MOBILIX` avant de les affecter en atelier.
+3. **Ajuster, si besoin, les indicateurs commerciaux et industriels** — ils sont
+   deduits de la source (voir section 8) et restent modifiables article par article.
 4. **Trancher la contradiction de quantite sur `TB403010`** (0,250000 contre 1,600000),
    au statut « Ouvert » dans Nomenclature vers Ecarts.
-5. **Decider du sort des deux comptes de test** et des fiches `ACC-0001` / `ACC-0002`.
+5. **Creer les fiches employes reelles** — par l'import (6e etape) ou la saisie RH — puis rattacher chaque operateur a son compte.
 6. **Corriger, le cas echeant, les 188 lignes rejetees** — visibles une par une, avec
    leur motif.
 
@@ -437,8 +447,8 @@ npm test
 
 1. ERP + MES pour deux divisions, ADMEDCO (metal) et MOBILIX (bois et couture),
    reliees par un flux de chassis peints.
-2. 85 pages, 13 modules, 12 sections de menu et 56 entrees.
-3. 92 permissions, 12 modules de permissions, 3 portees d'usine, 18 roles.
+2. 108 pages, 13 modules, 12 sections de menu et 66 entrees.
+3. 99 permissions, 12 modules de permissions, 3 portees d'usine, 25 roles.
 4. **Un seul portail employe** (`/portail`, deux roles operateur) mais **18 accueils**,
    un par metier : il n'existe pas d'ecran commun.
 5. Le cloisonnement est verifie cote serveur a quatre niveaux, et la permission est
@@ -460,3 +470,5 @@ npm test
     nomenclatures, 704 lots) mais **aucune fiche employe reelle** et **aucun document
     metier creatable** tant que les correspondances et les indicateurs ne sont pas
     actives.
+
+> Mise a jour de securite : `demo:purge` est en lecture seule. `--executer` est refuse. Voir `ETAT-MISE-EN-SERVICE.md`.

@@ -45,6 +45,13 @@ const IMPORT_TYPES: { code: string; libelle: string; description: string; fichie
     fichiers: ["COM_ThirdParty.csv"],
   },
   {
+    code: "EMPLOYES",
+    libelle: "Fiches de personnel",
+    description:
+      "Cree une fiche employe pour chaque tiers de nature « employe ». Aucun compte utilisateur n'est cree : les acces restent nominatifs et separes.",
+    fichiers: ["COM_ThirdParty.csv"],
+  },
+  {
     code: "NOMENCLATURES",
     libelle: "Nomenclatures et composants",
     description:

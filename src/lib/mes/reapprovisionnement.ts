@@ -400,7 +400,7 @@ export async function validerProposition(
       entityId: proposition.id,
       userId: entree.acteur.id,
       userEmail: entree.acteur.email,
-      previousValue: {
+      oldValue: {
         statut: proposition.status,
         quantiteProposee: D.toFixed(proposition.proposedQuantity, 6),
       },
@@ -484,7 +484,7 @@ export async function listerPropositions(
       item: { select: { code: true, label1: true, unitCode: true } },
       warehouse: { select: { code: true, label: true, factory: true } },
       location: { select: { code: true } },
-      supplier: { select: { code: true, name: true } },
+      supplier: { select: { code: true, label1: true } },
       sourceWarehouse: { select: { code: true, label: true } },
       validatedBy: { select: { firstName: true, lastName: true } },
     },

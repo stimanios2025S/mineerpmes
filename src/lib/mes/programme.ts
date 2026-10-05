@@ -14,7 +14,7 @@ import {
   jourMetier,
   semaineIso,
 } from "@/lib/mes/jour";
-import { LIBELLE_PRIORITE, RANG_PRIORITE } from "@/lib/mes/postes";
+import { LIBELLE_PRIORITE, RANG_PRIORITE, type TacheProgrammee } from "@/lib/mes/postes";
 
 /**
  * Programme de travail des ateliers.
@@ -33,6 +33,44 @@ import { LIBELLE_PRIORITE, RANG_PRIORITE } from "@/lib/mes/postes";
 // Placement d'une tache dans une journee
 // ---------------------------------------------------------------------------
 
+/** Convertit une tache journaliere pour l affichage du composant programme. */
+export function versTacheProgrammee(tache: TacheJour): TacheProgrammee {
+  return {
+    assignmentId: tache.assignmentId,
+    workOrderOperationId: null,
+    poste: tache.poste,
+    sequenceOrder: tache.sequenceOrder,
+    priority: tache.priority,
+    libellePriorite: tache.libellePriorite,
+    rangPriorite: RANG_PRIORITE[tache.priority],
+    statut: tache.status as TacheProgrammee["statut"],
+    operationId: tache.operationId,
+    operationCode: tache.operation,
+    operationLabel: tache.operation,
+    workOrderId: tache.workOrderId,
+    workOrderNumber: tache.ordreFabrication,
+    produit: null,
+    stepNo: null,
+    quantitePrevue: tache.quantitePrevue,
+    quantiteDejaConforme: D.ZERO,
+    quantiteRestante: D.ZERO,
+    lotId: null,
+    lotCode: tache.lotCode,
+    plannedStart: tache.plannedStart,
+    plannedEnd: tache.plannedEnd,
+    dureePrevueMinutes: null,
+    posteDeControleQualite: false,
+    instructions: null,
+    sousStockId: null,
+    sousStockCode: null,
+    disponibleDansSousStock: null,
+    unite: null,
+    matieresManquantes: [],
+    branchesManquantes: [],
+    blocages: [],
+    changements: tache.changements,
+  };
+}
 export interface TacheJour {
   assignmentId: number;
   employeId: number;
@@ -468,8 +506,8 @@ export async function reviserProgramme(
     );
   }
 
-  return db.$transaction(
-    async (tx) => {
+  return prisma.$transaction(
+    async (tx: Prisma.TransactionClient) => {
       const suffixe = new Date().toISOString().slice(11, 19).replace(/:/g, "");
       const revision = await tx.workSchedule.create({
         data: {
@@ -574,8 +612,8 @@ export async function reaffecterTacheProgramme(
     throw validation("Aucun changement : la reaffectation serait sans effet.");
   }
 
-  return db.$transaction(
-    async (tx) => {
+  return prisma.$transaction(
+    async (tx: Prisma.TransactionClient) => {
       // Changer d'employe, c'est faire glisser LA MEME tache vers une autre
       // personne : l'operation, le poste et les quantites ne bougent pas. C'est
       // la difference avec la reaffectation RH, qui garde l'employe et change

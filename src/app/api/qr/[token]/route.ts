@@ -19,8 +19,12 @@ export async function GET(
     return new Response("QR not found", { status: 404 });
   }
 
-  // Build the URL
-  const baseUrl = process.env.APP_URL || "http://192.168.0.200:3000";
+  // Adresse de base : variable d'environnement si definie, sinon l'hote reel
+  // de la requete. Jamais d'adresse codee en dur.
+  const hote = request.headers.get("host") ?? "localhost:3000";
+  const protocole =
+    request.headers.get("x-forwarded-proto") ?? (hote.startsWith("localhost") ? "http" : "https");
+  const baseUrl = process.env.APP_URL?.replace(/\/+$/, "") || `${protocole}://${hote}`;
   const url = `${baseUrl}/portail/poste/${wc.qrToken}`;
 
   // Generate QR as PNG
@@ -32,7 +36,7 @@ export async function GET(
     color: { dark: "#000000", light: "#ffffff" },
   });
 
-  return new Response(buffer, {
+  return new Response(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "image/png",
       "Cache-Control": "public, max-age=86400",
