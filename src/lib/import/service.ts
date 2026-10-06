@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { ImportEntityType, ItemStatus, ItemType, Prisma } from "@prisma/client";
 import { prisma, type Db } from "@/lib/db";
-import { D } from "@/lib/decimal";
+import { D, type Decimal } from "@/lib/decimal";
 import { validation } from "@/lib/errors";
 import { prochainNumero, SEQUENCES } from "@/lib/numbering";
 import { ACTIONS_AUDIT, MODULES_AUDIT, enregistrerAudit } from "@/lib/audit";
@@ -1903,6 +1903,38 @@ const COLONNES_LOT = [
   "BlockingReason", "BlockedReservationQuantity", "LastModificationDate",
 ];
 
+/**
+ * Determine la quantite de stock importable d'une ligne COM_Batch.
+ *
+ * L'export source remplit soit "PhysicalQuantity", soit "LogicalQuantity" :
+ * sur les donnees du client "PhysicalQuantity" est vide sur 703 des 706 lignes,
+ * et le stock reel figure dans "LogicalQuantity". Lire une seule des deux
+ * colonnes aboutissait a un stock nul partout, donc a une plateforme sans
+ * matiere disponible alors que la source porte bien le stock.
+ *
+ * Regle retenue, sans devinette silencieuse :
+ *   1. "PhysicalQuantity" des qu'elle porte une valeur exploitable ;
+ *   2. sinon "LogicalQuantity" (repli documente, compte et signale au rapport).
+ *
+ * Un "0" explicite et une case vide ne sont pas equivalents : un 0 declare reste
+ * un zero, il n'est jamais remplace par le repli.
+ */
+function resoudreQuantiteImportee(valeurs: Record<string, string>): {
+  quantite: Decimal;
+  champSource: "PhysicalQuantity" | "LogicalQuantity";
+  repli: boolean;
+} {
+  const physique = decimal(valeurs.PhysicalQuantity);
+  if (physique !== null) {
+    return { quantite: physique, champSource: "PhysicalQuantity", repli: false };
+  }
+  const logique = decimal(valeurs.LogicalQuantity);
+  if (logique !== null) {
+    return { quantite: logique, champSource: "LogicalQuantity", repli: true };
+  }
+  return { quantite: D.ZERO, champSource: "PhysicalQuantity", repli: false };
+}
+
 export interface ResultatImportStock extends ResultatImport {
   entreesCreees: number;
   correctionsAppliquees: number;
@@ -1943,6 +1975,7 @@ export async function importerLotsEtStocks(
   const messages: string[] = [];
   let entreesCreees = 0;
   let correctionsAppliquees = 0;
+  let lotsImportsDepuisLogical = 0;
 
   const articlesParOid = new Map(
     (
@@ -1989,7 +2022,9 @@ export async function importerLotsEtStocks(
         continue;
       }
 
-      const quantitePhysique = decimal(ligne.valeurs.PhysicalQuantity) ?? D.ZERO;
+      const quantiteResolue = resoudreQuantiteImportee(ligne.valeurs);
+      const quantitePhysique = quantiteResolue.quantite;
+      if (quantiteResolue.repli) lotsImportsDepuisLogical += 1;
       const quantiteReservee = decimal(ligne.valeurs.ReservedQuantity) ?? D.ZERO;
       const quantiteBloquee = decimal(ligne.valeurs.Blocked) ?? D.ZERO;
       const quantiteDetérioree = decimal(ligne.valeurs.DamagedQuantity) ?? D.ZERO;
@@ -2146,7 +2181,7 @@ export async function importerLotsEtStocks(
                   ligne,
                   `Ecart d'import sur le lot ${numeroLot} : ${D.toFixed(ecart, 6)} (mouvement de correction cree).`,
                   "MIS_A_JOUR",
-                  "PhysicalQuantity",
+                  quantiteResolue.champSource,
                 );
               }
               suivi.compteurs.misesAJour += 1;
@@ -2191,6 +2226,15 @@ export async function importerLotsEtStocks(
           `Lot ${texte(ligne.valeurs.BatchNum) ?? oid} : ${erreur instanceof Error ? erreur.message : String(erreur)}`,
         );
       }
+    }
+
+    if (lotsImportsDepuisLogical > 0) {
+      suivi.avertir(
+        `${lotsImportsDepuisLogical} lot(s) importe(s) depuis la colonne « LogicalQuantity » : ` +
+          `« PhysicalQuantity » est vide ou absente dans ${contexte.nomFichier}. ` +
+          "Le stock provient donc de la quantite logique. Confirmez que cette colonne " +
+          "represente bien le stock physique de l'ancien ERP avant d'exploiter ces soldes.",
+      );
     }
 
     // Controle final : la somme du grand livre doit correspondre aux soldes.
