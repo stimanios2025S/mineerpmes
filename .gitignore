@@ -44,6 +44,9 @@ prisma/migrations/**/migration_lock.toml.bak
 # deployment logs
 /logs
 
+# Sauvegardes de base (jamais versionnees : volumineuses et sensibles)
+/backups
+
 # QR codes generes (artefacts d'impression, regeneres depuis la base)
 /qr-codes
 

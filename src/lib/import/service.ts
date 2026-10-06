@@ -2152,8 +2152,14 @@ export async function importerLotsEtStocks(
               suivi.compteurs.inserees += 1;
             } else {
               // Re-import : seul l'ecart constate produit un mouvement trace.
-              const ancienne = D.of(dejaImporte);
-              const ecart = D.sub(quantitePhysique, ancienne);
+              //
+              // La comparaison se fait a la precision de stockage de la base
+              // (6 decimales). L'export source porte des artefacts flottants
+              // (« 0.4400000000000013 » pour 0,44) : comparer la valeur brute
+              // produisait un ecart infinitesimal, donc un mouvement de
+              // correction arrondi a zero, sans aucun effet sur le stock.
+              const ancienne = D.round(D.of(dejaImporte), 6);
+              const ecart = D.sub(D.round(quantitePhysique, 6), ancienne);
 
               if (!ecart.isZero()) {
                 await enregistrerMouvement(tx, {
