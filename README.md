@@ -132,7 +132,14 @@ npm run verify           # typecheck + tests
 npm run db:seed          # référentiel + rôles (idempotent)
 npm run db:studio        # explorateur de base
 npm run production:audit # audit en lecture seule, aucune suppression
+npm run backup           # sauvegarde vérifiée de la base (backups/)
+npm run restore -- --fichier=backups/....dump [--base=essai] [--confirmer]
+                         # restauration : simulation par défaut, --confirmer pour agir
 ```
+
+> **Sauvegardez après chaque import de données réelles.** `npm run backup` vérifie
+> l'archive avec `pg_restore` avant de la conserver, et `--dossier=` écrit sur un
+> disque externe. Détail et dépannage : `GUIDE-PLATEFORME.md` §12.
 
 ## Où sont les fichiers importants
 

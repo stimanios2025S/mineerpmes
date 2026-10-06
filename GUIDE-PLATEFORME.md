@@ -691,6 +691,27 @@ source, ou saisissez les lignes concernées à la main.
 
 ## 11. Dépannage
 
+### « pg_dump a échoué » ou « PostgreSQL introuvable » (sauvegarde)
+
+**Cause** : le conteneur qui porte la base n'est pas démarré. Le script de
+sauvegarde le détecte automatiquement ; sans lui, il cherche une installation
+PostgreSQL locale.
+
+```bash
+docker start erpmes-postgres
+npm run backup
+```
+
+Si l'archive est signalée « illisible », c'est que `pg_dump` n'a pas pu lire la
+base : le script supprime alors l'archive plutôt que de laisser croire qu'une
+sauvegarde existe. Corrigez la cause et relancez.
+
+### « L'archive est illisible ou corrompue » (restauration)
+
+Le fichier a été tronqué (copie interrompue, disque plein). **Aucune commande
+n'est exécutée** : la base n'est pas touchée. Utilisez une autre archive de
+`backups/`.
+
 ### « La base de données n'est pas joignable »
 
 **Cause** : PostgreSQL n'est pas démarré. C'est de très loin l'erreur la plus
@@ -874,11 +895,44 @@ npm run import:csv -- --executer                  # import réel
 npm run import:csv -- --executer --maj            # import réel + mise à jour
 npm run import:all
 
+# --- Sauvegarde et restauration ---
+npm run backup                                   # sauvegarde vérifiée dans backups/
+npm run backup -- --dossier=D:/sauvegardes       # sur un disque externe (recommandé)
+npm run backup -- --garder=30                    # ne garde que les 30 plus récentes
+npm run restore -- --fichier=backups/erpmes-....dump
+                                                 # simulation : affiche ce qui serait fait
+npm run restore -- --fichier=... --base=erpmes_essai --confirmer
+                                                 # restaure dans une base d'essai (sûr)
+npm run restore -- --fichier=... --confirmer     # restaure la base applicative
+
 # --- Vérification ---
 npm run typecheck              # TypeScript
 npm test                       # suite de tests (exige PostgreSQL)
 npm run verify                 # typecheck + tests
 ```
+
+### Sauvegardes
+
+`npm run backup` écrit une archive au format `pg_dump` compressé dans `backups/`,
+puis la **relit avec `pg_restore`** : une archive illisible est supprimée, jamais
+conservée. Une sauvegarde non vérifiée n'est pas une sauvegarde.
+
+**Faites une sauvegarde après chaque import de données réelles**, et avant toute
+opération sensible (migration, correction de masse, changement de configuration).
+
+**Testez une restauration au moins une fois** avant la mise en service réelle,
+dans une base séparée pour ne pas toucher aux données :
+
+```bash
+npm run restore -- --fichier=backups/erpmes-2026-10-07T00-35-26.dump --base=erpmes_essai --confirmer
+```
+
+⚠️ Une sauvegarde sur le même disque que la base ne protège pas d'une panne de
+disque. Utilisez `--dossier=` vers un disque externe ou un partage réseau, et
+automatisez-le (Planificateur de tâches Windows, cron) — le script est prévu
+pour être appelé sans interaction.
+
+Le dossier `backups/` est ignoré par git : les archives ne sont jamais versionnées.
 
 ---
 
