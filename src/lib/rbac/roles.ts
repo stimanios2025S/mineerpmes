@@ -122,22 +122,32 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
   {
     code: "PROPRIETAIRE_ADMEDCO",
     label: "Proprietaire ADMEDCO",
-    description: "Consultation du pilotage, de la production et des stocks de ADMEDCO uniquement. La Direction generale supervise les deux usines.",
+    description: "Consultation du pilotage, de la production et des stocks de ADMEDCO uniquement. Peut creer les produits de sa division. La Direction generale supervise les deux usines.",
     factoryScope: "ADMEDCO",
     sortOrder: 4,
     permissions: [
       ...LECTURES_PROPRIETAIRE,
+      // Creation de produit : article, chaine de fabrication et nomenclature.
+      // Portee bornee a ADMEDCO cote serveur (exigerPermissionEtUsine).
+      P.ARTICLE_ECRIRE,
+      P.NOMENCLATURE_ECRIRE,
+      P.GAMME_GERER,
       S.PORTEE_ADMEDCO,
     ],
   },
   {
     code: "PROPRIETAIRE_MOBILIX",
     label: "Proprietaire MOBILIX",
-    description: "Consultation du pilotage, de la production et des stocks de MOBILIX uniquement. La Direction generale supervise les deux usines.",
+    description: "Consultation du pilotage, de la production et des stocks de MOBILIX uniquement. Peut creer les produits de sa division. La Direction generale supervise les deux usines.",
     factoryScope: "MOBILIX",
     sortOrder: 5,
     permissions: [
       ...LECTURES_PROPRIETAIRE,
+      // Creation de produit : article, chaine de fabrication et nomenclature.
+      // Portee bornee a MOBILIX cote serveur (exigerPermissionEtUsine).
+      P.ARTICLE_ECRIRE,
+      P.NOMENCLATURE_ECRIRE,
+      P.GAMME_GERER,
       S.PORTEE_MOBILIX,
     ],
   },

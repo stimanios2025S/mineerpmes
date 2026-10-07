@@ -264,6 +264,12 @@ export const NAVIGATION: SectionNavigation[] = [
         permission: PERMISSIONS.PRODUCTION_LIRE,
       },
       {
+        chemin: "/production/nouveau-produit",
+        libelle: "Nouveau produit",
+        permission: PERMISSIONS.NOMENCLATURE_ECRIRE,
+        description: "Nom, chaine de fabrication et nomenclature en une operation",
+      },
+      {
         chemin: "/production/kanban",
         libelle: "Kanban atelier",
         permission: PERMISSIONS.PRODUCTION_LIRE,
