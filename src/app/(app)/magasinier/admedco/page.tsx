@@ -20,7 +20,6 @@ export default async function PageMagasinierAdmedco() {
         materials: {
           where: { isLabor: false },
           include: { componentItem: { select: { code: true, label1: true } } },
-          select: { quantityPlanned: true, quantityIssued: true, quantityConsumed: true, componentItemId: true },
         },
       },
       orderBy: { createdAt: "desc" },

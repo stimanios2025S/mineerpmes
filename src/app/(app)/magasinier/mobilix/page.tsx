@@ -19,7 +19,6 @@ export default async function PageMagasinierMobilix() {
         materials: {
           where: { isLabor: false },
           include: { componentItem: { select: { code: true, label1: true } } },
-          select: { quantityPlanned: true, quantityIssued: true, quantityConsumed: true },
         },
       },
       orderBy: { createdAt: "desc" },
