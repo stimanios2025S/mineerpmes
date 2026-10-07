@@ -1,7 +1,7 @@
 import { peutAccederUsine, usinesAutorisees } from "./portee";
 export { peutAccederUsine, usinesAutorisees } from "./portee";
 import type { Factory } from "@prisma/client";
-import { accesRefuse, nonAuthentifie } from "@/lib/errors";
+import { forbidden, unauthorized } from "next/navigation";
 import {
   chargerUtilisateurCourant,
   type SessionUser,
@@ -18,9 +18,24 @@ export async function utilisateurCourant(): Promise<SessionUser | null> {
   return chargerUtilisateurCourant();
 }
 
+/**
+ * Refuse l'acces courant.
+ *
+ * Le motif part dans le journal serveur, car Next.js masque les messages
+ * d'erreur en production. `forbidden()` interrompt ensuite le rendu et
+ * Next.js affiche src/app/forbidden.tsx avec un vrai code HTTP 403.
+ *
+ * Ne jamais entourer cet appel d'un `try/catch` : l'interruption serait avalee
+ * et aucune page 403 ne s'afficherait.
+ */
+function refuser(motif: string): never {
+  console.warn(`[rbac] acces refuse : ${motif}`);
+  forbidden();
+}
+
 export async function exigerUtilisateur(): Promise<SessionUser> {
   const utilisateur = await chargerUtilisateurCourant();
-  if (!utilisateur) throw nonAuthentifie();
+  if (!utilisateur) unauthorized();
   return utilisateur;
 }
 
@@ -45,9 +60,7 @@ export function aAuMoinsUnePermission(
 export async function exigerPermission(permission: string): Promise<SessionUser> {
   const utilisateur = await exigerUtilisateur();
   if (!aLaPermission(utilisateur, permission)) {
-    throw accesRefuse(
-      `Droits insuffisants : la permission « ${libellePermission(permission)} » est requise.`,
-    );
+    refuser(`la permission « ${libellePermission(permission)} » est requise.`);
   }
   return utilisateur;
 }
@@ -58,8 +71,8 @@ export async function exigerToutesLesPermissions(
   const utilisateur = await exigerUtilisateur();
   const manquantes = permissions.filter((p) => !utilisateur.permissions.includes(p));
   if (manquantes.length > 0) {
-    throw accesRefuse(
-      `Droits insuffisants : permissions requises manquantes (${manquantes
+    refuser(
+      `permissions requises manquantes (${manquantes
         .map(libellePermission)
         .join(", ")}).`,
     );
@@ -72,8 +85,8 @@ export async function exigerAuMoinsUnePermission(
 ): Promise<SessionUser> {
   const utilisateur = await exigerUtilisateur();
   if (!aAuMoinsUnePermission(utilisateur, permissions)) {
-    throw accesRefuse(
-      `Droits insuffisants : l'une des permissions suivantes est requise (${permissions
+    refuser(
+      `l'une des permissions suivantes est requise (${permissions
         .map(libellePermission)
         .join(", ")}).`,
     );
@@ -89,8 +102,8 @@ export async function exigerAuMoinsUnePermission(
 export async function exigerAccesUsine(usine: Factory): Promise<SessionUser> {
   const utilisateur = await exigerUtilisateur();
   if (!peutAccederUsine(utilisateur, usine)) {
-    throw accesRefuse(
-      `Votre profil ne vous autorise pas a intervenir sur la division ${libelleUsine(usine)}.`,
+    refuser(
+      `votre profil ne vous autorise pas a intervenir sur la division ${libelleUsine(usine)}.`,
     );
   }
   return utilisateur;
@@ -102,8 +115,8 @@ export async function exigerPermissionEtUsine(
 ): Promise<SessionUser> {
   const utilisateur = await exigerPermission(permission);
   if (!peutAccederUsine(utilisateur, usine)) {
-    throw accesRefuse(
-      `Votre profil ne vous autorise pas a intervenir sur la division ${libelleUsine(usine)}.`,
+    refuser(
+      `votre profil ne vous autorise pas a intervenir sur la division ${libelleUsine(usine)}.`,
     );
   }
   return utilisateur;
