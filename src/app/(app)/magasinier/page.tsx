@@ -1,5 +1,6 @@
-﻿import { prisma } from "@/lib/db";
-import { exigerPermission } from "@/lib/rbac/guard";
+import { redirect } from "next/navigation";
+import { prisma } from "@/lib/db";
+import { exigerPermission, usinesAutorisees } from "@/lib/rbac/guard";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
 import { EnTetePage, Carte, Etiquette, Tableau, Vide } from "@/components/ui";
 import { formatDate, formatQuantite } from "@/lib/format";
@@ -10,9 +11,12 @@ export const metadata = { title: "Magasinier Central" };
 export default async function PageMagasinier() {
   const utilisateur = await exigerPermission(PERMISSIONS.STOCK_LIRE);
 
-  // Tous les OF des DEUX usines
+  const usines = usinesAutorisees(utilisateur).filter((usine) => usine !== "COMMUN");
+  if (usines.length === 1) redirect(`/magasinier/${usines[0].toLowerCase()}`);
+
+  // Tous les OF autorises par le perimetre du compte
   const ordres = await prisma.workOrder.findMany({
-    where: { status: { in: ["LANCE", "EN_COURS"] } },
+    where: { factory: { in: usinesAutorisees(utilisateur) }, status: { in: ["LANCE", "EN_COURS"] } },
     include: {
       item: { select: { code: true, label1: true } },
       materials: {

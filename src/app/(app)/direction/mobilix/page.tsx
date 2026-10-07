@@ -1,5 +1,5 @@
-﻿import { prisma } from "@/lib/db";
-import { exigerPermission } from "@/lib/rbac/guard";
+import { prisma } from "@/lib/db";
+import { exigerPageUsine } from "@/lib/rbac/pages";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
 import { EnTetePage, Carte, Etiquette, Statistique, Tableau, Vide } from "@/components/ui";
 import { formatDate, formatQuantite } from "@/lib/format";
@@ -9,7 +9,7 @@ import Link from "next/link";
 export const metadata = { title: "Direction MOBILIX" };
 
 export default async function PageDirectionMobilix() {
-  await exigerPermission(PERMISSIONS.TABLEAU_BORD_LIRE);
+  await exigerPageUsine(PERMISSIONS.TABLEAU_BORD_LIRE, "MOBILIX");
 
   const [ordres, employes, stockAlertes, scansJour, chassisesAttente] = await Promise.all([
     prisma.workOrder.findMany({

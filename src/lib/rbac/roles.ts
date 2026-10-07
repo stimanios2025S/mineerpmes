@@ -66,6 +66,13 @@ const LECTURES_INDUSTRIELLES: string[] = [
 
 const LECTURES_SCOPE_TOUTES_USINES: string[] = [S.PORTEE_TOUTES_USINES];
 
+/** Proprietaires : consultation de leur usine, sans acces aux autres divisions. */
+const LECTURES_PROPRIETAIRE = [
+  P.TABLEAU_BORD_LIRE, P.TABLEAU_BORD_PRODUCTION,
+  P.PRODUCTION_LIRE, P.PRODUCTION_PLANNING_LIRE, P.PRODUCTION_SOUS_STOCK_LIRE,
+  P.STOCK_LIRE, P.STOCK_VALORISATION_LIRE, P.ARTICLE_LIRE,
+];
+
 export const ROLE_DEFINITIONS: RoleDefinition[] = [
   {
     code: "ADMIN_SYSTEME",
@@ -81,7 +88,7 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
   },
   {
     code: "DIRECTION",
-    label: "Proprietaire / Direction",
+    label: "Direction generale",
     description:
       "Vision complete des deux usines et validation des engagements : consultations, decisions de qualite, reglements et evaluations. Aucune administration technique du systeme.",
     factoryScope: "COMMUN",
@@ -110,6 +117,28 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
       P.AUDIT_LIRE,
       P.IMPORT_LIRE,
       ...LECTURES_SCOPE_TOUTES_USINES,
+    ],
+  },
+  {
+    code: "PROPRIETAIRE_ADMEDCO",
+    label: "Proprietaire ADMEDCO",
+    description: "Consultation du pilotage, de la production et des stocks de ADMEDCO uniquement. La Direction generale supervise les deux usines.",
+    factoryScope: "ADMEDCO",
+    sortOrder: 4,
+    permissions: [
+      ...LECTURES_PROPRIETAIRE,
+      S.PORTEE_ADMEDCO,
+    ],
+  },
+  {
+    code: "PROPRIETAIRE_MOBILIX",
+    label: "Proprietaire MOBILIX",
+    description: "Consultation du pilotage, de la production et des stocks de MOBILIX uniquement. La Direction generale supervise les deux usines.",
+    factoryScope: "MOBILIX",
+    sortOrder: 5,
+    permissions: [
+      ...LECTURES_PROPRIETAIRE,
+      S.PORTEE_MOBILIX,
     ],
   },
   {

@@ -60,6 +60,19 @@ restent sans accents (contrainte des consoles Windows).
 Chaque rôle a son **profil de menu** (`PROFIL_MENU` dans
 `src/components/navigation.ts`) : il ne voit que les sections qui le concernent.
 
+## Proprietaires et Direction generale
+
+- `PROPRIETAIRE_ADMEDCO` : consultation du pilotage, des articles, de la production
+  et des stocks ADMEDCO seulement ; accueil `/direction/admedco`.
+- `PROPRIETAIRE_MOBILIX` : meme consultation, limitee a MOBILIX ; accueil `/direction/mobilix`.
+- `DIRECTION` : Direction generale, supervision des deux usines.
+- `ADMIN_SYSTEME` conserve son acces technique global.
+
+Les droits sont verifies cote serveur, y compris sur une URL saisie directement.
+Les proprietaires n'ont aucun droit d'ecriture, de gestion des comptes ou de
+consultation des donnees transversales. Les responsables operationnels gardent
+leurs roles existants. Le role de Direction n'est jamais attribue a un proprietaire.
+
 ## Cloisonnement
 
 Quatre niveaux, tous vérifiés **côté serveur** :

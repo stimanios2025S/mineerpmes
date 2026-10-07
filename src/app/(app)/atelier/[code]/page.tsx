@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma as p } from "@/lib/db";
-import { exigerPermission } from "@/lib/rbac/guard";
+import { exigerPermission, usinesAutorisees } from "@/lib/rbac/guard";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
 import { EnTetePage, Carte, Etiquette, Statistique, Tableau, Vide } from "@/components/ui";
 import { formatDate, formatQuantite } from "@/lib/format";
@@ -14,11 +14,11 @@ export default async function PageAtelier({
 }: {
   params: Promise<{ code: string }>;
 }) {
-  await exigerPermission(PERMISSIONS.TABLEAU_BORD_PRODUCTION);
+  const utilisateur = await exigerPermission(PERMISSIONS.TABLEAU_BORD_PRODUCTION);
   const { code } = await params;
 
   const workshop = await p.workshop.findFirst({
-    where: { code },
+    where: { code, factory: { in: usinesAutorisees(utilisateur) } },
     include: { workCenters: { select: { id: true, code: true, label: true } } },
   });
 

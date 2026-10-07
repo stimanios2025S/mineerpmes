@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { exigerPermission } from "@/lib/rbac/guard";
+import { exigerPermission, usinesAutorisees } from "@/lib/rbac/guard";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
 import { EnTetePage, Etiquette } from "@/components/ui";
 import { formatDate, formatQuantite } from "@/lib/format";
@@ -14,13 +14,13 @@ export default async function PageBCI({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await exigerPermission(PERMISSIONS.STOCK_LIRE);
+  const utilisateur = await exigerPermission(PERMISSIONS.STOCK_LIRE);
   const { id } = await params;
   const workOrderId = Number(id);
   if (isNaN(workOrderId)) notFound();
 
-  const of = await prisma.workOrder.findUnique({
-    where: { id: workOrderId },
+  const of = await prisma.workOrder.findFirst({
+    where: { id: workOrderId, factory: { in: usinesAutorisees(utilisateur) } },
     include: {
       item: true,
       materials: {

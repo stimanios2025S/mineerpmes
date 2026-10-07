@@ -1,3 +1,5 @@
+import type { Factory } from "@prisma/client";
+import { peutAccederUsine } from "@/lib/rbac/portee";
 import type { SessionUser } from "@/lib/auth/session";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
 
@@ -16,6 +18,7 @@ import { PERMISSIONS } from "@/lib/rbac/permissions";
 
 export interface EntreeNavigation {
   chemin: string;
+  usine?: Factory;
   libelle: string;
   /** Permission unique requise. */
   permission?: string;
@@ -45,12 +48,14 @@ export const NAVIGATION: SectionNavigation[] = [
       },
       {
         chemin: "/direction/admedco",
+        usine: "ADMEDCO",
         libelle: "Direction ADMEDCO",
         permission: PERMISSIONS.TABLEAU_BORD_LIRE,
         description: "Pilotage de la division metallurgie",
       },
       {
         chemin: "/direction/mobilix",
+        usine: "MOBILIX",
         libelle: "Direction MOBILIX",
         permission: PERMISSIONS.TABLEAU_BORD_LIRE,
         description: "Pilotage de la division bois et garnissage",
@@ -78,30 +83,35 @@ export const NAVIGATION: SectionNavigation[] = [
     entrees: [
       {
         chemin: "/atelier/ADM-A01",
+        usine: "ADMEDCO",
         libelle: "ADMEDCO A01 - Coupe avec centrage",
         permission: PERMISSIONS.TABLEAU_BORD_PRODUCTION,
         rolesVisibles: ["ADMIN_SYSTEME", "RESPONSABLE_USINE", "RESPONSABLE_ADMEDCO", "RESPONSABLE_PRODUCTION", "CHEF_ADM_A01"],
       },
       {
         chemin: "/atelier/ADM-A02",
+        usine: "ADMEDCO",
         libelle: "ADMEDCO A02 - Coupe sans centrage",
         permission: PERMISSIONS.TABLEAU_BORD_PRODUCTION,
         rolesVisibles: ["ADMIN_SYSTEME", "RESPONSABLE_USINE", "RESPONSABLE_ADMEDCO", "RESPONSABLE_PRODUCTION", "CHEF_ADM_A02"],
       },
       {
         chemin: "/atelier/ADM-A03",
+        usine: "ADMEDCO",
         libelle: "ADMEDCO A03 - Poudrage et emballage",
         permission: PERMISSIONS.TABLEAU_BORD_PRODUCTION,
         rolesVisibles: ["ADMIN_SYSTEME", "RESPONSABLE_USINE", "RESPONSABLE_ADMEDCO", "RESPONSABLE_PRODUCTION", "CHEF_ADM_A03"],
       },
       {
         chemin: "/atelier/MBX-A01",
+        usine: "MOBILIX",
         libelle: "MOBILIX A01 - Decoupe bois",
         permission: PERMISSIONS.TABLEAU_BORD_PRODUCTION,
         rolesVisibles: ["ADMIN_SYSTEME", "RESPONSABLE_USINE", "RESPONSABLE_MOBILIX", "RESPONSABLE_PRODUCTION", "CHEF_MBX_A01"],
       },
       {
         chemin: "/atelier/MBX-A02",
+        usine: "MOBILIX",
         libelle: "MOBILIX A02 - Tapissage",
         permission: PERMISSIONS.TABLEAU_BORD_PRODUCTION,
         rolesVisibles: ["ADMIN_SYSTEME", "RESPONSABLE_USINE", "RESPONSABLE_MOBILIX", "RESPONSABLE_PRODUCTION", "CHEF_MBX_A02"],
@@ -126,12 +136,14 @@ export const NAVIGATION: SectionNavigation[] = [
       },
       {
         chemin: "/portail/admedco",
+        usine: "ADMEDCO",
         libelle: "Portail ADMEDCO",
         permission: PERMISSIONS.PORTAIL_EMPLOYE,
         rolesVisibles: ["ADMIN_SYSTEME", "OPERATEUR_ADMEDCO"],
       },
       {
         chemin: "/portail/mobilix",
+        usine: "MOBILIX",
         libelle: "Portail MOBILIX",
         permission: PERMISSIONS.PORTAIL_EMPLOYE,
         rolesVisibles: ["ADMIN_SYSTEME", "OPERATEUR_MOBILIX"],
@@ -222,12 +234,14 @@ export const NAVIGATION: SectionNavigation[] = [
       },
       {
         chemin: "/magasinier/admedco",
+        usine: "ADMEDCO",
         libelle: "Magasinier ADMEDCO",
         permission: PERMISSIONS.STOCK_LIRE,
         description: "Stocks et BCI de la division ADMEDCO",
       },
       {
         chemin: "/magasinier/mobilix",
+        usine: "MOBILIX",
         libelle: "Magasinier MOBILIX",
         permission: PERMISSIONS.STOCK_LIRE,
         description: "Stocks et BCI de la division MOBILIX",
@@ -474,6 +488,8 @@ const TOUT = ["pilotage", "ateliers", "portail", "referentiel", "nomenclature", 
 
 export const PROFIL_MENU: Record<string, string[]> = {
   ADMIN_SYSTEME: TOUT,
+  PROPRIETAIRE_ADMEDCO: ["pilotage", "referentiel", "stock", "production"],
+  PROPRIETAIRE_MOBILIX: ["pilotage", "referentiel", "stock", "production"],
 
   DIRECTION: [
     "pilotage", "referentiel", "nomenclature", "stock", "production",
@@ -539,6 +555,8 @@ export function entreeAutorisee(
   utilisateur: SessionUser,
   entree: EntreeNavigation,
 ): boolean {
+  if (entree.usine && !peutAccederUsine(utilisateur, entree.usine)) return false;
+
   if (entree.rolesVisibles && entree.rolesVisibles.length > 0) {
     const codes = utilisateur.roles.map((role) => role.code);
     if (!codes.some((code) => entree.rolesVisibles!.includes(code))) return false;
@@ -586,6 +604,8 @@ export function navigationAutorisee(utilisateur: SessionUser): SectionNavigation
  */
 const ACCUEIL_PAR_ROLE: Record<string, string> = {
   ADMIN_SYSTEME: "/tableau-de-bord",
+  PROPRIETAIRE_ADMEDCO: "/direction/admedco",
+  PROPRIETAIRE_MOBILIX: "/direction/mobilix",
   DIRECTION: "/tableau-de-bord",
   RESPONSABLE_USINE: "/tableau-de-bord/production",
   RESPONSABLE_ADMEDCO: "/direction/admedco",

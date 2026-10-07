@@ -1,5 +1,5 @@
-﻿import { prisma } from "@/lib/db";
-import { exigerPermission } from "@/lib/rbac/guard";
+import { prisma } from "@/lib/db";
+import { exigerPageUsine } from "@/lib/rbac/pages";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
 import { EnTetePage, Carte, Etiquette, Statistique, Tableau, Vide } from "@/components/ui";
 import { formatDate, formatQuantite } from "@/lib/format";
@@ -9,7 +9,7 @@ import Link from "next/link";
 export const metadata = { title: "Direction ADMEDCO" };
 
 export default async function PageDirectionAdmedco() {
-  await exigerPermission(PERMISSIONS.TABLEAU_BORD_LIRE);
+  await exigerPageUsine(PERMISSIONS.TABLEAU_BORD_LIRE, "ADMEDCO");
 
   // ADMEDCO data only
   const [ordres, employes, stockAlertes, scansJour] = await Promise.all([

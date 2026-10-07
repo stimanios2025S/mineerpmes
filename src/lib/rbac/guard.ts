@@ -1,3 +1,5 @@
+import { peutAccederUsine, usinesAutorisees } from "./portee";
+export { peutAccederUsine, usinesAutorisees } from "./portee";
 import type { Factory } from "@prisma/client";
 import { accesRefuse, nonAuthentifie } from "@/lib/errors";
 import {
@@ -83,13 +85,6 @@ export async function exigerAuMoinsUnePermission(
  * Verifie que l'utilisateur a le droit d'agir sur la division demandee.
  * Un operateur ADMEDCO ne peut pas agir sur MOBILIX, et inversement.
  */
-export function peutAccederUsine(utilisateur: SessionUser, usine: Factory): boolean {
-  if (usine === "COMMUN") return true;
-  if (utilisateur.scope.allFactories) return true;
-  if (usine === "ADMEDCO") return utilisateur.scope.admedco;
-  if (usine === "MOBILIX") return utilisateur.scope.mobilix;
-  return false;
-}
 
 export async function exigerAccesUsine(usine: Factory): Promise<SessionUser> {
   const utilisateur = await exigerUtilisateur();
@@ -115,13 +110,6 @@ export async function exigerPermissionEtUsine(
 }
 
 /** Filtre les usines visibles pour construire des requetes bornees. */
-export function usinesAutorisees(utilisateur: SessionUser): Factory[] {
-  if (utilisateur.scope.allFactories) return ["ADMEDCO", "MOBILIX", "COMMUN"];
-  const usines: Factory[] = ["COMMUN"];
-  if (utilisateur.scope.admedco) usines.push("ADMEDCO");
-  if (utilisateur.scope.mobilix) usines.push("MOBILIX");
-  return usines;
-}
 
 /** Restriction de portee a appliquer dans les clauses `where` Prisma. */
 export function filtreUsine(
