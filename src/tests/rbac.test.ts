@@ -60,6 +60,20 @@ vi.mock("next/headers", async () => {
   };
 });
 
+/**
+ * Next.js n'injecte le drapeau `authInterrupts` qu'au moment du build (voir
+ * `experimental.authInterrupts` dans next.config.ts). Les tests unitaires ne
+ * passent pas par ce build : sans le drapeau, `forbidden()` et `unauthorized()`
+ * levent l'erreur « experimental » sans digest au lieu de l'interruption
+ * attendue. On le pose donc explicitement, pour verifier le comportement reel
+ * de production, a savoir une interruption 403 / 401.
+ */
+process.env.__NEXT_EXPERIMENTAL_AUTH_INTERRUPTS = "true";
+
+/** Interruption levee par Next.js pour un refus d'acces. */
+const INTERRUPTION_403 = { digest: "NEXT_HTTP_ERROR_FALLBACK;403" };
+const INTERRUPTION_401 = { digest: "NEXT_HTTP_ERROR_FALLBACK;401" };
+
 const PREFIXE = jeton("TRBC");
 const utilisateursCrees: number[] = [];
 let codeRole: string | null = null;
@@ -265,13 +279,10 @@ describe("Controles serveur et cloisonnement", () => {
     viderBocal();
 
     expect(await chargerUtilisateurCourant()).toBeNull();
-    await expect(exigerUtilisateur()).rejects.toMatchObject({
-      code: "NON_AUTHENTIFIE",
-      httpStatus: 401,
-    });
-    await expect(exigerPermission(PERMISSIONS.STOCK_LIRE)).rejects.toMatchObject({
-      code: "NON_AUTHENTIFIE",
-    });
+    await expect(exigerUtilisateur()).rejects.toMatchObject(INTERRUPTION_401);
+    await expect(exigerPermission(PERMISSIONS.STOCK_LIRE)).rejects.toMatchObject(
+      INTERRUPTION_401,
+    );
   });
 
   it("charge les permissions depuis le role reel de l'utilisateur", async () => {
@@ -300,13 +311,10 @@ describe("Controles serveur et cloisonnement", () => {
     const utilisateur = await exigerPermission(PERMISSIONS.PRODUCTION_DECLARER);
     expect(peutAccederUsine(utilisateur, "ADMEDCO")).toBe(true);
 
-    await expect(exigerAccesUsine("MOBILIX")).rejects.toMatchObject({
-      code: "ACCES_REFUSE",
-      httpStatus: 403,
-    });
+    await expect(exigerAccesUsine("MOBILIX")).rejects.toMatchObject(INTERRUPTION_403);
     await expect(
       exigerPermissionEtUsine(PERMISSIONS.PRODUCTION_DECLARER, "MOBILIX"),
-    ).rejects.toMatchObject({ code: "ACCES_REFUSE" });
+    ).rejects.toMatchObject(INTERRUPTION_403);
     await expect(
       exigerPermissionEtUsine(PERMISSIONS.PRODUCTION_DECLARER, "ADMEDCO"),
     ).resolves.toMatchObject({ id: userId });
@@ -320,14 +328,13 @@ describe("Controles serveur et cloisonnement", () => {
     expect(aLaPermission(utilisateur, PERMISSIONS.RH_SALAIRE_LIRE)).toBe(false);
     expect(aLaPermission(utilisateur, PERMISSIONS.STOCK_CORRECTION)).toBe(false);
 
-    await expect(exigerPermission(PERMISSIONS.RH_SALAIRE_LIRE)).rejects.toMatchObject({
-      code: "ACCES_REFUSE",
-      httpStatus: 403,
-    });
-    await expect(exigerPermission(PERMISSIONS.STOCK_CORRECTION)).rejects.toMatchObject({
-      code: "ACCES_REFUSE",
-    });
-    await expect(exigerAccesUsine("ADMEDCO")).rejects.toMatchObject({ code: "ACCES_REFUSE" });
+    await expect(exigerPermission(PERMISSIONS.RH_SALAIRE_LIRE)).rejects.toMatchObject(
+      INTERRUPTION_403,
+    );
+    await expect(exigerPermission(PERMISSIONS.STOCK_CORRECTION)).rejects.toMatchObject(
+      INTERRUPTION_403,
+    );
+    await expect(exigerAccesUsine("ADMEDCO")).rejects.toMatchObject(INTERRUPTION_403);
   });
 
   it("n'accorde rien a un compte sans role", async () => {
@@ -338,9 +345,9 @@ describe("Controles serveur et cloisonnement", () => {
     expect(utilisateur.permissions).toEqual([]);
     expect(usinesAutorisees(utilisateur)).toEqual(["COMMUN"]);
 
-    await expect(exigerPermission(PERMISSIONS.TABLEAU_BORD_LIRE)).rejects.toMatchObject({
-      code: "ACCES_REFUSE",
-    });
+    await expect(exigerPermission(PERMISSIONS.TABLEAU_BORD_LIRE)).rejects.toMatchObject(
+      INTERRUPTION_403,
+    );
   });
 
   it("suit les changements de permission faits en base sans redemarrage", async () => {

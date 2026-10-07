@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import { baseInjoignable } from "@/lib/db";
 import { DomainError } from "@/lib/errors";
 
@@ -40,6 +41,12 @@ export async function executer<T extends Record<string, unknown>>(
     const donnees = await operation();
     return { ok: true, message: messageSucces, ...donnees };
   } catch (erreur) {
+    // Laisse passer les erreurs de controle de flux de Next.js : `redirect`,
+    // `notFound`, `forbidden` et `unauthorized` sont des interruptions, pas des
+    // pannes. Les capturer ici les transformerait en « erreur inattendue » et
+    // masquerait un refus de droits legitime derriere un message generique.
+    unstable_rethrow(erreur);
+
     if (erreur instanceof DomainError) {
       return echec(erreur.message, {
         champs: erreur.details?.fields,

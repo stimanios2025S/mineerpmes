@@ -37,10 +37,24 @@ vi.mock("@/lib/db", async (importOriginal) => ({
     stockLot: { findMany: etat.lots },
   },
 }));
-vi.mock("next/navigation", () => ({
-  notFound: () => { throw new Error("PAGE_404"); },
-  redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); },
-}));
+vi.mock("next/navigation", () => {
+  // Reproduit l'interruption levee par forbidden() / unauthorized() de Next.js,
+  // digest compris : lib/rbac/pages.ts s'appuie dessus pour rendre un 404.
+  const interruption = (code: number) => {
+    const erreur = new Error(`NEXT_HTTP_ERROR_FALLBACK;${code}`) as Error & {
+      digest?: string;
+    };
+    erreur.digest = `NEXT_HTTP_ERROR_FALLBACK;${code}`;
+    throw erreur;
+  };
+
+  return {
+    notFound: () => { throw new Error("PAGE_404"); },
+    redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); },
+    forbidden: () => interruption(403),
+    unauthorized: () => interruption(401),
+  };
+});
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 function compte(code: string): SessionUser {
