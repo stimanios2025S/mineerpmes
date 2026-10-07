@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { identiteUtilisateur } from "@/lib/portail-identite";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { actionDeconnexion } from "@/actions/auth";
@@ -7,7 +9,16 @@ import { LienNavigation } from "@/components/navigation-client";
 import { Etiquette } from "@/components/ui";
 import { LIBELLES_USINE, libelle } from "@/lib/libelles";
 
-export const metadata = { title: "Plateforme" };
+export async function generateMetadata(): Promise<Metadata> {
+  const utilisateur = await utilisateurCourant();
+  const identite = utilisateur ? identiteUtilisateur(utilisateur) : null;
+  const nom = identite?.libelle ?? "Direction generale";
+  return {
+    title: { default: `Portail ${nom}`, template: `%s - ${nom}` },
+    applicationName: `${nom} ERP MES`,
+    description: identite?.description ?? "Supervision des usines ADMEDCO et MOBILIX.",
+  };
+}
 
 /**
  * Coquille de l'application connectee.
@@ -22,6 +33,8 @@ export default async function LayoutApplication({
 
   if (!utilisateur) redirect("/connexion");
 
+  const identite = identiteUtilisateur(utilisateur);
+  const nomPortail = identite?.libelle ?? "ADMEDCO / MOBILIX";
   const sections = navigationAutorisee(utilisateur);
   const usines = usinesAutorisees(utilisateur);
 
@@ -57,7 +70,7 @@ export default async function LayoutApplication({
   );
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[17rem_1fr]">
+    <div className={`${identite?.className ?? ""} min-h-screen lg:grid lg:grid-cols-[17rem_1fr]`}>
       <aside
         className="hidden border-r px-2 py-4 lg:block"
         style={{ background: "var(--surface)", borderColor: "var(--bordure)" }}
@@ -65,7 +78,7 @@ export default async function LayoutApplication({
         <Link href="/" className="mb-4 block px-3">
           <span className="block text-base font-semibold">ERP MES</span>
           <span className="block text-xs" style={{ color: "var(--texte-doux)" }}>
-            ADMEDCO / MOBILIX
+            {nomPortail}
           </span>
         </Link>
         {contenuNavigation}
@@ -89,7 +102,7 @@ export default async function LayoutApplication({
           </details>
 
           <Link href="/" className="text-sm font-semibold lg:hidden">
-            ERP MES
+            {nomPortail} · ERP MES
           </Link>
 
           <form action="/recherche" method="get" className="flex min-w-[12rem] flex-1 items-center gap-2">
@@ -101,7 +114,7 @@ export default async function LayoutApplication({
               className="champ"
               type="search"
               name="q"
-              placeholder="Rechercher un article, un tiers, un document..."
+              placeholder={identite ? `Rechercher dans ${nomPortail}...` : "Rechercher un article, un tiers, un document..."}
             />
             <button
               type="submit"

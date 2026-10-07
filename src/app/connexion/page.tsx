@@ -1,3 +1,4 @@
+import { estUsinePortail, identitePortail } from "@/lib/portail-identite";
 import { redirect } from "next/navigation";
 import { actionConnexion, actionConnexionRapide } from "@/actions/auth";
 import { utilisateurCourant } from "@/lib/rbac/guard";
@@ -5,9 +6,21 @@ import { comptesAccesRapide } from "@/lib/auth/acces-rapide";
 import { premierCheminAccessible } from "@/components/navigation";
 import { BoutonAction, Champ, FormulaireAction } from "@/components/interactif";
 
-export const metadata = { title: "Connexion" };
+type ParametresConnexion = { searchParams: Promise<{ usine?: string }> };
 
-export default async function PageConnexion() {
+async function identiteConnexion(parametres: ParametresConnexion) {
+  const valeur = (await parametres.searchParams).usine;
+  const usine = typeof valeur === "string" ? valeur.toUpperCase() : null;
+  return estUsinePortail(usine) ? identitePortail(usine) : null;
+}
+
+export async function generateMetadata(parametres: ParametresConnexion) {
+  const identite = await identiteConnexion(parametres);
+  return { title: identite ? `Connexion ${identite.libelle}` : "Connexion" };
+}
+
+export default async function PageConnexion(parametres: ParametresConnexion) {
+  const identite = await identiteConnexion(parametres);
   const utilisateur = await utilisateurCourant();
   if (utilisateur) {
     redirect(
@@ -22,12 +35,12 @@ export default async function PageConnexion() {
   const comptesRapides = comptesAccesRapide();
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-12">
+    <main className={`${identite?.className ?? ""} flex min-h-screen items-center justify-center px-4 py-12`}>
       <div className="w-full max-w-md">
         <header className="mb-6 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">ERP MES</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{identite ? `${identite.libelle} · ERP MES` : "ERP MES"}</h1>
           <p className="mt-1 text-sm" style={{ color: "var(--texte-doux)" }}>
-            ADMEDCO — fabrication metallique · MOBILIX — bois, couture et garnissage
+            {identite?.description ?? "Connexion a votre espace de travail"}
           </p>
         </header>
 

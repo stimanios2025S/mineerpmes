@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { estProprietaireUsine } from "@/lib/rbac/portee";
+import { identiteUtilisateur } from "@/lib/portail-identite";
 import { aLaPermission, exigerPermission } from "@/lib/rbac/guard";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
 import { indicateursTableauDeBord, bornesMois } from "@/lib/tableau-bord/service";
@@ -16,6 +19,10 @@ export const metadata = { title: "Tableau de bord" };
 
 export default async function PageTableauDeBord() {
   const utilisateur = await exigerPermission(PERMISSIONS.TABLEAU_BORD_LIRE);
+  const identite = identiteUtilisateur(utilisateur);
+  if (estProprietaireUsine(utilisateur) && identite) {
+    redirect(`/direction/${identite.code.toLowerCase()}`);
+  }
   const indicateurs = await indicateursTableauDeBord(utilisateur);
   const mois = bornesMois();
 

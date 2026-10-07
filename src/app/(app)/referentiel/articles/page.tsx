@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Factory, ItemStatus, ItemType, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { D } from "@/lib/decimal";
-import { exigerPermission, usinesAutorisees } from "@/lib/rbac/guard";
+import { aLaPermission, exigerPermission, usinesAutorisees } from "@/lib/rbac/guard";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
 import {
   fabricantLien,
@@ -152,7 +152,7 @@ export default async function PageArticles({
       ? []
       : await prisma.stockBalance.groupBy({
           by: ["itemId"],
-          where: { itemId: { in: identifiants } },
+          where: { itemId: { in: identifiants }, warehouse: { factory: { in: usinesAutorisees(utilisateur) } } },
           _sum: {
             quantityPhysical: true,
             quantityReserved: true,
@@ -187,9 +187,9 @@ export default async function PageArticles({
     <>
       <EnTetePage
         titre="Articles"
-        description="Referentiel des articles des deux divisions. Le cout moyen et le disponible affiches proviennent des mouvements de stock enregistres, jamais d'une saisie directe."
+        description={`Referentiel des articles de ${usinesAutorisees(utilisateur).join(" / ")}. Le disponible est calcule dans les depots de votre perimetre.`}
         actions={
-          <Link className="lien-nav text-sm" href="/referentiel/articles/nouveau">
+          aLaPermission(utilisateur, PERMISSIONS.ARTICLE_ECRIRE) && <Link className="lien-nav text-sm" href="/referentiel/articles/nouveau">
             Nouvel article
           </Link>
         }
@@ -247,7 +247,7 @@ export default async function PageArticles({
           <span className="mb-1 block font-medium">Division</span>
           <select className="champ" name="division" defaultValue={filtresCourants.division ?? ""}>
             <option value="">Toutes les divisions</option>
-            {DIVISIONS.map((valeur) => (
+            {usinesAutorisees(utilisateur).map((valeur) => (
               <option key={valeur} value={valeur}>
                 {libelle(LIBELLES_USINE, valeur)}
               </option>

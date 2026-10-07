@@ -10,12 +10,17 @@ import { exigerPageUsine } from "@/lib/rbac/pages";
 import PageAdmedco from "@/app/(app)/direction/admedco/page";
 import PageMobilix from "@/app/(app)/direction/mobilix/page";
 import PageAtelier from "@/app/(app)/atelier/[code]/page";
+import LayoutApplication, { generateMetadata as metadataPortail } from "@/app/(app)/layout";
+import PageConnexion, { generateMetadata as metadataConnexion } from "@/app/connexion/page";
+import PageRecherche from "@/app/(app)/recherche/page";
+import PageTableauDeBord from "@/app/(app)/tableau-de-bord/page";
+import { identiteUtilisateur } from "@/lib/portail-identite";
 import PageBCI from "@/app/(app)/stock/bci/[id]/page";
 
 const etat = vi.hoisted(() => ({
   utilisateur: null as SessionUser | null,
   ordres: vi.fn(), employes: vi.fn(), soldes: vi.fn(), scans: vi.fn(),
-  atelier: vi.fn(), ordre: vi.fn(),
+  atelier: vi.fn(), ordre: vi.fn(), articles: vi.fn(), lots: vi.fn(),
 }));
 vi.mock("@/lib/auth/session", () => ({
   chargerUtilisateurCourant: async () => etat.utilisateur,
@@ -28,6 +33,8 @@ vi.mock("@/lib/db", async (importOriginal) => ({
     stockBalance: { findMany: etat.soldes },
     workCenterScan: { count: etat.scans },
     workshop: { findFirst: etat.atelier },
+    item: { findMany: etat.articles },
+    stockLot: { findMany: etat.lots },
   },
 }));
 vi.mock("next/navigation", () => ({
@@ -59,6 +66,7 @@ beforeEach(() => {
   etat.ordres.mockResolvedValue([]); etat.employes.mockResolvedValue(0);
   etat.soldes.mockResolvedValue([]); etat.scans.mockResolvedValue(0);
   etat.atelier.mockResolvedValue(null); etat.ordre.mockResolvedValue(null);
+  etat.articles.mockResolvedValue([]); etat.lots.mockResolvedValue([]);
 });
 
 describe("Proprietaires limites a leur usine", () => {
@@ -120,5 +128,49 @@ describe("Proprietaires limites a leur usine", () => {
     etat.utilisateur = compte("PROPRIETAIRE_MOBILIX");
     await expect(PageBCI({ params: Promise.resolve({ id: "42" }) })).rejects.toThrow("PAGE_404");
     expect(etat.ordre).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 42, factory: { in: ["MOBILIX"] } } }));
+  });
+});
+
+
+describe("Identite et recherche des portails separes", () => {
+  it.each(["ADMEDCO", "MOBILIX"] as const)("%s : en-tete, titre et menu ne contiennent pas l'autre usine", async (usine) => {
+    etat.utilisateur = compte(`PROPRIETAIRE_${usine}`);
+    const autre = usine === "ADMEDCO" ? "MOBILIX" : "ADMEDCO";
+    expect(identiteUtilisateur(etat.utilisateur)?.code).toBe(usine);
+    const shell = await LayoutApplication({ children: React.createElement("span", null, "CONTENU") });
+    expect(JSON.stringify(shell)).toContain(usine);
+    expect(JSON.stringify(shell)).not.toContain(autre);
+    const metadata = await metadataPortail();
+    expect(JSON.stringify(metadata)).toContain(usine);
+    expect(JSON.stringify(metadata)).not.toContain(autre);
+    const menu = navigationAutorisee(etat.utilisateur).flatMap((s) => s.entrees.map((e) => e.chemin));
+    expect(menu).not.toContain("/tableau-de-bord");
+    expect(menu).not.toContain("/magasinier");
+  });
+
+  it.each(["ADMEDCO", "MOBILIX"] as const)("%s : la connexion dediee n'affiche que son identite", async (usine) => {
+    const parametres = { searchParams: Promise.resolve({ usine }) };
+    const page = await PageConnexion(parametres);
+    expect(JSON.stringify(page)).toContain(usine);
+    expect(JSON.stringify(page)).not.toContain(usine === "ADMEDCO" ? "MOBILIX" : "ADMEDCO");
+    expect((await metadataConnexion(parametres)).title).toBe(`Connexion ${usine}`);
+  });
+
+  it("une usine de connexion inconnue ne cree pas de portail arbitraire", async () => {
+    expect((await metadataConnexion({ searchParams: Promise.resolve({ usine: "INCONNUE" }) })).title).toBe("Connexion");
+  });
+
+  it.each(["ADMEDCO", "MOBILIX"] as const)("%s : la recherche ne peut pas contourner la portee", async (usine) => {
+    etat.utilisateur = compte(`PROPRIETAIRE_${usine}`);
+    await PageRecherche({ searchParams: Promise.resolve({ q: "article" }) });
+    expect(etat.articles).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ factory: { in: [usine] } }) }));
+    expect(etat.ordres).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ factory: { in: [usine] } }) }));
+    expect(etat.lots).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ warehouse: { factory: { in: [usine] } } }) }));
+  });
+
+  it.each(["ADMEDCO", "MOBILIX"] as const)("%s : le tableau consolide redirige vers son portail", async (usine) => {
+    etat.utilisateur = compte(`PROPRIETAIRE_${usine}`);
+    await expect(PageTableauDeBord()).rejects.toThrow(`REDIRECT:/direction/${usine.toLowerCase()}`);
+    expect(etat.ordres).not.toHaveBeenCalled();
   });
 });

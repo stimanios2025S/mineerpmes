@@ -68,6 +68,14 @@ Chaque rôle a son **profil de menu** (`PROFIL_MENU` dans
 - `DIRECTION` : Direction generale, supervision des deux usines.
 - `ADMIN_SYSTEME` conserve son acces technique global.
 
+Chaque portail connecte affiche uniquement l'identite de son usine (en-tete,
+couleur et titre du navigateur). Connexions dediees :
+`/connexion?usine=ADMEDCO` et `/connexion?usine=MOBILIX`.
+Ces parametres choisissent l'apparence, jamais les droits : le compte authentifie
+reste l'unique source du perimetre. La recherche globale est aussi bornee aux
+articles, ordres et lots de l'usine. Les transferts inter-usines restent le seul
+contexte de synchronisation entre les deux divisions.
+
 Les droits sont verifies cote serveur, y compris sur une URL saisie directement.
 Les proprietaires n'ont aucun droit d'ecriture, de gestion des comptes ou de
 consultation des donnees transversales. Les responsables operationnels gardent

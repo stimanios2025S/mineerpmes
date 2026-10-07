@@ -1,4 +1,7 @@
-﻿export type UsinePortail = "ADMEDCO" | "MOBILIX";
+import type { SessionUser } from "@/lib/auth/session";
+import { usinesAutorisees } from "@/lib/rbac/portee";
+
+export type UsinePortail = "ADMEDCO" | "MOBILIX";
 
 export interface IdentitePortail {
   code: UsinePortail;
@@ -31,4 +34,10 @@ export function estUsinePortail(valeur: string | null | undefined): valeur is Us
 
 export function identitePortail(usine: UsinePortail): IdentitePortail {
   return IDENTITES[usine];
+}
+
+/** Identite du portail connecte : une seule usine, ou la supervision globale. */
+export function identiteUtilisateur(utilisateur: SessionUser): IdentitePortail | null {
+  const usines = usinesAutorisees(utilisateur).filter(estUsinePortail);
+  return usines.length === 1 ? identitePortail(usines[0]) : null;
 }

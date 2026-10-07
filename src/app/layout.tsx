@@ -9,11 +9,11 @@ import "./globals.css";
  */
 export const metadata: Metadata = {
   title: {
-    default: "ERP MES - ADMEDCO / MOBILIX",
-    template: "%s - ERP MES ADMEDCO / MOBILIX",
+    default: "ERP MES",
+    template: "%s - ERP MES",
   },
   description:
-    "Plateforme de gestion industrielle et commerciale des divisions ADMEDCO (fabrication metallique) et MOBILIX (bois, couture et garnissage).",
+    "Plateforme de gestion industrielle et commerciale.",
   applicationName: "ERP MES",
   robots: { index: false, follow: false },
 };

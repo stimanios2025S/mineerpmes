@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { exigerUtilisateur } from "@/lib/rbac/guard";
+import { exigerUtilisateur, usinesAutorisees } from "@/lib/rbac/guard";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
 import { prisma } from "@/lib/db";
 import { D } from "@/lib/decimal";
@@ -45,6 +45,7 @@ export default async function PageRecherche({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const utilisateur = await exigerUtilisateur();
+  const portee = usinesAutorisees(utilisateur);
   const parametres = await searchParams;
   const requete = (premiereValeur(parametres, "q") ?? "").trim();
 
@@ -80,7 +81,7 @@ export default async function PageRecherche({
   ] = await Promise.all([
     peut(PERMISSIONS.ARTICLE_LIRE)
       ? prisma.item.findMany({
-          where: { OR: [{ code: comme }, { label1: comme }] },
+          where: { factory: { in: portee }, OR: [{ code: comme }, { label1: comme }] },
           take: LIMITE,
           orderBy: { code: "asc" },
           select: {
@@ -110,7 +111,7 @@ export default async function PageRecherche({
       : [],
     peut(PERMISSIONS.PRODUCTION_LIRE)
       ? prisma.workOrder.findMany({
-          where: { OR: [{ number: comme }, { item: { is: { code: comme } } }] },
+          where: { factory: { in: portee }, OR: [{ number: comme }, { item: { is: { code: comme } } }] },
           take: LIMITE,
           orderBy: { createdAt: "desc" },
           select: {
@@ -125,7 +126,7 @@ export default async function PageRecherche({
       : [],
     peut(PERMISSIONS.STOCK_LIRE)
       ? prisma.stockLot.findMany({
-          where: { OR: [{ lotNumber: comme }, { item: { is: { code: comme } } }] },
+          where: { warehouse: { factory: { in: portee } }, OR: [{ lotNumber: comme }, { item: { is: { code: comme } } }] },
           take: LIMITE,
           orderBy: { createdAt: "desc" },
           select: {
@@ -232,6 +233,7 @@ export default async function PageRecherche({
     peut(PERMISSIONS.NOMENCLATURE_LIRE)
       ? prisma.formula.findMany({
           where: {
+            item: { factory: { in: portee } },
             OR: [{ code: comme }, { label: comme }, { item: { is: { code: comme } } }],
           },
           take: LIMITE,
@@ -249,6 +251,7 @@ export default async function PageRecherche({
     peut(PERMISSIONS.RH_LIRE)
       ? prisma.employee.findMany({
           where: {
+            factory: { in: portee },
             OR: [{ matricule: comme }, { firstName: comme }, { lastName: comme }],
           },
           take: LIMITE,
@@ -266,7 +269,7 @@ export default async function PageRecherche({
       : [],
     peut(PERMISSIONS.DEPOT_LIRE)
       ? prisma.warehouse.findMany({
-          where: { OR: [{ code: comme }, { label: comme }] },
+          where: { factory: { in: portee }, OR: [{ code: comme }, { label: comme }] },
           take: LIMITE,
           orderBy: { code: "asc" },
           select: { id: true, code: true, label: true, factory: true, isActive: true },

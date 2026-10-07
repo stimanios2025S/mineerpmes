@@ -1,5 +1,5 @@
 import type { Factory } from "@prisma/client";
-import { peutAccederUsine } from "@/lib/rbac/portee";
+import { peutAccederUsine, estProprietaireUsine } from "@/lib/rbac/portee";
 import type { SessionUser } from "@/lib/auth/session";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
 
@@ -556,6 +556,8 @@ export function entreeAutorisee(
   entree: EntreeNavigation,
 ): boolean {
   if (entree.usine && !peutAccederUsine(utilisateur, entree.usine)) return false;
+  if (estProprietaireUsine(utilisateur) && !utilisateur.scope.allFactories &&
+      ["/tableau-de-bord", "/magasinier"].includes(entree.chemin)) return false;
 
   if (entree.rolesVisibles && entree.rolesVisibles.length > 0) {
     const codes = utilisateur.roles.map((role) => role.code);
