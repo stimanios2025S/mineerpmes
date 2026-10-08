@@ -255,14 +255,38 @@ export default async function PageArticle({
         titre={`${article.code} — ${article.label1}`}
         description="Fiche complete de l'article : configuration, seuils, stock reel par depot, nomenclature, gammes, lots et prix enregistres."
         actions={
-          <Link className="lien-nav text-sm" href="/referentiel/articles">
-            Retour a la liste
-          </Link>
+          <>
+            {peutEcrire && (
+              <a
+                className="bouton primaire text-sm"
+                href="#modification-fiche"
+                style={{ minHeight: 40 }}
+              >
+                Modifier la fiche
+              </a>
+            )}
+            <Link className="lien-nav text-sm" href="/referentiel/articles">
+              Retour a la liste
+            </Link>
+          </>
         }
       />
 
       <div className="space-y-6">
-        <Carte titre="Identification">
+        <Carte
+          titre="Identification"
+          actions={
+            peutEcrire ? (
+              <a
+                className="bouton secondaire text-xs"
+                href="#modification-fiche"
+                style={{ minHeight: 34 }}
+              >
+                Modifier
+              </a>
+            ) : null
+          }
+        >
           <ListeDefinitions
             elements={[
               { terme: "Code article", valeur: article.code },
@@ -347,7 +371,20 @@ export default async function PageArticle({
           </div>
         </Carte>
 
-        <Carte titre="Seuils, valorisation et logistique">
+        <Carte
+          titre="Seuils, valorisation et logistique"
+          actions={
+            peutEcrire ? (
+              <a
+                className="bouton secondaire text-xs"
+                href="#modification-fiche"
+                style={{ minHeight: 34 }}
+              >
+                Modifier
+              </a>
+            ) : null
+          }
+        >
           <ListeDefinitions
             elements={[
               { terme: "Quantite minimum", valeur: formatQuantite(article.quantityMin) },
@@ -742,6 +779,7 @@ export default async function PageArticle({
 
         {peutEcrire ? (
           <Carte
+            id="modification-fiche"
             titre="Modification de la fiche"
             description="Toute modification est journalisee avec son auteur et l'etat precedent de la fiche."
           >

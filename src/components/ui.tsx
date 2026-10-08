@@ -54,12 +54,15 @@ export function EtiquetteStatut({
 }
 
 export function Carte({
+  id,
   titre,
   description,
   actions,
   children,
   sansPadding = false,
 }: {
+  /** Ancre HTML : permet de pointer une section depuis un bouton de la page. */
+  id?: string;
   titre?: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
@@ -67,7 +70,7 @@ export function Carte({
   sansPadding?: boolean;
 }) {
   return (
-    <section className="carte overflow-hidden">
+    <section id={id} className="carte overflow-hidden">
       {(titre || actions) && (
         <header className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
           <div>
