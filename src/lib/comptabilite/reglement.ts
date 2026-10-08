@@ -10,6 +10,7 @@ import { conflit, etatInvalide, nonTrouve, validation } from "@/lib/errors";
 import { prochainNumero, SEQUENCES } from "@/lib/numbering";
 import { ACTIONS_AUDIT, MODULES_AUDIT, enregistrerAudit } from "@/lib/audit";
 import { genererEcriture, validerEcriture, posterEcriture, contrepasserEcriture } from "@/lib/comptabilite/service";
+import { EVENEMENTS_COMPTABLES } from "@/lib/comptabilite/evenements";
 
 /**
  * Reglements clients et fournisseurs.
@@ -30,8 +31,8 @@ export interface ActeurReglement {
 }
 
 const CODES_EVENEMENT: Record<PaymentDirection, string> = {
-  ENCAISSEMENT: "REGLEMENT_CLIENT",
-  DECAISSEMENT: "REGLEMENT_FOURNISSEUR",
+  ENCAISSEMENT: EVENEMENTS_COMPTABLES.REGLEMENT_CLIENT,
+  DECAISSEMENT: EVENEMENTS_COMPTABLES.REGLEMENT_FOURNISSEUR,
 };
 
 const JOURNAUX_TRESORERIE: Record<PaymentMethod, string> = {

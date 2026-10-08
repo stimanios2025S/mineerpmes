@@ -9,6 +9,7 @@ import { D, type Decimal } from "@/lib/decimal";
 import { conflit, etatInvalide, nonTrouve, validation } from "@/lib/errors";
 import { prochainNumero, SEQUENCES } from "@/lib/numbering";
 import { ACTIONS_AUDIT, MODULES_AUDIT, enregistrerAudit } from "@/lib/audit";
+import { EVENEMENTS_COMPTABLES } from "@/lib/comptabilite/evenements";
 import { lireParametreBooleen, CLE_PARAMETRE } from "@/lib/settings";
 import { enregistrerMouvement, type ActeurStock } from "@/lib/stock/service";
 import { calculerLigne, resoudreTauxTva } from "@/lib/commercial/taxe";
@@ -1789,7 +1790,7 @@ export async function validerFactureFournisseur(
       const dateEcriture = entree.entryDate ?? facture.invoiceDate;
 
       const ecriture = await genererEcriture(tx, {
-        eventCode: "FACTURE_FOURNISSEUR",
+        eventCode: EVENEMENTS_COMPTABLES.FACTURE_FOURNISSEUR,
         entryDate: dateEcriture,
         label: `Facture fournisseur ${facture.number} - ${facture.supplier.label1}`,
         reference: facture.supplierRef ?? facture.number,

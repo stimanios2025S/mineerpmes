@@ -9,6 +9,7 @@ import { D, type Decimal } from "@/lib/decimal";
 import { conflit, etatInvalide, nonTrouve, validation } from "@/lib/errors";
 import { prochainNumero, SEQUENCES } from "@/lib/numbering";
 import { ACTIONS_AUDIT, MODULES_AUDIT, enregistrerAudit } from "@/lib/audit";
+import { EVENEMENTS_COMPTABLES } from "@/lib/comptabilite/evenements";
 import { CLE_PARAMETRE, lireParametreBooleen } from "@/lib/settings";
 import {
   disponibleArticle,
@@ -1351,7 +1352,7 @@ export async function expedierBonLivraison(
       // Valorisation de la sortie de stock : ecriture generee uniquement si la
       // regle correspondante est configuree par le comptable.
       const ecriture = await genererEcritureSiRegle(tx, {
-        eventCode: "SORTIE_STOCK_LIVRAISON",
+        eventCode: EVENEMENTS_COMPTABLES.SORTIE_STOCK_LIVRAISON,
         entryDate: livraison.deliveryDate,
         label: `Sortie de stock - livraison ${livraison.number}`,
         reference: livraison.number,
@@ -1846,7 +1847,7 @@ export async function validerFactureClient(
       }
 
       const ecriture = await genererEcriture(tx, {
-        eventCode: "FACTURE_CLIENT",
+        eventCode: EVENEMENTS_COMPTABLES.FACTURE_CLIENT,
         entryDate: entree.entryDate ?? facture.invoiceDate,
         label: `Facture client ${facture.number} - ${facture.thirdParty.label1}`,
         reference: facture.reference ?? facture.number,

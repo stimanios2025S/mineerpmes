@@ -22,6 +22,7 @@ import {
   getPermissionLabel,
   getPermissionModule,
 } from "../src/lib/rbac/permissions";
+import { EVENEMENTS_COMPTABLES } from "../src/lib/comptabilite/evenements";
 import { ROLE_DEFINITIONS } from "../src/lib/rbac/roles";
 import { initialiserParametres, CLE_PARAMETRE } from "../src/lib/settings";
 import { initialiserSequences } from "../src/lib/numbering";
@@ -898,7 +899,7 @@ const COMPTES = [
 
 const REGLES_ECRITURE = [
   {
-    eventCode: "RECEPTION_FOURNISSEUR",
+    eventCode: EVENEMENTS_COMPTABLES.RECEPTION_FOURNISSEUR,
     label: "Reception fournisseur - entree en stock",
     journalCode: "ST",
     debitAccountNumber: "31",
@@ -907,7 +908,7 @@ const REGLES_ECRITURE = [
       "Entree en stock des matieres receptionnees. Comptes a ajuster selon le plan comptable de l'entreprise.",
   },
   {
-    eventCode: "FACTURE_FOURNISSEUR",
+    eventCode: EVENEMENTS_COMPTABLES.FACTURE_FOURNISSEUR,
     label: "Facture fournisseur",
     journalCode: "AC",
     debitAccountNumber: "601",
@@ -916,7 +917,7 @@ const REGLES_ECRITURE = [
     description: "Enregistrement de la facture fournisseur avec TVA deductible.",
   },
   {
-    eventCode: "FACTURE_CLIENT",
+    eventCode: EVENEMENTS_COMPTABLES.FACTURE_CLIENT,
     label: "Facture client",
     journalCode: "VE",
     debitAccountNumber: "411",
@@ -925,7 +926,7 @@ const REGLES_ECRITURE = [
     description: "Vente de produits finis avec TVA collectee.",
   },
   {
-    eventCode: "SORTIE_STOCK_LIVRAISON",
+    eventCode: EVENEMENTS_COMPTABLES.SORTIE_STOCK_LIVRAISON,
     label: "Sortie de stock pour livraison",
     journalCode: "ST",
     debitAccountNumber: "603",
@@ -933,7 +934,7 @@ const REGLES_ECRITURE = [
     description: "Sortie de stock des produits finis livres.",
   },
   {
-    eventCode: "REGLEMENT_CLIENT",
+    eventCode: EVENEMENTS_COMPTABLES.REGLEMENT_CLIENT,
     label: "Reglement client",
     journalCode: "BQ",
     debitAccountNumber: "512",
@@ -941,7 +942,7 @@ const REGLES_ECRITURE = [
     description: "Encaissement d'un reglement client.",
   },
   {
-    eventCode: "REGLEMENT_FOURNISSEUR",
+    eventCode: EVENEMENTS_COMPTABLES.REGLEMENT_FOURNISSEUR,
     label: "Reglement fournisseur",
     journalCode: "BQ",
     debitAccountNumber: "401",
@@ -949,7 +950,7 @@ const REGLES_ECRITURE = [
     description: "Decaissement d'un reglement fournisseur.",
   },
   {
-    eventCode: "PRODUCTION_PRODUIT_FINI",
+    eventCode: EVENEMENTS_COMPTABLES.PRODUCTION_PRODUIT_FINI,
     label: "Entree en stock de produits finis",
     journalCode: "ST",
     debitAccountNumber: "35",
@@ -957,7 +958,7 @@ const REGLES_ECRITURE = [
     description: "Valorisation des produits finis issus de la production.",
   },
   {
-    eventCode: "CONSOMMATION_PRODUCTION",
+    eventCode: EVENEMENTS_COMPTABLES.CONSOMMATION_PRODUCTION,
     label: "Consommation de matieres en production",
     journalCode: "ST",
     debitAccountNumber: "602",
