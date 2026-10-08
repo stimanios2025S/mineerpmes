@@ -1,4 +1,4 @@
-﻿name: Deploy ERP MES
+name: Deploy ERP MES
 
 on:
   workflow_dispatch:
@@ -11,30 +11,91 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  # Aucun deploiement ne part si cette etape echoue : un typecheck, un lint ou un
+  # test rouge ne doit jamais atteindre la production.
+  verify:
+    name: Verification (types, lint, tests, build)
     runs-on: ubuntu-latest
-    environment: production
+    services:
+      # Base jetable, identique au conteneur de developpement (postgres:17 sur
+      # le port 5433). Les tests ne touchent jamais la base applicative :
+      # src/tests/setup.ts cree une base dediee erpmes_test.
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: erpmes
+          POSTGRES_PASSWORD: erpmes_dev_pwd
+          POSTGRES_DB: erpmes
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://erpmes:erpmes_dev_pwd@localhost:5433/erpmes?schema=public
+      SESSION_SECRET: secret-de-ci-uniquement-non-utilise-en-production
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Transfer application source
-        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
         with:
-          host: ${{ secrets.DEPLOY_SSH_HOST }}
-          username: ${{ secrets.DEPLOY_SSH_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: "./"
-          target: ${{ secrets.DEPLOY_APP_PATH }}
-          overwrite: true
-          rm: false
+          node-version: 20
+          cache: npm
 
-      - name: Install, migrate, build and reload PM2
+      - name: Installer les dependances
+        run: npm ci --no-audit --no-fund
+
+      - name: Generer le client Prisma
+        run: npx prisma generate
+
+      - name: Verification des types
+        run: npm run typecheck
+
+      - name: Analyse statique
+        run: npm run lint
+
+      - name: Tests
+        run: npm test
+
+      - name: Build de production
+        run: npm run build
+
+  deploy:
+    name: Deploiement production
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      # Le serveur de production est sous Linux (verifie : uname -s renvoie
+      # Linux). L'ancienne etape appelait `powershell -File
+      # scripts/deploy-server.ps1`, qui n'existe pas sur cette machine : le
+      # deploiement echouait donc a chaque push. Les commandes ci-dessous sont
+      # exactement celles executees a la main et verifiees a chaque mise en
+      # production.
+      #
+      # `set -e` interrompt le script a la premiere commande en erreur : un build
+      # casse n'est jamais suivi d'un rechargement PM2.
+      #
+      # `pm2 reload erpmes` ne touche que le processus erpmes. Les autres
+      # applications du serveur (admedco:4003, rmasc-onsite, rmasc-maintenance,
+      # wa-gateway) ne sont pas affectees.
+      - name: Deploiement sur le serveur
         uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
         with:
           host: ${{ secrets.DEPLOY_SSH_HOST }}
           username: ${{ secrets.DEPLOY_SSH_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
+            set -e
             cd "${{ secrets.DEPLOY_APP_PATH }}"
-            powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-server.ps1 -Apply -Port "${{ vars.ERPMES_PORT || '3000' }}"
+            git fetch origin main
+            git reset --hard origin/main
+            npm ci --no-audit --no-fund
+            npx prisma generate
+            npx prisma migrate deploy
+            npm run build
+            pm2 reload erpmes
