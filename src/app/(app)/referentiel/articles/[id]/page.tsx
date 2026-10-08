@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { D } from "@/lib/decimal";
 import { soldesArticle } from "@/lib/stock/service";
 import { actionArchiverArticle, actionModifierArticle } from "@/actions/referentiel";
+import { PanneauAncre } from "@/components/panneau-ancre";
 import { aLaPermission, exigerPermission, peutAccederUsine } from "@/lib/rbac/guard";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
 import { identifiantOuNull } from "@/lib/liste";
@@ -834,8 +835,8 @@ export default async function PageArticle({
         )}
 
         {peutEcrire ? (
+          <PanneauAncre id="modification-fiche">
           <Carte
-            id="modification-fiche"
             titre="Modification de la fiche"
             description="Toute modification est journalisee avec son auteur et l'etat precedent de la fiche."
           >
@@ -1037,6 +1038,7 @@ export default async function PageArticle({
               </Section>
             </FormulaireAction>
           </Carte>
+          </PanneauAncre>
         ) : (
           <Alerte ton="info" titre="Fiche en lecture seule">
             Votre profil ne detient pas la permission de modification des articles : seuls la
