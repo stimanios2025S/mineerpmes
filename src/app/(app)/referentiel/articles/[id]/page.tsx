@@ -334,6 +334,17 @@ export default async function PageArticle({
 
         <Carte
           titre="Configuration"
+          actions={
+            peutEcrire ? (
+              <a
+                className="bouton secondaire text-xs"
+                href="#modification-fiche"
+                style={{ minHeight: 34 }}
+              >
+                Modifier
+              </a>
+            ) : null
+          }
           description="Interrupteurs actifs sur cette fiche. Ils determinent les modules dans lesquels l'article peut etre utilise."
         >
           <div className="flex flex-wrap gap-2">
@@ -411,6 +422,11 @@ export default async function PageArticle({
 
         <Carte
           titre="Stock par depot"
+          actions={
+            <Link className="bouton secondaire text-xs" href="/stock/mouvements" style={{ minHeight: 34 }}>
+              Voir les mouvements
+            </Link>
+          }
           description="Soldes reels du grand livre de stock. Le disponible deduit les quantites reservees, bloquees, endommagees et en quarantaine."
           sansPadding
         >
@@ -452,7 +468,14 @@ export default async function PageArticle({
           />
         </Carte>
 
-        <Carte titre="Synthese du stock">
+        <Carte
+          titre="Synthese du stock"
+          actions={
+            <Link className="bouton secondaire text-xs" href="/stock" style={{ minHeight: 34 }}>
+              Voir le stock
+            </Link>
+          }
+        >
           <ListeDefinitions
             elements={[
               { terme: "Quantite physique totale", valeur: formatQuantite(physiqueTotal) },
@@ -484,6 +507,13 @@ export default async function PageArticle({
 
         <Carte
           titre="Nomenclature"
+          actions={
+            peutEcrire ? (
+              <Link className="bouton secondaire text-xs" href="/nomenclature/nouvelle" style={{ minHeight: 34 }}>
+                Nouvelle nomenclature
+              </Link>
+            ) : null
+          }
           description="Versions de nomenclature rattachees a cet article. La version active est celle appliquee par la production."
           sansPadding
         >
@@ -596,6 +626,13 @@ export default async function PageArticle({
 
         <Carte
           titre="Gammes de fabrication"
+          actions={
+            peutEcrire ? (
+              <Link className="bouton secondaire text-xs" href="/nomenclature/gammes" style={{ minHeight: 34 }}>
+                Gerer les gammes
+              </Link>
+            ) : null
+          }
           description="Gammes operationnelles rattachees a l'article, avec le nombre d'operations reellement enregistrees."
           sansPadding
         >
@@ -638,6 +675,11 @@ export default async function PageArticle({
 
         <Carte
           titre="Lots"
+          actions={
+            <Link className="bouton secondaire text-xs" href="/stock/lots" style={{ minHeight: 34 }}>
+              Voir les lots
+            </Link>
+          }
           description="Lots de stock enregistres pour cet article, avec leur statut qualite et leur provenance reelle."
           sansPadding
         >
@@ -683,6 +725,13 @@ export default async function PageArticle({
           <>
             <Carte
               titre="Prix fournisseurs"
+              actions={
+                peutEcrire ? (
+                  <Link className="bouton secondaire text-xs" href="/referentiel/tarifs" style={{ minHeight: 34 }}>
+                    Saisir un prix
+                  </Link>
+                ) : null
+              }
               description="Offres d'achat reellement saisies pour cet article. Les prix ne sont jamais deduits d'une moyenne."
               sansPadding
             >
@@ -732,6 +781,13 @@ export default async function PageArticle({
 
             <Carte
               titre="Tarifs de vente"
+              actions={
+                peutEcrire ? (
+                  <Link className="bouton secondaire text-xs" href="/referentiel/tarifs" style={{ minHeight: 34 }}>
+                    Ajouter un tarif
+                  </Link>
+                ) : null
+              }
               description="Prix de vente enregistres, generaux ou propres a un client. Les lignes retirees restent visibles pour l'historique."
               sansPadding
             >
