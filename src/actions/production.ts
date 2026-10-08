@@ -152,6 +152,76 @@ function lireIdentifiant(
 // Creation et lancement d'un ordre
 // -----------------------------------------------------------------------------
 
+/**
+ * Resout le client d'un ordre de fabrication.
+ *
+ * Le client se choisit dans la liste, OU se saisit a la main. Une saisie
+ * manuelle qui ne correspond a aucun tiers existant cree une fiche client dans
+ * le referentiel : on ne stocke jamais un nom en texte libre, sinon la balance
+ * auxiliaire et les relances ne pourraient plus rattacher la facture a un tiers.
+ *
+ * Un tiers portant deja ce nom est reutilise plutot que duplique, et un tiers
+ * existant qui n'etait pas encore client est simplement marque client.
+ */
+async function resoudreClientSaisi(
+  formData: FormData,
+  factory: Factory,
+  acteur: { id: number; email: string },
+): Promise<number | null> {
+  const selection = entierOu(formData.get("customerId"), null);
+  if (selection !== null) return selection;
+
+  const nom = texteOuNull(formData.get("nouveauClient"));
+  if (nom === null) return null;
+
+  const existant = await prisma.thirdParty.findFirst({
+    where: { label1: { equals: nom, mode: "insensitive" } },
+    select: { id: true, isClient: true },
+  });
+  if (existant) {
+    if (!existant.isClient) {
+      await prisma.thirdParty.update({
+        where: { id: existant.id },
+        data: { isClient: true },
+      });
+    }
+    return existant.id;
+  }
+
+  // Code derive du nom, avec suffixe numerique en cas de collision de code.
+  const base = nom.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12) || "CLIENT";
+  let code = base;
+  for (let essai = 1; essai <= 99; essai += 1) {
+    const pris = await prisma.thirdParty.findUnique({ where: { code }, select: { id: true } });
+    if (!pris) break;
+    code = `${base}${essai}`;
+  }
+
+  const cree = await prisma.thirdParty.create({
+    data: {
+      code,
+      label1: nom,
+      type: "CLIENT",
+      isClient: true,
+      isActive: true,
+      balance: "0",
+    },
+  });
+
+  await enregistrerAudit({
+    action: ACTIONS_AUDIT.CREATION,
+    module: MODULES_AUDIT.REFERENTIEL,
+    entity: "ThirdParty",
+    entityId: cree.id,
+    userId: acteur.id,
+    userEmail: acteur.email,
+    newValue: cree,
+    comment: `Client « ${nom} » cree a la volee depuis la saisie d'un ordre de fabrication (division ${factory})`,
+  });
+
+  return cree.id;
+}
+
 export async function actionCreerOrdreFabrication(
   formData: FormData,
 ): Promise<ResultatAction> {
@@ -176,6 +246,10 @@ export async function actionCreerOrdreFabrication(
 
       const priorityTexte = texteOuNull(formData.get("priority"));
 
+      // Le client peut etre choisi dans la liste ou saisi a la main : la
+      // resolution cree la fiche client lorsque le nom est nouveau.
+      const clientId = await resoudreClientSaisi(formData, factory, acteurDe(utilisateur));
+
       const ordre = await creerOrdreFabrication({
         itemId: lireIdentifiant(formData, "itemId", "L'article a fabriquer"),
         quantityPlanned: decimalObligatoire(
@@ -192,7 +266,7 @@ export async function actionCreerOrdreFabrication(
         targetWarehouseId: entierOu(formData.get("targetWarehouseId")),
         salesOrderId: entierOu(formData.get("salesOrderId")),
         salesOrderLineId: entierOu(formData.get("salesOrderLineId")),
-        customerId: entierOu(formData.get("customerId")),
+        customerId: clientId,
         customerReference: texteOuNull(formData.get("customerReference")),
         deliveryAddress: texteOuNull(formData.get("deliveryAddress")),
         carrier: texteOuNull(formData.get("carrier")),

@@ -618,7 +618,13 @@ export default async function PageOrdresFabrication({
                         valeur: client.id,
                         libelle: `${client.code} - ${client.label1}`,
                       }))}
-                      aide="Laisser vide pour un ordre interne."
+                      aide="Laisser vide pour un ordre interne, ou saisissez le nom juste apres."
+                    />
+                    <Champ
+                      nom="nouveauClient"
+                      libelle="Nouveau client (saisie libre)"
+                      maxLength={200}
+                      aide="Nom d'un client absent de la liste : sa fiche est creee automatiquement dans le referentiel, puis rattachee a l'ordre."
                     />
                     <Champ
                       nom="salesOrderId"

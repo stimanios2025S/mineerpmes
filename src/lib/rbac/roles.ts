@@ -132,6 +132,10 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
       P.ARTICLE_ECRIRE,
       P.NOMENCLATURE_ECRIRE,
       P.GAMME_GERER,
+      // Gestion des employes de sa propre division : creer, modifier,
+      // desactiver. Les lectures RH sont bornees a l'usine cote serveur.
+      P.RH_LIRE,
+      P.RH_ECRIRE,
       S.PORTEE_ADMEDCO,
     ],
   },
@@ -148,6 +152,10 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
       P.ARTICLE_ECRIRE,
       P.NOMENCLATURE_ECRIRE,
       P.GAMME_GERER,
+      // Gestion des employes de sa propre division : creer, modifier,
+      // desactiver. Les lectures RH sont bornees a l'usine cote serveur.
+      P.RH_LIRE,
+      P.RH_ECRIRE,
       S.PORTEE_MOBILIX,
     ],
   },

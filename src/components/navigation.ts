@@ -494,8 +494,8 @@ const TOUT = ["pilotage", "ateliers", "portail", "referentiel", "nomenclature", 
 
 export const PROFIL_MENU: Record<string, string[]> = {
   ADMIN_SYSTEME: TOUT,
-  PROPRIETAIRE_ADMEDCO: ["pilotage", "referentiel", "stock", "production"],
-  PROPRIETAIRE_MOBILIX: ["pilotage", "referentiel", "stock", "production"],
+  PROPRIETAIRE_ADMEDCO: ["pilotage", "referentiel", "stock", "production", "rh"],
+  PROPRIETAIRE_MOBILIX: ["pilotage", "referentiel", "stock", "production", "rh"],
 
   DIRECTION: [
     "pilotage", "referentiel", "nomenclature", "stock", "production",

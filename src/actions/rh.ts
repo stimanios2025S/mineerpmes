@@ -17,6 +17,7 @@ import {
   exigerPermission,
   peutAccederUsine,
 } from "@/lib/rbac/guard";
+import { estProprietaireUsine, usinesAutorisees } from "@/lib/rbac/portee";
 import type { SessionUser } from "@/lib/auth/session";
 import { PERMISSIONS, getPermissionLabel } from "@/lib/rbac/permissions";
 import { ACTIONS_AUDIT, MODULES_AUDIT, enregistrerAudit } from "@/lib/audit";
@@ -361,24 +362,48 @@ export async function actionCreerCompteEmploye(
       PERMISSIONS.RH_ECRIRE,
     );
 
-    // Creer un compte utilisateur et lui attribuer des roles est un acte de
-    // gestion des utilisateurs : sans cette permission, un profil RH pourrait
-    // s'attribuer n'importe quel role par le biais du formulaire.
-    if (!aLaPermission(utilisateur, PERMISSIONS.UTILISATEUR_GERER)) {
-      throw accesRefuse(
-        `La creation d'un compte utilisateur et l'attribution de roles exigent la permission « ${getPermissionLabel(
-          PERMISSIONS.UTILISATEUR_GERER,
-        )} ».`,
-      );
-    }
-
-    const motDePasseSaisi = texteOuNull(formData.get("motDePasse"));
-    const motDePasse = motDePasseSaisi ?? genererMotDePasseTemporaire();
-
     const roleCodes = formData
       .getAll("roleCodes")
       .map((valeur) => String(valeur).trim())
       .filter((valeur) => valeur !== "");
+
+    // Creer un compte utilisateur et lui attribuer des roles est un acte de
+    // gestion des utilisateurs : sans cette permission, un profil RH pourrait
+    // s'attribuer n'importe quel role par le biais du formulaire.
+    //
+    // Un proprietaire d'usine fait exception, sous deux conditions strictes :
+    // il doit etre un proprietaire d'usine, et il ne peut attribuer que des
+    // roles d'execution de sa propre division. Sans ce garde-fou, il pourrait
+    // s'attribuer ADMIN_SYSTEME par le formulaire.
+    if (!aLaPermission(utilisateur, PERMISSIONS.UTILISATEUR_GERER)) {
+      const rolesAutorises = estProprietaireUsine(utilisateur)
+        ? new Set(
+            usinesAutorisees(utilisateur)
+              .filter((usine) => usine !== "COMMUN")
+              .flatMap((usine) => [`OPERATEUR_${usine}`, `MAGASINIER_${usine}`]),
+          )
+        : new Set<string>();
+
+      if (rolesAutorises.size === 0) {
+        throw accesRefuse(
+          `La creation d'un compte utilisateur et l'attribution de roles exigent la permission « ${getPermissionLabel(
+            PERMISSIONS.UTILISATEUR_GERER,
+          )} ».`,
+        );
+      }
+
+      const refuses = roleCodes.filter((code) => !rolesAutorises.has(code));
+      if (roleCodes.length === 0 || refuses.length > 0) {
+        throw accesRefuse(
+          refuses.length > 0
+            ? `Un proprietaire d'usine ne peut creer que des comptes d'execution de sa division. Roles refuses : ${refuses.join(", ")}. Autorises : ${[...rolesAutorises].join(", ")}.`
+            : `Selectionnez au moins un role d'execution de votre division : ${[...rolesAutorises].join(", ")}.`,
+        );
+      }
+    }
+
+    const motDePasseSaisi = texteOuNull(formData.get("motDePasse"));
+    const motDePasse = motDePasseSaisi ?? genererMotDePasseTemporaire();
 
     const compteId = await creerCompteEmploye(
       {
