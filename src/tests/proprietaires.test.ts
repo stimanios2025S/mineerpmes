@@ -21,6 +21,7 @@ const etat = vi.hoisted(() => ({
   utilisateur: null as SessionUser | null,
   ordres: vi.fn(), employes: vi.fn(), soldes: vi.fn(), scans: vi.fn(),
   atelier: vi.fn(), ordre: vi.fn(), articles: vi.fn(), lots: vi.fn(),
+  employesListe: vi.fn(),
 }));
 vi.mock("@/lib/auth/session", () => ({
   chargerUtilisateurCourant: async () => etat.utilisateur,
@@ -29,7 +30,7 @@ vi.mock("@/lib/db", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/lib/db")>(),
   prisma: {
     workOrder: { findMany: etat.ordres, findFirst: etat.ordre },
-    employee: { count: etat.employes },
+    employee: { count: etat.employes, findMany: etat.employesListe },
     stockBalance: { findMany: etat.soldes },
     workCenterScan: { count: etat.scans },
     workshop: { findFirst: etat.atelier },
@@ -81,6 +82,7 @@ beforeEach(() => {
   etat.soldes.mockResolvedValue([]); etat.scans.mockResolvedValue(0);
   etat.atelier.mockResolvedValue(null); etat.ordre.mockResolvedValue(null);
   etat.articles.mockResolvedValue([]); etat.lots.mockResolvedValue([]);
+  etat.employesListe.mockResolvedValue([]);
 });
 
 describe("Proprietaires limites a leur usine", () => {
@@ -146,14 +148,42 @@ describe("Proprietaires limites a leur usine", () => {
 });
 
 
+/**
+ * Texte porte par un arbre d'elements React, sans le rendre.
+ *
+ * `JSON.stringify` echoue sur un arbre React (references circulaires via les
+ * types de composants) et un rendu complet exigerait un contexte Next. On
+ * parcourt donc les enfants et on collecte les chaines : cela suffit a verifier
+ * ce qui est reellement affiche a l'ecran.
+ */
+function texteDeArbre(noeud: unknown, accumulateur: string[] = []): string[] {
+  if (noeud === null || noeud === undefined || typeof noeud === "boolean") {
+    return accumulateur;
+  }
+  if (typeof noeud === "string" || typeof noeud === "number") {
+    accumulateur.push(String(noeud));
+    return accumulateur;
+  }
+  if (Array.isArray(noeud)) {
+    for (const enfant of noeud) texteDeArbre(enfant, accumulateur);
+    return accumulateur;
+  }
+  const objet = noeud as { props?: { children?: unknown } };
+  if (objet.props && "children" in objet.props) {
+    texteDeArbre(objet.props.children, accumulateur);
+  }
+  return accumulateur;
+}
+
 describe("Identite et recherche des portails separes", () => {
   it.each(["ADMEDCO", "MOBILIX"] as const)("%s : en-tete, titre et menu ne contiennent pas l'autre usine", async (usine) => {
     etat.utilisateur = compte(`PROPRIETAIRE_${usine}`);
     const autre = usine === "ADMEDCO" ? "MOBILIX" : "ADMEDCO";
     expect(identiteUtilisateur(etat.utilisateur)?.code).toBe(usine);
     const shell = await LayoutApplication({ children: React.createElement("span", null, "CONTENU") });
-    expect(JSON.stringify(shell)).toContain(usine);
-    expect(JSON.stringify(shell)).not.toContain(autre);
+    const texteEntete = texteDeArbre(shell).join(" | ");
+    expect(texteEntete).toContain(usine);
+    expect(texteEntete).not.toContain(autre);
     const metadata = await metadataPortail();
     expect(JSON.stringify(metadata)).toContain(usine);
     expect(JSON.stringify(metadata)).not.toContain(autre);
