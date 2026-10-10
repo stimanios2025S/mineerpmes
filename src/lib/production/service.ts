@@ -23,7 +23,7 @@ import {
   enregistrerAudit,
 } from "@/lib/audit";
 import { lireParametreBooleen, lireParametreNombre, CLE_PARAMETRE } from "@/lib/settings";
-import { disponibleArticle, enregistrerMouvement, reserverStock, transfererStock, type ActeurStock } from "@/lib/stock/service";
+import { disponibleArticle, enregistrerMouvement, quantiteDisponible, reserverStock, transfererStock, type ActeurStock } from "@/lib/stock/service";
 
 /**
  * Moteur de production (MES).
@@ -498,24 +498,64 @@ export async function lancerOrdreFabrication(
       const demande = D.of(String(donnees.quantityPlanned ?? 0));
       if (D.lte(demande, 0)) continue;
 
-      const disponible = await disponibleArticle(matiere.componentItemId, depotId, tx);
-      const aReserver = D.lt(disponible, demande) ? disponible : demande;
-      if (D.lte(aReserver, 0)) continue;
-
-      await reserverStock(tx, {
-        itemId: matiere.componentItemId,
-        warehouseId: depotId,
-        quantity: aReserver,
-        documentType: "ORDRE_FABRICATION",
-        documentId: String(workOrderId),
-        acteur,
+      // Reservation AU MEME NIVEAU que la disponibilite.
+      //
+      // disponibleArticle additionne toutes les lignes LIBRE, y compris celles
+      // portees par un lot. reserverStock sans `lotId` ecrit sur la ligne
+      // agregee. Or le stock importe est ecrit PAR LOT : reserver sur l'agrege
+      // echouerait en « stock insuffisant » alors que les lots portent bien la
+      // matiere. On repartit donc la reservation sur les lignes reellement
+      // porteuses, dans un ordre deterministe, jusqu'a couvrir la demande.
+      const lignesLibres = await tx.stockBalance.findMany({
+        where: {
+          itemId: matiere.componentItemId,
+          warehouseId: depotId,
+          status: "LIBRE",
+        },
+        select: {
+          lotId: true,
+          quantityPhysical: true,
+          quantityReserved: true,
+          quantityBlocked: true,
+          quantityDamaged: true,
+          quantityQuarantine: true,
+        },
+        orderBy: [{ lotId: "asc" }],
       });
 
-      await tx.workOrderMaterial.update({
-        where: { id: matiere.id },
-        data: { quantityReserved: aReserver },
-      });
-      matieresReservees += 1;
+      let reste = demande;
+      let reserve = D.of(0);
+
+      for (const ligne of lignesLibres) {
+        if (D.lte(reste, 0)) break;
+        const libre = quantiteDisponible(ligne);
+        if (D.lte(libre, 0)) continue;
+
+        const part = D.lt(libre, reste) ? libre : reste;
+
+        await reserverStock(tx, {
+          itemId: matiere.componentItemId,
+          warehouseId: depotId,
+          lotId: ligne.lotId,
+          quantity: part,
+          documentType: "ORDRE_FABRICATION",
+          documentId: String(workOrderId),
+          acteur,
+        });
+
+        reserve = D.add(reserve, part);
+        reste = D.sub(reste, part);
+      }
+
+      // Reservation partielle assumee : la quantite non couverte reste visible,
+      // le lancement n'est pas bloque pour autant.
+      if (D.gt(reserve, 0)) {
+        await tx.workOrderMaterial.update({
+          where: { id: matiere.id },
+          data: { quantityReserved: reserve },
+        });
+        matieresReservees += 1;
+      }
     }
 
     await tx.workOrder.update({
