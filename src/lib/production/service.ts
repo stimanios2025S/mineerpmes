@@ -144,7 +144,7 @@ export async function creerOrdreFabrication(
     }
     if (article.status === "NON_PRODUCTIBLE") {
       throw etatInvalide(
-        `L'article ${article.code} est marque Â« non productible Â» dans le catalogue.`,
+        `L'article ${article.code} est marque « non productible » dans le catalogue.`,
       );
     }
 
@@ -394,7 +394,7 @@ export async function lancerOrdreFabrication(
 
     if (!["BROUILLON", "PLANIFIE"].includes(ordre.status)) {
       throw etatInvalide(
-        `L'ordre ${ordre.number} est au statut Â« ${ordre.status} Â» : seul un ordre en brouillon ou planifie peut etre lance.`,
+        `L'ordre ${ordre.number} est au statut « ${ordre.status} » : seul un ordre en brouillon ou planifie peut etre lance.`,
       );
     }
 
