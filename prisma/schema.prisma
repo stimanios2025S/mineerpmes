@@ -1703,6 +1703,7 @@ model WorkOrderMaterial {
   lineNo               Int  @default(0)
 
   quantityPlanned  Decimal @default(0) @db.Decimal(18, 6)
+  quantityReserved Decimal @default(0) @db.Decimal(18, 6)
   quantityIssued   Decimal @default(0) @db.Decimal(18, 6)
   quantityConsumed Decimal @default(0) @db.Decimal(18, 6)
   quantityLost     Decimal @default(0) @db.Decimal(18, 6)
