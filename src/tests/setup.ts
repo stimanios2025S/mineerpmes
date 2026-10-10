@@ -103,8 +103,11 @@ function attendre(ms: number): Promise<void> {
 async function preparerBase(): Promise<void> {
   await creerBaseSiAbsente();
 
-  if (await referentielCharge()) return;
-
+  // Les migrations sont TOUJOURS appliquees, meme quand le referentiel est deja
+  // charge. `migrate deploy` est idempotent, et une base deja semee n'a pas
+  // forcement recu la derniere migration : sortir ici avant cet appel laissait
+  // passer une migration en silence, puis la suite echouait sur une colonne
+  // absente avec un message qui ne parlait jamais de la migration.
   try {
     executerOutil("prisma", ["migrate", "deploy"]);
   } catch (erreur) {
@@ -112,6 +115,9 @@ async function preparerBase(): Promise<void> {
       `Migrations impossibles sur la base de test : ${(erreur as Error).message}`,
     );
   }
+
+  // Referentiel deja en place : seule la structure pouvait manquer.
+  if (await referentielCharge()) return;
 
   try {
     executerOutil("tsx", ["prisma/seed.ts"]);

@@ -23,7 +23,7 @@ import {
   enregistrerAudit,
 } from "@/lib/audit";
 import { lireParametreBooleen, lireParametreNombre, CLE_PARAMETRE } from "@/lib/settings";
-import { enregistrerMouvement, transfererStock, type ActeurStock } from "@/lib/stock/service";
+import { disponibleArticle, enregistrerMouvement, reserverStock, transfererStock, type ActeurStock } from "@/lib/stock/service";
 
 /**
  * Moteur de production (MES).
@@ -477,8 +477,45 @@ export async function lancerOrdreFabrication(
       });
     }
 
-    if (lignes.length > 0) {
-      await tx.workOrderMaterial.createMany({ data: lignes });
+    // Reservation dans la MEME transaction que le figeage.
+    //
+    // La nomenclature vient d'etre figee dans `lignes` : on reserve sur CES
+    // lignes, jamais sur la formule relue en base. C'est la garantie que
+    // l'ordre immobilise exactement ce qu'il a fige.
+    //
+    // La quantite est plafonnee au disponible : `reserverStock` refuse de
+    // reserver plus que le solde LIBRE, et un stock partiel ne doit pas empecher
+    // un lancement legitime. Le manque reste visible sur la feuille de route et
+    // dans `quantityReserved`.
+    let matieresReservees = 0;
+
+    for (const donnees of lignes) {
+      const matiere = await tx.workOrderMaterial.create({ data: donnees });
+
+      const depotId = donnees.warehouseId;
+      if (donnees.isLabor || depotId === null || depotId === undefined) continue;
+
+      const demande = D.of(String(donnees.quantityPlanned ?? 0));
+      if (D.lte(demande, 0)) continue;
+
+      const disponible = await disponibleArticle(matiere.componentItemId, depotId, tx);
+      const aReserver = D.lt(disponible, demande) ? disponible : demande;
+      if (D.lte(aReserver, 0)) continue;
+
+      await reserverStock(tx, {
+        itemId: matiere.componentItemId,
+        warehouseId: depotId,
+        quantity: aReserver,
+        documentType: "ORDRE_FABRICATION",
+        documentId: String(workOrderId),
+        acteur,
+      });
+
+      await tx.workOrderMaterial.update({
+        where: { id: matiere.id },
+        data: { quantityReserved: aReserver },
+      });
+      matieresReservees += 1;
     }
 
     await tx.workOrder.update({
@@ -503,6 +540,7 @@ export async function lancerOrdreFabrication(
         newValue: {
           statut: "LANCE",
           composantsFiges: lignes.length,
+          matieresReservees,
           nomenclature: `${ordre.formula.code} v${ordre.formula.version}`,
         },
         comment: "Lancement de l'ordre de fabrication",
