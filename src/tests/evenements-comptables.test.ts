@@ -70,7 +70,10 @@ describe("Codes d'evenement comptable", () => {
     expect(contenu).toContain("EVENEMENTS_COMPTABLES.FACTURE_CLIENT");
     expect(fichiersSources().length).toBeGreaterThan(20);
 
-    const litteraux = [...contenu.matchAll(/eventCode:\s*"([A-Za-z_]+)"/g)].map(
+    // Classe stricte : un code comptable est en majuscules. Une minuscule
+    // signale autre chose — typiquement un tri Prisma (`orderBy: { eventCode:
+    // "asc" }`), qui ne doit jamais etre pris pour un code.
+    const litteraux = [...contenu.matchAll(/eventCode:\s*"([A-Z_]+)"/g)].map(
       (correspondance) => correspondance[1],
     );
 
@@ -88,10 +91,28 @@ describe("Codes d'evenement comptable", () => {
     // code metier : soit par la constante (EVENEMENTS_COMPTABLES.CODE), ce qui
     // est la forme attendue, soit par la chaine litterale, ce qui reste tolere
     // dans le seed et les tables de correspondance.
+    // Deux formes, deux traitements, et c'est la distinction qui compte :
+    //
+    //  - `EVENEMENTS_COMPTABLES.X` ne peut designer qu'un evenement comptable :
+    //    le citer suffit, ou qu'il soit. C'est necessaire, car un code peut
+    //    passer par une table de correspondance (reglement.ts) et ne jamais
+    //    apparaitre juste apres `eventCode:`.
+    //  - une chaine litterale `"X"` est ambigue : les memes libelles servent de
+    //    type de mouvement de stock (src/actions/stock.ts). Elle ne compte que
+    //    si elle suit immediatement `eventCode:`.
+    const constantesCitees = new Set(
+      [...contenu.matchAll(/EVENEMENTS_COMPTABLES\.([A-Z_]+)/g)].map(
+        (correspondance) => correspondance[1],
+      ),
+    );
+    const litterauxComptables = new Set(
+      [...contenu.matchAll(/eventCode:\s*"([A-Z_]+)"/g)].map(
+        (correspondance) => correspondance[1],
+      ),
+    );
+
     const branches = TOUS_LES_EVENEMENTS.filter(
-      (code) =>
-        contenu.includes(`"${code}"`) ||
-        contenu.includes(`EVENEMENTS_COMPTABLES.${code}`),
+      (code) => constantesCitees.has(code) || litterauxComptables.has(code),
     );
 
     const nonBranches = TOUS_LES_EVENEMENTS.filter(
