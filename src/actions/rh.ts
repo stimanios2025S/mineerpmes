@@ -47,6 +47,7 @@ import {
   mettreEnPauseOperation,
   reprendreOperation,
 } from "@/lib/production/service";
+import { creerEmployeAvecAcces, type AccesNouvelEmploye } from "@/lib/rh/inscription";
 import { creerNonConformite } from "@/lib/qualite/service";
 import { REGLES_MOT_DE_PASSE, genererMotDePasseTemporaire } from "@/lib/auth/password";
 import {
@@ -256,6 +257,54 @@ export async function actionCreerEmploye(
 
       revalidatePath("/rh/employes");
       return { id };
+    },
+  );
+}
+
+export async function actionCreerEmployeEtCompte(
+  formData: FormData,
+): Promise<ResultatAction<AccesNouvelEmploye>> {
+  return executer<AccesNouvelEmploye>(
+    "Employe et compte operateur crees.",
+    async () => {
+      const utilisateur = await exigerPermission(PERMISSIONS.RH_ECRIRE);
+      const usines = usinesAutorisees(utilisateur).filter((usine) => usine !== "COMMUN");
+      const saisie = texteOuNull(formData.get("factory"));
+      if (saisie && saisie !== "ADMEDCO" && saisie !== "MOBILIX") throw validation("Usine invalide.");
+      const factory = (saisie ?? (usines.length === 1 ? usines[0] : "COMMUN")) as Factory;
+      await exigerAccesUsine(factory);
+
+      const acces = await creerEmployeAvecAcces(
+        {
+          matricule: texteOuNull(formData.get("matricule")) ?? undefined,
+          firstName: texteObligatoire(formData.get("firstName"), "prenom"),
+          lastName: texteObligatoire(formData.get("lastName"), "nom"),
+          factory,
+          workshopId: entierOu(formData.get("workshopId")),
+          jobTitle: texteOuNull(formData.get("jobTitle")),
+          email: texteOuNull(formData.get("email")),
+          phone: texteOuNull(formData.get("phone")),
+          phone2: texteOuNull(formData.get("phone2")),
+          address: texteOuNull(formData.get("address")),
+          city: texteOuNull(formData.get("city")),
+          birthDate: dateOuNull(formData.get("birthDate")),
+          gender: texteOuNull(formData.get("gender")),
+          socialSecurityNumber: texteOuNull(formData.get("socialSecurityNumber")),
+          ccp: texteOuNull(formData.get("ccp")),
+          contractType: texteOuNull(formData.get("contractType")),
+          hireDate: dateOuNull(formData.get("hireDate")),
+          endDate: dateOuNull(formData.get("endDate")),
+          defaultWarehouseId: entierOu(formData.get("defaultWarehouseId")),
+          ...champsSalariaux(
+            formData,
+            aLaPermission(utilisateur, PERMISSIONS.RH_SALAIRE_LIRE),
+          ),
+        },
+        utilisateur,
+      );
+
+      revalidatePath("/rh/employes");
+      return acces;
     },
   );
 }
