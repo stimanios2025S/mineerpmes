@@ -14,6 +14,7 @@ import {
   conflit,
   etatInvalide,
   nonTrouve,
+  stockInsuffisant,
   validation,
 } from "@/lib/errors";
 import { prochainNumero, SEQUENCES } from "@/lib/numbering";
@@ -23,7 +24,8 @@ import {
   enregistrerAudit,
 } from "@/lib/audit";
 import { lireParametreBooleen, lireParametreNombre, CLE_PARAMETRE } from "@/lib/settings";
-import { disponibleArticle, enregistrerMouvement, quantiteDisponible, reserverStock, transfererStock, type ActeurStock } from "@/lib/stock/service";
+import { disponibleArticle, enregistrerMouvement, libererReservation, quantiteDisponible, reserverStock, transfererStock, type ActeurStock } from "@/lib/stock/service";
+import { branchesEnAttente, sousStockDeSortie } from "@/lib/mes/sous-stocks";
 
 /**
  * Moteur de production (MES).
@@ -672,6 +674,33 @@ export async function demarrerOperation(entree: DemarrerOperationInput): Promise
       );
     }
 
+    // Blocage par les branches amont obligatoires, applique ICI et pas seulement
+    // a l'affichage : une chaine non lineaire (couture et preparation du bois
+    // alimentant l'assemblage) doit empecher le demarrage par appel direct, et
+    // pas seulement griser un bouton.
+    const sousStockSortie = await sousStockDeSortie(
+      tx,
+      operation.operationId,
+      operation.workOrder.factory,
+    );
+    if (sousStockSortie) {
+      const manquantes = await branchesEnAttente(tx, {
+        toSubStockId: sousStockSortie.id,
+        itemId: operation.workOrder.itemId,
+        quantiteRequise: D.max(
+          D.sub(operation.workOrder.quantityPlanned, operation.workOrder.quantityProduced),
+          D.of(0),
+        ),
+      });
+      if (manquantes.length > 0) {
+        throw etatInvalide(
+          `Demarrage impossible : ${manquantes.length} branche(s) amont obligatoire(s) n'ont pas encore fourni leur quantite (${manquantes
+            .map((branche) => branche.fromCode)
+            .join(", ")}).`,
+        );
+      }
+    }
+
     const maintenant = new Date();
 
     await tx.workOrderOperation.update({
@@ -953,13 +982,31 @@ export async function declarerProduction(
     const nouveauConforme = D.add(ordre.quantityConform, conforme);
     const nouveauRebut = D.add(ordre.quantityScrapped, rebutee);
     const nouvelleReprise = D.add(ordre.quantityRework, reprise);
-    const reste = D.sub(ordre.quantityPlanned, nouvelleProduite);
+
+    // `quantityProduced` sur l'ordre est le CUMUL de toutes ses declarations,
+    // toutes operations confondues : mesure d'avancement de l'atelier, elle ne
+    // dit pas combien de pieces sont fabriquees. Un OF de 10 pieces sur 6
+    // operations y affiche 60. Le statut et le reste a produire se lisent donc
+    // sur la DERNIERE operation de la gamme, seule a sortir le produit fini.
+    const derniereOperation = await tx.workOrderOperation.findFirst({
+      where: { workOrderId: ordre.id },
+      orderBy: { stepNo: "desc" },
+      select: { id: true, quantityPlanned: true, quantityProduced: true },
+    });
+
+    const produiteFinale = derniereOperation
+      ? derniereOperation.id === operation.id
+        ? D.add(operation.quantityProduced, produite)
+        : derniereOperation.quantityProduced
+      : D.of(0);
+
+    const reste = D.sub(ordre.quantityPlanned, produiteFinale);
 
     let statutOrdre: WorkOrderStatus = ordre.status;
     if (["LANCE", "PLANIFIE"].includes(ordre.status)) {
       statutOrdre = "EN_COURS";
     }
-    if (D.gte(nouvelleProduite, ordre.quantityPlanned)) {
+    if (derniereOperation && D.gte(produiteFinale, derniereOperation.quantityPlanned)) {
       statutOrdre = "PARTIELLEMENT_TERMINE";
     }
 
@@ -1121,6 +1168,118 @@ export interface DeclarationConsommationInput {
   acteur: ActeurStock;
 }
 
+/** Part d'une consommation, ramenee a UNE ligne de solde precise. */
+interface PartConsommation {
+  locationId: number | null;
+  lotId: number | null;
+  quantity: Prisma.Decimal;
+  /**
+   * Allocation d'origine quand cette part vient de la matiere immobilisee par
+   * cet OF. Sa reservation doit tomber avant la sortie. `null` quand la part
+   * est prise sur du stock libre, au-dela de ce qui a ete reserve.
+   */
+  allocationId: number | null;
+  /** Cumul deja consomme sur cette allocation : la nouvelle valeur l'ajoute. */
+  dejaConsomme: Prisma.Decimal;
+}
+
+/**
+ * Repartit une quantite consommee sur les lignes de solde qui la portent.
+ *
+ * L'ordre est deterministe, et il n'y a qu'un seul niveau de stock de bout en
+ * bout :
+ *
+ *  1. les ALLOCATIONS de cet ordre, c'est-a-dire la matiere qu'il a lui-meme
+ *     immobilisee au lancement — c'est ce qui permet de liberer la reservation
+ *     sur la ligne exacte, lot et emplacement compris ;
+ *  2. si l'operateur consomme au-dela du reserve, les lignes LIBRE restantes du
+ *     depot, lues par `quantiteDisponible`. Une ligne dont la matiere est
+ *     reservee par un AUTRE ordre n'apparait donc jamais disponible : les
+ *     reservations des autres ordres sont respectees.
+ *
+ * Une consommation totaleement couverte par les allocations donne une seule
+ * part par lot servi ; chaque part produit son propre mouvement de stock.
+ */
+async function repartirConsommation(
+  tx: Db,
+  matiere: {
+    componentItemId: number;
+    warehouseId: number | null;
+    allocations: {
+      id: number;
+      locationId: number | null;
+      lotId: number | null;
+      quantityReserved: Prisma.Decimal;
+      quantityConsumed: Prisma.Decimal;
+    }[];
+  },
+  quantite: Prisma.Decimal,
+): Promise<PartConsommation[]> {
+  const parts: PartConsommation[] = [];
+  let reste = quantite;
+
+  for (const allocation of matiere.allocations) {
+    if (D.lte(reste, 0)) break;
+    const disponible = D.sub(allocation.quantityReserved, allocation.quantityConsumed);
+    if (D.lte(disponible, 0)) continue;
+
+    const part = D.lt(disponible, reste) ? disponible : reste;
+    parts.push({
+      locationId: allocation.locationId,
+      lotId: allocation.lotId,
+      quantity: part,
+      allocationId: allocation.id,
+      dejaConsomme: allocation.quantityConsumed,
+    });
+    reste = D.sub(reste, part);
+  }
+
+  if (D.gt(reste, 0) && matiere.warehouseId !== null) {
+    const lignes = await tx.stockBalance.findMany({
+      where: {
+        itemId: matiere.componentItemId,
+        warehouseId: matiere.warehouseId,
+        status: "LIBRE",
+      },
+      select: {
+        locationId: true,
+        lotId: true,
+        quantityPhysical: true,
+        quantityReserved: true,
+        quantityBlocked: true,
+        quantityDamaged: true,
+        quantityQuarantine: true,
+      },
+      orderBy: [{ lotId: "asc" }, { locationId: "asc" }],
+    });
+
+    for (const ligne of lignes) {
+      if (D.lte(reste, 0)) break;
+      const libre = quantiteDisponible(ligne);
+      if (D.lte(libre, 0)) continue;
+
+      const part = D.lt(libre, reste) ? libre : reste;
+      parts.push({
+        locationId: ligne.locationId,
+        lotId: ligne.lotId,
+        quantity: part,
+        allocationId: null,
+        dejaConsomme: D.of(0),
+      });
+      reste = D.sub(reste, part);
+    }
+  }
+
+  if (D.gt(reste, 0)) {
+    throw stockInsuffisant(
+      `Consommation impossible : il manque ${D.toFixed(reste, 3)} en stock libre dans le depot de consommation.`,
+      { materialId: null, itemId: matiere.componentItemId },
+    );
+  }
+
+  return parts;
+}
+
 /**
  * Declaration d'une consommation reelle.
  * L'ecart avec la nomenclature est classe en consommation normale ou en
@@ -1137,7 +1296,12 @@ export async function declarerConsommation(
   return prisma.$transaction(async (tx) => {
     const matiere = await tx.workOrderMaterial.findUnique({
       where: { id: entree.materialId },
-      include: { componentItem: true },
+      include: {
+        componentItem: true,
+        // La repartition de la reservation posee au lancement : c'est elle qui
+        // dit de QUEL lot et de QUEL emplacement la matiere doit sortir.
+        allocations: { orderBy: { id: "asc" } },
+      },
     });
     if (!matiere) throw nonTrouve("Le composant de l'ordre de fabrication");
     if (matiere.workOrderOperationId !== entree.workOrderOperationId) {
@@ -1179,24 +1343,10 @@ export async function declarerConsommation(
       ? "SURCONSOMMATION"
       : "CONSOMMATION_NORMALE";
 
-    const mouvement = await enregistrerMouvement(tx, {
-      type: "CONSOMMATION_OPERATION",
-      itemId: matiere.componentItemId,
-      warehouseId: matiere.warehouseId,
-      quantity: quantite.negated(),
-      unitCost: matiere.unitCost,
-      unitCode: matiere.unitCode,
-      workOrderId: operation.workOrderId,
-      workOrderOperationId: operation.id,
-      operationId: operation.operationId,
-      documentType: "ORDRE_FABRICATION",
-      documentId: String(operation.workOrderId),
-      documentNumber: operation.workOrder.number,
-      comment: entree.commentaire ?? "Consommation declaree en atelier",
-      acteur: entree.acteur,
-      sansAudit: true,
-    });
-
+    // La declaration est creee AVANT les mouvements : une consommation
+    // repartie sur deux lots sort deux mouvements de stock, et les deux lui
+    // sont rattaches. C'est ce qui rend la sortie lisible depuis la
+    // declaration, au lieu d'un seul mouvement sur la ligne agregee.
     const declaration = await creerDeclaration(tx, {
       workOrderId: operation.workOrderId,
       workOrderOperationId: operation.id,
@@ -1214,6 +1364,61 @@ export async function declarerConsommation(
       commentaire: entree.commentaire ?? null,
     });
 
+    const parts = await repartirConsommation(tx, matiere, quantite);
+    const mouvements: bigint[] = [];
+
+    for (const part of parts) {
+      // La reservation tombe AVANT la sortie, sur la ligne exacte — lot et
+      // emplacement compris. Sans cela la matiere resterait immobilisee alors
+      // qu'elle a physiquement quitte le depot : le disponible diminuerait sans
+      // fin, et une consommation ulterieure se verrait refuser sa propre
+      // matiere, deja comptee comme reservee.
+      if (part.allocationId !== null) {
+        await libererReservation(tx, {
+          itemId: matiere.componentItemId,
+          warehouseId: matiere.warehouseId,
+          lotId: part.lotId,
+          locationId: part.locationId,
+          quantity: part.quantity,
+          documentType: "ORDRE_FABRICATION",
+          documentId: String(operation.workOrderId),
+          acteur: entree.acteur,
+        });
+      }
+
+      const mouvement = await enregistrerMouvement(tx, {
+        type: "CONSOMMATION_OPERATION",
+        itemId: matiere.componentItemId,
+        warehouseId: matiere.warehouseId,
+        lotId: part.lotId,
+        locationId: part.locationId,
+        quantity: part.quantity.negated(),
+        unitCost: matiere.unitCost,
+        unitCode: matiere.unitCode,
+        workOrderId: operation.workOrderId,
+        workOrderOperationId: operation.id,
+        operationId: operation.operationId,
+        documentType: "ORDRE_FABRICATION",
+        documentId: String(operation.workOrderId),
+        documentNumber: operation.workOrder.number,
+        comment: entree.commentaire ?? "Consommation declaree en atelier",
+        acteur: entree.acteur,
+        sansAudit: true,
+      });
+      mouvements.push(mouvement.mouvementId);
+
+      if (part.allocationId !== null) {
+        await tx.workOrderMaterialAllocation.update({
+          where: { id: part.allocationId },
+          data: {
+            quantityConsumed: D.roundQuantity(
+              D.add(part.dejaConsomme, part.quantity),
+            ),
+          },
+        });
+      }
+    }
+
     await tx.workOrderMaterial.update({
       where: { id: matiere.id },
       data: {
@@ -1222,8 +1427,8 @@ export async function declarerConsommation(
       },
     });
 
-    await tx.stockMovement.update({
-      where: { id: mouvement.mouvementId },
+    await tx.stockMovement.updateMany({
+      where: { id: { in: mouvements } },
       data: { declarationId: declaration.id },
     });
 
@@ -1874,6 +2079,64 @@ async function executerTransfertAutomatique(
 // Cloture
 // -----------------------------------------------------------------------------
 
+/**
+ * Rend la reservation encore posee par un OF, ligne de solde par ligne de solde.
+ *
+ * Appelee a la cloture et a l'annulation : ce qui a ete consomme n'est plus
+ * reserve, seule la part non consommee est rendue au disponible. La liberation
+ * vise la ligne exacte (lot et emplacement) que le lancement a immobilisee.
+ *
+ * IDEMPOTENCE : apres liberation, `quantityReserved` de l'allocation egale sa
+ * `quantityConsumed`. Un second appel — cloture rejouee, annulation apres
+ * cloture — ne trouve donc plus rien a rendre. C'est ce qui interdit la double
+ * liberation, et ce qui garantit qu'une reservation posee par un AUTRE ordre
+ * sur la meme ligne n'est jamais touchee : on ne rend que ce que cet ordre a
+ * lui-meme immobilise.
+ */
+async function libererReliquatReservation(
+  tx: Db,
+  workOrderId: number,
+  acteur: ActeurStock,
+): Promise<number> {
+  const allocations = await tx.workOrderMaterialAllocation.findMany({
+    where: { material: { workOrderId } },
+    include: {
+      material: { select: { componentItemId: true, warehouseId: true } },
+    },
+    orderBy: { id: "asc" },
+  });
+
+  let liberees = 0;
+
+  for (const allocation of allocations) {
+    const reliquat = D.sub(allocation.quantityReserved, allocation.quantityConsumed);
+    if (D.lte(reliquat, 0)) continue;
+
+    const warehouseId = allocation.material.warehouseId;
+    if (warehouseId === null) continue;
+
+    await libererReservation(tx, {
+      itemId: allocation.material.componentItemId,
+      warehouseId,
+      lotId: allocation.lotId,
+      locationId: allocation.locationId,
+      quantity: reliquat,
+      documentType: "ORDRE_FABRICATION",
+      documentId: String(workOrderId),
+      acteur,
+    });
+
+    await tx.workOrderMaterialAllocation.update({
+      where: { id: allocation.id },
+      data: { quantityReserved: D.roundQuantity(allocation.quantityConsumed) },
+    });
+
+    liberees += 1;
+  }
+
+  return liberees;
+}
+
 export async function cloturerOrdreFabrication(
   workOrderId: number,
   acteur: ActeurStock,
@@ -1902,6 +2165,14 @@ export async function cloturerOrdreFabrication(
       );
     }
 
+    // La matiere non consommee est rendue au disponible AVANT l'ecriture du
+    // statut : un ordre cloture ne doit plus rien immobiliser.
+    const reservationsLiberees = await libererReliquatReservation(
+      tx,
+      workOrderId,
+      acteur,
+    );
+
     await tx.workOrder.update({
       where: { id: workOrderId },
       data: {
@@ -1922,7 +2193,7 @@ export async function cloturerOrdreFabrication(
         userId: acteur.id,
         userEmail: acteur.email,
         oldValue: { statut: ordre.status },
-        newValue: { statut: "CLOTURE" },
+        newValue: { statut: "CLOTURE", reservationsLiberees },
         comment: commentaire ?? "Cloture de l'ordre de fabrication",
       },
       tx,
@@ -1961,6 +2232,14 @@ export async function annulerOrdreFabrication(
       );
     }
 
+    // Un ordre annule ne doit plus rien immobiliser : la reservation est rendue
+    // avant le changement de statut.
+    const reservationsLiberees = await libererReliquatReservation(
+      tx,
+      workOrderId,
+      acteur,
+    );
+
     await tx.workOrder.update({
       where: { id: workOrderId },
       data: { status: "ANNULE", quantityRemaining: D.ZERO },
@@ -1980,7 +2259,7 @@ export async function annulerOrdreFabrication(
         userId: acteur.id,
         userEmail: acteur.email,
         oldValue: { statut: ordre.status },
-        newValue: { statut: "ANNULE" },
+        newValue: { statut: "ANNULE", reservationsLiberees },
         reason: motif,
       },
       tx,

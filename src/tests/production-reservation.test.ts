@@ -15,7 +15,15 @@
 import { Prisma } from "@prisma/client";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/db";
-import { creerOrdreFabrication, lancerOrdreFabrication } from "@/lib/production/service";
+import {
+  annulerOrdreFabrication,
+  cloturerOrdreFabrication,
+  creerOrdreFabrication,
+  declarerConsommation,
+  demarrerOperation,
+  deplacerCarteKanban,
+  lancerOrdreFabrication,
+} from "@/lib/production/service";
 import { cleSolde, enregistrerMouvement, type ActeurStock } from "@/lib/stock/service";
 import { acteurTest, jeton, supprimerParPrefixe } from "@/tests/aide";
 
@@ -321,5 +329,291 @@ describe("Reservation au lancement : niveau de stock", () => {
       ]),
       "L'allocation doit designer l'emplacement, pas la ligne agregee",
     ).toEqual([[emplacement.id, null, "4.000000"]]);
+  });
+});
+
+// -----------------------------------------------------------------------------
+// Consommation et liberation de la reservation
+// -----------------------------------------------------------------------------
+
+/** Lance un OF du banc et demarre son unique operation. */
+async function lancerEtDemarrer(banc: Banc, quantite: string) {
+  const ordre = await creerOrdre(banc, quantite);
+  await lancerOrdreFabrication(ordre.workOrderId, acteur);
+
+  const operation = await prisma.workOrderOperation.findFirstOrThrow({
+    where: { workOrderId: ordre.workOrderId },
+    orderBy: { stepNo: "asc" },
+  });
+  const matiere = await prisma.workOrderMaterial.findFirstOrThrow({
+    where: { workOrderId: ordre.workOrderId, componentItemId: banc.composant.id },
+  });
+
+  await demarrerOperation({
+    workOrderOperationId: operation.id,
+    acteur,
+    commentaire: `Demarrage de test ${PREFIXE}`,
+  });
+
+  return { ordre, operation, matiere };
+}
+
+/** Termine l'unique operation du banc, ce qui termine aussi l'ordre. */
+async function terminerOperation(operationId: number): Promise<void> {
+  await deplacerCarteKanban({
+    workOrderOperationId: operationId,
+    quantite: "1",
+    acteur,
+    forcer: true,
+    commentaire: `Fin de chaine de test ${PREFIXE}`,
+  });
+}
+
+async function allocationsDe(materialId: number) {
+  return prisma.workOrderMaterialAllocation.findMany({
+    where: { materialId },
+    orderBy: { id: "asc" },
+  });
+}
+
+async function creerLot(banc: Banc, suffixe: string) {
+  return prisma.stockLot.create({
+    data: {
+      itemId: banc.composant.id,
+      warehouseId: depot.id,
+      lotNumber: `${PREFIXE}-${suffixe}`,
+      status: "LIBRE",
+    },
+  });
+}
+
+const ZERO = "0.000000";
+
+describe("Consommation : sortie sur les lignes exactes", () => {
+  it("sort de chaque lot et rattache les DEUX mouvements a une seule declaration", async () => {
+    const banc = await creerBanc("CONSLOT");
+    const lot1 = await creerLot(banc, "SLOT-1");
+    const lot2 = await creerLot(banc, "SLOT-2");
+
+    await entree({ itemId: banc.composant.id, quantity: "5", unitCost: "2", lotId: lot1.id });
+    await entree({ itemId: banc.composant.id, quantity: "4", unitCost: "2", lotId: lot2.id });
+
+    // 3 produits x 2 = 6 requis : le lot 1 (5) puis le lot 2 (1).
+    const { operation, matiere } = await lancerEtDemarrer(banc, "3");
+
+    const resultat = await declarerConsommation({
+      workOrderOperationId: operation.id,
+      materialId: matiere.id,
+      quantite: "6",
+      acteur,
+      commentaire: `Consommation de test ${PREFIXE}`,
+    });
+
+    const mouvements = await prisma.stockMovement.findMany({
+      where: { declarationId: resultat.declarationId },
+      orderBy: { id: "asc" },
+    });
+    expect(
+      mouvements.map((mouvement) => [
+        mouvement.lotId,
+        mouvement.locationId,
+        mouvement.quantity.toFixed(6),
+      ]),
+      "Une consommation sur deux lots sort deux mouvements, tous deux rattaches a la declaration",
+    ).toEqual([
+      [lot1.id, null, "-5.000000"],
+      [lot2.id, null, "-1.000000"],
+    ]);
+
+    expect((await solde(banc.composant.id, { lotId: lot1.id }))?.quantityPhysical.toFixed(6)).toBe(ZERO);
+    expect((await solde(banc.composant.id, { lotId: lot2.id }))?.quantityPhysical.toFixed(6)).toBe("3.000000");
+
+    // Aucune reservation ne survit a la consommation.
+    expect((await solde(banc.composant.id, { lotId: lot1.id }))?.quantityReserved.toFixed(6)).toBe(ZERO);
+    expect((await solde(banc.composant.id, { lotId: lot2.id }))?.quantityReserved.toFixed(6)).toBe(ZERO);
+
+    const allocations = await allocationsDe(matiere.id);
+    expect(
+      allocations.map((allocation) => [
+        allocation.lotId,
+        allocation.quantityReserved.toFixed(6),
+        allocation.quantityConsumed.toFixed(6),
+      ]),
+    ).toEqual([
+      [lot1.id, "5.000000", "5.000000"],
+      [lot2.id, "1.000000", "1.000000"],
+    ]);
+  });
+
+  it("sort de l'emplacement qui porte la matiere, pas de la ligne agregee", async () => {
+    const banc = await creerBanc("CONSEMPL");
+    const emplacement = await prisma.location.create({
+      data: {
+        code: `${PREFIXE}-CONSEMPL`,
+        label: "Emplacement de consommation",
+        warehouseId: depot.id,
+      },
+    });
+
+    await entree({
+      itemId: banc.composant.id,
+      quantity: "10",
+      unitCost: "2",
+      locationId: emplacement.id,
+    });
+
+    const { operation, matiere } = await lancerEtDemarrer(banc, "2");
+
+    const resultat = await declarerConsommation({
+      workOrderOperationId: operation.id,
+      materialId: matiere.id,
+      quantite: "4",
+      acteur,
+    });
+
+    const mouvements = await prisma.stockMovement.findMany({
+      where: { declarationId: resultat.declarationId },
+    });
+    expect(mouvements).toHaveLength(1);
+    expect(mouvements[0].locationId).toBe(emplacement.id);
+
+    const surEmplacement = await solde(banc.composant.id, { locationId: emplacement.id });
+    expect(surEmplacement?.quantityPhysical.toFixed(6)).toBe("6.000000");
+    expect(surEmplacement?.quantityReserved.toFixed(6)).toBe(ZERO);
+  });
+
+  it("accepte un stock partiel : la reservation est plafonnee, la consommation reste possible", async () => {
+    const banc = await creerBanc("CONSPART");
+    const lot = await creerLot(banc, "SPART-1");
+
+    // 4 en stock pour 6 requis : la reservation est plafonnee a 4.
+    await entree({ itemId: banc.composant.id, quantity: "4", unitCost: "2", lotId: lot.id });
+
+    const { operation, matiere } = await lancerEtDemarrer(banc, "3");
+
+    expect(matiere.quantityReserved.toFixed(6)).toBe("4.000000");
+    expect((await allocationsDe(matiere.id)).map((a) => a.quantityReserved.toFixed(6))).toEqual(["4.000000"]);
+
+    await declarerConsommation({
+      workOrderOperationId: operation.id,
+      materialId: matiere.id,
+      quantite: "4",
+      acteur,
+    });
+
+    expect((await solde(banc.composant.id, { lotId: lot.id }))?.quantityPhysical.toFixed(6)).toBe(ZERO);
+    expect((await solde(banc.composant.id, { lotId: lot.id }))?.quantityReserved.toFixed(6)).toBe(ZERO);
+  });
+
+  it("refuse une consommation au-dela du stock libre reellement disponible", async () => {
+    const banc = await creerBanc("CONSMANQUE");
+    const lot = await creerLot(banc, "MANQUE-1");
+    await entree({ itemId: banc.composant.id, quantity: "4", unitCost: "2", lotId: lot.id });
+
+    const { operation, matiere } = await lancerEtDemarrer(banc, "3");
+
+    await expect(
+      declarerConsommation({
+        workOrderOperationId: operation.id,
+        materialId: matiere.id,
+        quantite: "5",
+        acteur,
+      }),
+    ).rejects.toMatchObject({ code: "STOCK_INSUFFISANT" });
+
+    // Rien n'a bouge : la transaction est integralement annulee.
+    expect((await solde(banc.composant.id, { lotId: lot.id }))?.quantityPhysical.toFixed(6)).toBe("4.000000");
+    expect((await solde(banc.composant.id, { lotId: lot.id }))?.quantityReserved.toFixed(6)).toBe("4.000000");
+  });
+
+  it("respecte la reservation d'un AUTRE ordre sur la meme ligne", async () => {
+    const banc = await creerBanc("CONSDEUX");
+    const lot = await creerLot(banc, "DEUX-1");
+    await entree({ itemId: banc.composant.id, quantity: "10", unitCost: "2", lotId: lot.id });
+
+    // Deux ordres sur la meme matiere : 6 + 4 = 10, tout est immobilise.
+    const premier = await lancerEtDemarrer(banc, "3");
+    const second = await lancerEtDemarrer(banc, "2");
+
+    expect(premier.matiere.quantityReserved.toFixed(6)).toBe("6.000000");
+    expect(second.matiere.quantityReserved.toFixed(6)).toBe("4.000000");
+    expect((await solde(banc.composant.id, { lotId: lot.id }))?.quantityReserved.toFixed(6)).toBe("10.000000");
+
+    // Le premier consomme SES 6 : la part du second reste intacte.
+    await declarerConsommation({
+      workOrderOperationId: premier.operation.id,
+      materialId: premier.matiere.id,
+      quantite: "6",
+      acteur,
+    });
+
+    expect((await solde(banc.composant.id, { lotId: lot.id }))?.quantityReserved.toFixed(6)).toBe("4.000000");
+    expect((await solde(banc.composant.id, { lotId: lot.id }))?.quantityPhysical.toFixed(6)).toBe("4.000000");
+
+    // Le second consomme les siens.
+    await declarerConsommation({
+      workOrderOperationId: second.operation.id,
+      materialId: second.matiere.id,
+      quantite: "4",
+      acteur,
+    });
+
+    const final = await solde(banc.composant.id, { lotId: lot.id });
+    expect(final?.quantityPhysical.toFixed(6)).toBe(ZERO);
+    expect(final?.quantityReserved.toFixed(6)).toBe(ZERO);
+  });
+});
+
+describe("Liberation du reliquat", () => {
+  it("rend la matiere non consommee a la cloture, et une seule fois", async () => {
+    const banc = await creerBanc("CLOTREL");
+    const lot = await creerLot(banc, "CLOT-1");
+    await entree({ itemId: banc.composant.id, quantity: "10", unitCost: "2", lotId: lot.id });
+
+    const { ordre, operation, matiere } = await lancerEtDemarrer(banc, "3");
+    await declarerConsommation({
+      workOrderOperationId: operation.id,
+      materialId: matiere.id,
+      quantite: "2",
+      acteur,
+    });
+
+    // 6 reserves, 2 consommes : 4 restent immobilises.
+    expect((await solde(banc.composant.id, { lotId: lot.id }))?.quantityReserved.toFixed(6)).toBe("4.000000");
+
+    await terminerOperation(operation.id);
+    await cloturerOrdreFabrication(ordre.workOrderId, acteur, `Cloture de test ${PREFIXE}`);
+
+    const apresCloture = await solde(banc.composant.id, { lotId: lot.id });
+    expect(apresCloture?.quantityReserved.toFixed(6), "Le reliquat est rendu").toBe(ZERO);
+    expect(apresCloture?.quantityPhysical.toFixed(6), "Seul le consomme est sorti").toBe("8.000000");
+
+    // Idempotence : une seconde cloture est refusee, et rien n'a ete libere deux fois.
+    await expect(
+      cloturerOrdreFabrication(ordre.workOrderId, acteur),
+    ).rejects.toMatchObject({ code: "CONFLIT" });
+
+    expect((await solde(banc.composant.id, { lotId: lot.id }))?.quantityReserved.toFixed(6)).toBe(ZERO);
+    const allocation = (await allocationsDe(matiere.id))[0];
+    expect(allocation.quantityReserved.toFixed(6)).toBe(allocation.quantityConsumed.toFixed(6));
+  });
+
+  it("rend toute la reservation a l'annulation", async () => {
+    const banc = await creerBanc("ANNULLIB");
+    const lot = await creerLot(banc, "ANNUL-1");
+    await entree({ itemId: banc.composant.id, quantity: "10", unitCost: "2", lotId: lot.id });
+
+    const { ordre, matiere } = await lancerEtDemarrer(banc, "3");
+    expect((await solde(banc.composant.id, { lotId: lot.id }))?.quantityReserved.toFixed(6)).toBe("6.000000");
+
+    await annulerOrdreFabrication(ordre.workOrderId, `Annulation de test ${PREFIXE}`, acteur);
+
+    const apres = await solde(banc.composant.id, { lotId: lot.id });
+    expect(apres?.quantityReserved.toFixed(6)).toBe(ZERO);
+    expect(apres?.quantityPhysical.toFixed(6), "Annuler ne sort aucune matiere").toBe("10.000000");
+
+    const allocation = (await allocationsDe(matiere.id))[0];
+    expect(allocation.quantityReserved.toFixed(6)).toBe(ZERO);
+    expect(allocation.quantityConsumed.toFixed(6)).toBe(ZERO);
   });
 });

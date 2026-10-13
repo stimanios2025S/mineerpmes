@@ -1469,7 +1469,11 @@ model StockMovement {
   workOrderId          Int?
   workOrderOperationId Int?
   operationId          Int?
-  declarationId        BigInt? @unique
+  /// Plusieurs mouvements peuvent porter une MEME declaration : une
+  /// consommation repartie sur deux lots (ou deux emplacements) sort un
+  /// mouvement par ligne de solde servie. L'unicite precedente empechait ce
+  /// rattachement et forçait a n'ecrire qu'un seul mouvement par declaration.
+  declarationId        BigInt?
 
   documentType   String?
   documentId     String?
@@ -1510,6 +1514,7 @@ model StockMovement {
   @@index([occurredAt])
   @@index([workOrderId])
   @@index([documentType, documentId])
+  @@index([declarationId])
 }
 
 /// Solde de stock agrege. La quantite physique est toujours derivee des mouvements.

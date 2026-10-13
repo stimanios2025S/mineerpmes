@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { DeclarationKind } from "@prisma/client";
+import type { DeclarationKind, DeclarationStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { exigerPermission, usinesAutorisees } from "@/lib/rbac/guard";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
@@ -18,8 +18,7 @@ import {
   Tableau,
 } from "@/components/ui";
 import { BoutonAction, Champ, FormulaireMotif } from "@/components/interactif";
-import { formatDateTime, formatQuantite } from "@/lib/format";
-import {
+import { formatDateTime, formatQuantite } from "@/lib/format";import {
   LIBELLES_CATEGORIE_PERTE,
   LIBELLES_MOTIF_PERTE,
   LIBELLES_STATUT_DECLARATION,
@@ -45,6 +44,17 @@ function typeOuNull(valeur: string | null): DeclarationKind | null {
     : null;
 }
 
+/**
+ * Ce qu'un responsable doit encore traiter.
+ *
+ * `SAISIE` compte autant que `SOUMISE` : une declaration d'atelier nait en
+ * `SAISIE` (voir `creerDeclaration`) et rien ne la promeut. Filtrer sur
+ * `SOUMISE` seul rendait invisibles — et invalibables — toutes les declarations
+ * de production et de consommation du portail. C'est la meme definition que
+ * celle du tableau de bord pilotage pour ses « en attente ».
+ */
+const STATUTS_A_VALIDER: DeclarationStatus[] = ["SAISIE", "SOUMISE"];
+
 export default async function PageDeclarationsAValider({
   searchParams,
 }: {
@@ -60,7 +70,12 @@ export default async function PageDeclarationsAValider({
   const portee = usinesAutorisees(utilisateur);
 
   const where = {
-    status: "SOUMISE" as const,
+    // SAISIE et SOUMISE : ce qui est declare en atelier nait en SAISIE (voir
+    // `creerDeclaration`), et rien ne le promeut en SOUMISE. Filtrer sur SOUMISE
+    // seul rendait donc invisibles — et invalibables — toutes les declarations
+    // de production et de consommation saisies au portail. C'est aussi la
+    // definition qu'utilise le tableau de bord pilotage pour ses « en attente ».
+    status: { in: STATUTS_A_VALIDER },
     ...(type ? { kind: type } : {}),
     workOrder: {
       factory: { in: portee },

@@ -786,8 +786,14 @@ describe("declarations d'atelier", () => {
     expect(ordreEnBase.quantityProduced.toFixed(6)).toBe("6.000000");
     expect(ordreEnBase.quantityConform.toFixed(6)).toBe("5.000000");
     expect(ordreEnBase.quantityScrapped.toFixed(6)).toBe("1.000000");
-    expect(ordreEnBase.quantityRemaining.isZero()).toBe(true);
-    expect(ordreEnBase.status).toBe("PARTIELLEMENT_TERMINE");
+    // `quantityProduced` est le cumul des declarations, toutes operations
+    // confondues : c'est un avancement d'atelier, pas un nombre de pieces.
+    // C'est pourquoi le reste a produire et le statut se lisent sur la
+    // DERNIERE operation de la gamme. Ici la coupe vient de finir et le
+    // poudrage n'a pas commence : l'ordre est en cours, et ses 6 pieces
+    // restent a produire.
+    expect(ordreEnBase.quantityRemaining.toFixed(6)).toBe("6.000000");
+    expect(ordreEnBase.status).toBe("EN_COURS");
     expect(ordreEnBase.actualStart).not.toBeNull();
 
     const operationEnBase = await prisma.workOrderOperation.findUniqueOrThrow({
