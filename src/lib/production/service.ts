@@ -1089,7 +1089,10 @@ async function consommerComposantsTheoriques(
 ): Promise<number> {
   const matieres = await tx.workOrderMaterial.findMany({
     where: { workOrderOperationId },
-    include: { componentItem: { select: { code: true, label1: true, isMainOeuvre: true } } },
+    include: {
+      componentItem: { select: { code: true, label1: true, isMainOeuvre: true } },
+      allocations: { orderBy: { id: "asc" } },
+    },
   });
 
   const operation = await tx.workOrderOperation.findUnique({
@@ -1123,23 +1126,54 @@ async function consommerComposantsTheoriques(
 
     if (!matiere.warehouseId) continue;
 
-    await enregistrerMouvement(tx, {
-      type: "CONSOMMATION_OPERATION",
-      itemId: matiere.componentItemId,
-      warehouseId: matiere.warehouseId,
-      quantity: aConsommer.negated(),
-      unitCost: matiere.unitCost,
-      unitCode: matiere.unitCode,
-      workOrderId: operation.workOrderId,
-      workOrderOperationId,
-      operationId: operation.operationId,
-      documentType: "ORDRE_FABRICATION",
-      documentId: String(operation.workOrderId),
-      documentNumber: ordre.number,
-      comment: `Consommation selon nomenclature - operation ${operation.operation.code}`,
-      acteur,
-      sansAudit: true,
-    });
+    // Meme regle que la consommation declaree : on sort des lignes de solde qui
+    // portent REELLEMENT la matiere, et la reservation tombe avant la sortie.
+    // Passer par la ligne agregee echouait des que le stock etait par lot.
+    for (const part of await repartirConsommation(tx, matiere, aConsommer)) {
+      if (part.allocationId !== null) {
+        await libererReservation(tx, {
+          itemId: matiere.componentItemId,
+          warehouseId: matiere.warehouseId,
+          lotId: part.lotId,
+          locationId: part.locationId,
+          quantity: part.quantity,
+          documentType: "ORDRE_FABRICATION",
+          documentId: String(operation.workOrderId),
+          acteur,
+        });
+      }
+
+      await enregistrerMouvement(tx, {
+        type: "CONSOMMATION_OPERATION",
+        itemId: matiere.componentItemId,
+        warehouseId: matiere.warehouseId,
+        lotId: part.lotId,
+        locationId: part.locationId,
+        quantity: part.quantity.negated(),
+        unitCost: matiere.unitCost,
+        unitCode: matiere.unitCode,
+        workOrderId: operation.workOrderId,
+        workOrderOperationId,
+        operationId: operation.operationId,
+        documentType: "ORDRE_FABRICATION",
+        documentId: String(operation.workOrderId),
+        documentNumber: ordre.number,
+        comment: `Consommation selon nomenclature - operation ${operation.operation.code}`,
+        acteur,
+        sansAudit: true,
+      });
+
+      if (part.allocationId !== null) {
+        await tx.workOrderMaterialAllocation.update({
+          where: { id: part.allocationId },
+          data: {
+            quantityConsumed: D.roundQuantity(
+              D.add(part.dejaConsomme, part.quantity),
+            ),
+          },
+        });
+      }
+    }
 
     await tx.workOrderMaterial.update({
       where: { id: matiere.id },
