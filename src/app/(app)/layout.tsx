@@ -46,14 +46,19 @@ export default async function LayoutApplication({
         </p>
       ) : (
         sections.map((section) => (
-          <div key={section.code}>
-            <p
-              className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide"
+          // <details> natif : chaque section se replie independamment, sans
+          // JavaScript, et reste accessible au clavier. Aucune section n'est
+          // ouverte au chargement, meme celle qui contient la page courante :
+          // l'etat ouvert/ferme survit a la navigation, pas au rechargement.
+          <details key={section.code} className="section-nav">
+            <summary
+              className="text-xs font-semibold uppercase tracking-wide"
               style={{ color: "var(--texte-doux)" }}
             >
-              {section.titre}
-            </p>
-            <div className="space-y-0.5">
+              <span>{section.titre}</span>
+              <span className="chevron" aria-hidden="true" />
+            </summary>
+            <div className="space-y-0.5 pb-1">
               {section.entrees.map((entree) => (
                 <LienNavigation
                   key={entree.chemin}
@@ -63,7 +68,7 @@ export default async function LayoutApplication({
                 />
               ))}
             </div>
-          </div>
+          </details>
         ))
       )}
     </nav>

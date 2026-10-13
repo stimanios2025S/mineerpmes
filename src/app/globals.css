@@ -172,6 +172,56 @@ table.donnees th.nombre {
   color: #ffffff;
 }
 
+/*
+ * Sections de menu repliables.
+ *
+ * Le repli s'appuie sur <details>/<summary> : natif, accessible au clavier et
+ * fonctionnel sans JavaScript. Le titre est un bloc cliquable sur toute sa
+ * largeur, comme les liens qu'il commande.
+ */
+.section-nav > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--rayon);
+  cursor: pointer;
+  list-style: none;
+}
+
+/* Masque le marqueur natif : le chevron ci-dessous le remplace. */
+.section-nav > summary::-webkit-details-marker,
+.section-nav > summary::marker {
+  display: none;
+  content: "";
+}
+
+.section-nav > summary:hover {
+  background: var(--primaire-clair);
+}
+
+/* Chevron dessine en CSS : aucune police ni icone requise. */
+.section-nav .chevron {
+  flex: none;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 160ms ease;
+}
+
+.section-nav[open] .chevron {
+  transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section-nav .chevron {
+    transition: none;
+  }
+}
+
 :focus-visible {
   outline: 2px solid var(--primaire);
   outline-offset: 2px;
