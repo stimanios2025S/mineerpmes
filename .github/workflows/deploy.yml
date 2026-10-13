@@ -14,7 +14,10 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: "Revision a deployer (SHA, tel que verifie par le job « Verification »)."
+        description: >-
+          Revision a deployer : SHA COMPLET, 40 caracteres (donne par
+          `git rev-parse`). Un SHA court est interprete par actions/checkout
+          comme un nom de branche et l'extraction echoue.
         required: true
         type: string
 
