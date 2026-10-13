@@ -1,10 +1,22 @@
 name: Deploy ERP MES
 
 on:
+  # Aucun deploiement automatique.
+  #
+  # Le declenchement `push: branches: [main]` est retire. Le deploiement
+  # commence par un `git reset --hard` sur le serveur : tout push sur main
+  # partait donc immediatement en production, y compris du travail inacheve, et
+  # il etait impossible de poser quoi que ce soit sur main sans deployer.
+  #
+  # Une mise en production designe desormais explicitement la revision voulue,
+  # et c'est cette revision — pas la pointe d'une branche — qui est verifiee
+  # avant d'etre deployee.
   workflow_dispatch:
-  push:
-    branches:
-      - main
+    inputs:
+      ref:
+        description: "Revision a deployer (SHA, tel que verifie par le job « Verification »)."
+        required: true
+        type: string
 
 concurrency:
   group: erpmes-production
@@ -39,6 +51,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # La revision designee, jamais la pointe de la branche : ce qui est
+          # verifie est exactement ce qui sera deploye.
+          ref: ${{ inputs.ref }}
 
       - name: Installer Node.js
         uses: actions/setup-node@v4
@@ -75,7 +91,8 @@ jobs:
       # scripts/deploy-server.ps1`, qui n'existe pas sur cette machine : le
       # deploiement echouait donc a chaque push. Les commandes ci-dessous sont
       # exactement celles executees a la main et verifiees a chaque mise en
-      # production.
+      # production, a une difference pres : la revision posee est celle qui a
+      # ete designee et verifiee, et non la pointe de main.
       #
       # `set -e` interrompt le script a la premiere commande en erreur : un build
       # casse n'est jamais suivi d'un rechargement PM2.
@@ -92,8 +109,8 @@ jobs:
           script: |
             set -e
             cd "${{ secrets.DEPLOY_APP_PATH }}"
-            git fetch origin main
-            git reset --hard origin/main
+            git fetch origin --prune
+            git reset --hard "${{ inputs.ref }}"
             npm ci --no-audit --no-fund
             npx prisma generate
             npx prisma migrate deploy
