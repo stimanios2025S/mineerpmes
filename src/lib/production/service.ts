@@ -375,6 +375,21 @@ export async function creerOrdreFabrication(
  * Une modification ulterieure de la nomenclature n'affecte jamais un ordre
  * deja lance.
  */
+/**
+ * Cle deterministe d'une allocation : elle porte l'unicite de la repartition
+ * malgre les colonnes nullables, exactement comme `cleSolde` pour les soldes.
+ *
+ * L'emplacement et le lot suffisent a identifier la ligne de solde, puisque
+ * l'article, le depot et le statut (LIBRE) viennent de la ligne de matiere.
+ */
+export function cleAllocation(
+  materialId: number,
+  locationId: number | null,
+  lotId: number | null,
+): string {
+  return [materialId, locationId ?? 0, lotId ?? 0].join(":");
+}
+
 export async function lancerOrdreFabrication(
   workOrderId: number,
   acteur: ActeurStock,
@@ -489,6 +504,10 @@ export async function lancerOrdreFabrication(
     // dans `quantityReserved`.
     let matieresReservees = 0;
 
+    // Repartition de chaque reservation sur les lignes de solde reellement
+    // servies : c'est elle qui rend la reservation liberable ligne a ligne.
+    const allocations: Prisma.WorkOrderMaterialAllocationCreateManyInput[] = [];
+
     for (const donnees of lignes) {
       const matiere = await tx.workOrderMaterial.create({ data: donnees });
 
@@ -513,6 +532,7 @@ export async function lancerOrdreFabrication(
           status: "LIBRE",
         },
         select: {
+          locationId: true,
           lotId: true,
           quantityPhysical: true,
           quantityReserved: true,
@@ -520,7 +540,7 @@ export async function lancerOrdreFabrication(
           quantityDamaged: true,
           quantityQuarantine: true,
         },
-        orderBy: [{ lotId: "asc" }],
+        orderBy: [{ lotId: "asc" }, { locationId: "asc" }],
       });
 
       let reste = demande;
@@ -537,10 +557,19 @@ export async function lancerOrdreFabrication(
           itemId: matiere.componentItemId,
           warehouseId: depotId,
           lotId: ligne.lotId,
+          locationId: ligne.locationId,
           quantity: part,
           documentType: "ORDRE_FABRICATION",
           documentId: String(workOrderId),
           acteur,
+        });
+
+        allocations.push({
+          materialId: matiere.id,
+          allocationKey: cleAllocation(matiere.id, ligne.locationId, ligne.lotId),
+          locationId: ligne.locationId,
+          lotId: ligne.lotId,
+          quantityReserved: part,
         });
 
         reserve = D.add(reserve, part);
@@ -556,6 +585,10 @@ export async function lancerOrdreFabrication(
         });
         matieresReservees += 1;
       }
+    }
+
+    if (allocations.length > 0) {
+      await tx.workOrderMaterialAllocation.createMany({ data: allocations });
     }
 
     await tx.workOrder.update({

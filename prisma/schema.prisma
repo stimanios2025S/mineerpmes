@@ -843,6 +843,7 @@ model Location {
   lots                   StockLot[]
   itemSettings           ItemWarehouseSetting[]
   replenishmentProposals ReplenishmentProposal[]
+  materialAllocations    WorkOrderMaterialAllocation[]
 
   @@unique([warehouseId, code])
 }
@@ -1437,6 +1438,7 @@ model StockLot {
   declarations       OperationDeclaration[]
   stepTransfers      OperationStepTransfer[]
   plannedAssignments Assignment[]
+  materialAllocations WorkOrderMaterialAllocation[]
 
   @@unique([itemId, warehouseId, lotNumber])
   @@unique([sourceSystem, sourceOid])
@@ -1729,9 +1731,50 @@ model WorkOrderMaterial {
   componentItem      Item                   @relation(fields: [componentItemId], references: [id])
   unit               UnitOfMeasure?         @relation(fields: [unitCode], references: [code])
   declarations       OperationDeclaration[]
+  allocations        WorkOrderMaterialAllocation[]
 
   @@index([workOrderId])
   @@index([componentItemId])
+}
+
+/// Repartition de la reservation d'une ligne de matiere sur les lignes de solde
+/// qui la portent reellement.
+///
+/// `reserverStock` n'adresse qu'UNE ligne de solde a la fois, identifiee par son
+/// lot ET son emplacement. Un composant servi par plusieurs lots, ou range dans
+/// un emplacement, voit donc sa reservation eclatee sur plusieurs lignes. Sans
+/// cette table, la repartition est perdue des le lancement : la reservation
+/// globale reste visible sur `WorkOrderMaterial`, mais plus personne ne sait
+/// quelles lignes de stock liberer (sortie de stock, cloture, annulation).
+///
+/// `allocationKey` porte l'unicite malgre les colonnes nullables, exactement
+/// comme `StockBalance.balanceKey`.
+model WorkOrderMaterialAllocation {
+  id            Int    @id @default(autoincrement())
+  materialId    Int
+  allocationKey String @unique
+
+  /// Ligne de solde visee, avec `quantityReserved` lu sur `material.componentItem`
+  /// et `warehouseId` : les trois composent la cle du solde.
+  locationId Int?
+  lotId      Int?
+
+  quantityReserved Decimal @default(0) @db.Decimal(18, 6)
+  quantityConsumed Decimal @default(0) @db.Decimal(18, 6)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  material WorkOrderMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  /// `Restrict` et non `SetNull` : si le lot disparaissait, l'allocation se
+  /// retrouverait pointee sur la ligne agregee et la liberation toucherait la
+  /// reservation d'un autre document. Mieux vaut refuser la suppression.
+  location Location? @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  lot      StockLot? @relation(fields: [lotId], references: [id], onDelete: Restrict)
+
+  @@index([materialId])
+  @@index([lotId])
+  @@index([locationId])
 }
 
 /// Declaration unifiee d'atelier : production, consommation, perte, rebut, reprise, probleme, controle.
