@@ -357,6 +357,116 @@ export async function actionAjouterTacheProgramme(
   );
 }
 
+/**
+ * Affecte un ouvrier a une operation d'ordre, depuis la page de l'ORDRE.
+ *
+ * Le geste se cherche la ou on vient de lancer l'ordre, pas trois ecrans plus
+ * loin. Cette action ouvre donc le programme du jour si besoin, puis y ajoute
+ * la tache — c'est l'affectation qui fait apparaitre l'operation sur le portail
+ * de l'ouvrier.
+ *
+ * Elle ne PUBLIE pas le programme pour autant : publier reste un geste delibere,
+ * et la tache est de toute facon visible des qu'elle est affectee. La reponse
+ * dit ou en est le programme, pour que le responsable sache s'il lui reste a le
+ * publier.
+ */
+export async function actionAffecterOperation(
+  formData: FormData,
+): Promise<ResultatAction> {
+  return executer<Record<string, unknown>>(
+    "L'ouvrier est affecte : l'operation apparait desormais sur son portail.",
+    async () => {
+      const utilisateur = await exigerPermission(PERMISSIONS.PRODUCTION_PLANNING_GERER);
+
+      const workOrderOperationId = lireIdentifiant(
+        formData,
+        "workOrderOperationId",
+        "L'operation",
+      );
+      const employeeId = lireIdentifiant(formData, "employeeId", "L'ouvrier");
+
+      // L'operation est relue en base, jamais prise du formulaire : le
+      // navigateur ne peut pas rattacher une tache a un ordre hors perimetre.
+      const operation = await prisma.workOrderOperation.findUnique({
+        where: { id: workOrderOperationId },
+        select: {
+          operationId: true,
+          workOrderId: true,
+          workCenterId: true,
+          workOrder: {
+            select: {
+              factory: true,
+              workshopId: true,
+              quantityPlanned: true,
+            },
+          },
+        },
+      });
+      if (!operation) {
+        throw validation("L'operation d'ordre de fabrication choisie n'existe pas.", {
+          workOrderOperationId: "Selection invalide.",
+        });
+      }
+      if (!usinesAutorisees(utilisateur).includes(operation.workOrder.factory)) {
+        throw accesRefuse(
+          "Cet ordre de fabrication appartient a une division hors de votre perimetre.",
+        );
+      }
+
+      const dateSaisie = texteOuNull(formData.get("date"));
+      const date = dateSaisie ? new Date(`${dateSaisie}T12:00:00Z`) : new Date();
+      if (Number.isNaN(date.getTime())) {
+        throw validation("La date d'affectation n'est pas valide.", {
+          date: "Date invalide.",
+        });
+      }
+
+      const acteur = acteurDe(utilisateur);
+
+      // Le code du programme est deterministe pour une journee : ouvrir deux
+      // fois la meme journee retrouve le meme programme au lieu d'en creer un
+      // doublon.
+      const programme = await ouvrirProgramme(
+        {
+          factory: operation.workOrder.factory,
+          workshopId: operation.workOrder.workshopId,
+          reference: date,
+          portee: "JOUR",
+        },
+        acteur,
+      );
+
+      const assignmentId = await ajouterTacheAuProgramme(
+        {
+          scheduleId: programme.id,
+          employeeId,
+          date: jourCivilMetier(date),
+          factory: operation.workOrder.factory,
+          operationId: operation.operationId,
+          workOrderId: operation.workOrderId,
+          workOrderOperationId,
+          workCenterId: operation.workCenterId,
+          plannedQuantity:
+            decimalOuNull(formData.get("plannedQuantity")) ??
+            operation.workOrder.quantityPlanned,
+          sequenceOrder: entierOu(formData.get("sequenceOrder")) ?? 0,
+          comment: texteOuNull(formData.get("comment")),
+        },
+        acteur,
+      );
+
+      revalidatePath("/production", "layout");
+      revalidatePath("/production/programme");
+
+      return {
+        assignmentId,
+        programme: programme.code,
+        programmePublie: programme.status === "PUBLIE",
+      };
+    },
+  );
+}
+
 export async function actionPublierProgramme(
   formData: FormData,
 ): Promise<ResultatAction> {
