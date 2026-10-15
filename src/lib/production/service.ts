@@ -1713,6 +1713,128 @@ export async function declarerPerte(
   }, { timeout: 60_000 });
 }
 
+/**
+ * Valider une declaration, c'est faire ENTRER la quantite en stock.
+ *
+ * Le portail distingue deja « declaree conforme, en attente de validation » de
+ * « conforme validee par un responsable ». Cette distinction n'avait aucune
+ * contrepartie en stock : la quantite validee n'entrait nulle part, et le
+ * passage a l'etape suivante n'avait donc rien a transferer. La feuille de route
+ * le signalait — « conforme(s) validee(s) mais rien n'est arrive au sous-stock
+ * de sortie » — sans pouvoir le corriger.
+ *
+ * La quantite entre dans le SOUS-STOCK DE SORTIE de l'operation quand elle en a
+ * un. Sans sous-stock declare, elle ne bouge pas : c'est deja ce que dit le
+ * portail (« la production conforme reste a l'emplacement du magasin »). La
+ * chaine par sous-stocks est une configuration, pas une obligation.
+ *
+ * IDEMPOTENCE : le mouvement d'entree porte la declaration, et une declaration
+ * ne peut pas etre validee deux fois. Le mouvement existant est tout de meme
+ * cherche avant toute ecriture, pour qu'un rejeu ne double jamais l'entree.
+ */
+async function deposerProductionValidee(
+  tx: Db,
+  declaration: {
+    id: bigint;
+    workOrderId: number;
+    workOrderOperationId: number | null;
+    quantityConform: Prisma.Decimal;
+  },
+  acteur: ActeurStock,
+): Promise<Prisma.Decimal> {
+  const conforme = D.of(declaration.quantityConform);
+  if (D.lte(conforme, 0) || declaration.workOrderOperationId === null) {
+    return D.of(0);
+  }
+
+  const dejaEntree = await tx.stockMovement.findFirst({
+    where: {
+      declarationId: declaration.id,
+      type: { in: ["PRODUCTION_PRODUIT_FINI", "PRODUCTION_SEMI_FINI"] },
+    },
+    select: { id: true },
+  });
+  if (dejaEntree) return D.of(0);
+
+  const operation = await tx.workOrderOperation.findUnique({
+    where: { id: declaration.workOrderOperationId },
+    select: {
+      operationId: true,
+      operation: { select: { code: true } },
+      workOrder: {
+        select: {
+          number: true,
+          itemId: true,
+          factory: true,
+          item: { select: { isSemiFinished: true, vwap: true, standardCost: true } },
+        },
+      },
+    },
+  });
+  if (!operation) return D.of(0);
+
+  const sousStock = await sousStockDeSortie(
+    tx,
+    operation.operationId,
+    operation.workOrder.factory,
+  );
+  if (!sousStock) return D.of(0);
+
+  // Lot de tracabilite : celui deja ouvert pour cet article dans ce depot,
+  // sinon un nouveau. La production reste ainsi rattachable a un lot.
+  const lotExistant = await tx.stockLot.findFirst({
+    where: {
+      itemId: operation.workOrder.itemId,
+      warehouseId: sousStock.warehouseId,
+    },
+    orderBy: { id: "desc" },
+  });
+  const lot =
+    lotExistant ??
+    (await tx.stockLot.create({
+      data: {
+        itemId: operation.workOrder.itemId,
+        warehouseId: sousStock.warehouseId,
+        lotNumber: await prochainNumero(SEQUENCES.LOT, tx),
+        status: "LIBRE",
+        manufactureDate: new Date(),
+        workOrderId: declaration.workOrderId,
+      },
+    }));
+
+  const coutUnitaire = D.of(operation.workOrder.item.vwap).isZero()
+    ? D.of(operation.workOrder.item.standardCost)
+    : D.of(operation.workOrder.item.vwap);
+
+  const mouvement = await enregistrerMouvement(tx, {
+    type: operation.workOrder.item.isSemiFinished
+      ? "PRODUCTION_SEMI_FINI"
+      : "PRODUCTION_PRODUIT_FINI",
+    itemId: operation.workOrder.itemId,
+    warehouseId: sousStock.warehouseId,
+    locationId: sousStock.locationId,
+    lotId: lot.id,
+    quantity: conforme,
+    unitCost: coutUnitaire,
+    workOrderId: declaration.workOrderId,
+    workOrderOperationId: declaration.workOrderOperationId,
+    operationId: operation.operationId,
+    documentType: "ORDRE_FABRICATION",
+    documentId: String(declaration.workOrderId),
+    documentNumber: operation.workOrder.number,
+    comment: `Entree en stock de la production validee — operation ${operation.operation.code}`,
+    acteur,
+    sansAudit: true,
+  });
+
+  await tx.stockMovement.update({
+    where: { id: mouvement.mouvementId },
+    data: { declarationId: declaration.id },
+  });
+
+  return conforme;
+}
+
 export async function validerDeclaration(
   declarationId: bigint,
   acteur: ActeurStock,
@@ -1736,6 +1858,15 @@ export async function validerDeclaration(
       },
     });
 
+    // Valider fait ENTRER la quantite : tant qu'elle ne l'etait pas, rien
+    // n'attendait a l'etape suivante et la feuille de route ne pouvait que
+    // signaler l'anomalie. La declaration et son entree en stock reussissent
+    // ensemble ou pas du tout.
+    const quantiteEntree =
+      declaration.kind === "PRODUCTION"
+        ? await deposerProductionValidee(tx, declaration, acteur)
+        : D.of(0);
+
     await enregistrerAudit(
       {
         action: ACTIONS_AUDIT.VALIDATION,
@@ -1745,7 +1876,10 @@ export async function validerDeclaration(
         userId: acteur.id,
         userEmail: acteur.email,
         oldValue: { statut: declaration.status },
-        newValue: { statut: "VALIDEE" },
+        newValue: {
+          statut: "VALIDEE",
+          quantiteEntreeEnStock: quantiteEntree.toFixed(6),
+        },
       },
       tx,
     );

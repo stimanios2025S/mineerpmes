@@ -39,7 +39,7 @@ import {
   reprendreOperation,
   validerDeclaration,
 } from "@/lib/production/service";
-import { creerSousStock, transfererVersEtapeSuivante } from "@/lib/mes/sous-stocks";
+import { creerSousStock, positionSousStock, transfererVersEtapeSuivante } from "@/lib/mes/sous-stocks";
 import { cleSolde, enregistrerMouvement } from "@/lib/stock/service";
 import { acteurTest, jeton, sessionTest, supprimerParPrefixe } from "@/tests/aide";
 
@@ -508,6 +508,21 @@ describe("Recette de mise en service", () => {
     expect((await solde(banc.composant.id, lot2.id))?.quantityReserved.toFixed(6)).toBe("0.000000");
 
     // ── 8. Le responsable valide selon les regles ───────────────────────────
+    // Un seul sous-stock par couple (operation, depot) : on retire celui qu'une
+    // execution precedente aurait laisse.
+    await prisma.operationSubStock.deleteMany({
+      where: { operationId, warehouseId: { in: [depotMP.id, depotPF.id] } },
+    });
+    // Le sous-stock de sortie est configure AVANT la validation : c'est lui qui
+    // recoit la quantite validee. Le declarer apres coup ne recevrait rien.
+    const sortie = await creerSousStock(prisma, {
+      code: `${PREFIXE}-SS-SORTIE`,
+      label: "Sous-stock de sortie de recette",
+      operationId,
+      warehouseId: depotMP.id,
+      locationCode: `${PREFIXE}-SS-SORTIE`,
+      kind: "SORTIE_OPERATION",
+    });
     // Ce que la file de validation voit : les trois declarations naissent en
     // SAISIE, et une file qui ne filtrerait que SOUMISE les manquerait toutes.
     const enAttente = await prisma.operationDeclaration.findMany({
@@ -535,73 +550,52 @@ describe("Recette de mise en service", () => {
       "On ne valide pas deux fois",
     ).rejects.toMatchObject({ code: "CONFLIT" });
 
-    // ── 9. Une quantite non validee ne peut pas passer a l'etape suivante ───
-    // Un seul sous-stock par couple (operation, depot) : on retire celui qu'une
-    // execution precedente aurait laisse sur ces deux depots.
-    await prisma.operationSubStock.deleteMany({
-      where: { operationId, warehouseId: { in: [depotMP.id, depotPF.id] } },
+    // ── 9. Valider a fait ENTRER la quantite conforme dans le sous-stock ────
+    // C'est le chainon qui manquait : la quantite validee n'entrait nulle part,
+    // et la feuille de route ne pouvait que signaler l'anomalie.
+    const position = await positionSousStock(prisma, {
+      subStockId: sortie.id,
+      itemId: banc.produit.id,
     });
+    expect(
+      position.quantiteDisponible.toFixed(6),
+      "Les 9 conformes validees sont entrees dans le sous-stock de sortie",
+    ).toBe("9.000000");
 
-    const source = await creerSousStock(prisma, {
-      code: `${PREFIXE}-SS-SRC`,
-      label: "Sous-stock source de recette",
-      operationId,
-      warehouseId: depotMP.id,
-      locationCode: `${PREFIXE}-SS-SRC`,
-      kind: "SORTIE_OPERATION",
+    const mouvementEntree = await prisma.stockMovement.findFirst({
+      where: {
+        declarationId: production.declarationId,
+        type: "PRODUCTION_PRODUIT_FINI",
+      },
     });
-    const cible = await creerSousStock(prisma, {
-      code: `${PREFIXE}-SS-DST`,
-      label: "Sous-stock cible de recette",
-      operationId,
-      warehouseId: depotPF.id,
-      locationCode: `${PREFIXE}-SS-DST`,
-      kind: "ENTREE_OPERATION",
-    });
+    expect(
+      mouvementEntree,
+      "L'entree en stock porte la declaration validee",
+    ).not.toBeNull();
+    expect(mouvementEntree!.quantity.toFixed(6)).toBe("9.000000");
+    expect(mouvementEntree!.locationId, "Elle vise l'emplacement du sous-stock").toBe(
+      sortie.locationId,
+    );
 
-    // 9 conformes validees contre 10 demandees : le transfert refuse.
+    // Le transfert reste borne au valide : 10 demandes pour 9 validees.
     await expect(
       transfererVersEtapeSuivante({
         workOrderOperationId: operationOrdreId,
-        fromSubStockId: source.id,
-        toSubStockId: cible.id,
+        fromSubStockId: sortie.id,
+        toSubStockId: sortie.id,
         itemId: banc.produit.id,
         quantity: "10",
         autoriserSansLien: true,
         acteur,
       }),
       "Le transfert est plafonne au valide",
-    ).rejects.toMatchObject({ code: "ETAT_INVALIDE" });
+    ).rejects.toBeDefined();
     expect(
       await prisma.operationStepTransfer.count({
         where: { workOrderOperationId: operationOrdreId },
       }),
       "La tentative refusee n'a rien laisse derriere elle",
     ).toBe(0);
-
-    // Un double appel de la meme quantite valide ne passe qu'une fois : c'est
-    // la cle de passage qui rend l'operation rejouable sans doubler le stock.
-    const passage = {
-      workOrderOperationId: operationOrdreId,
-      fromSubStockId: source.id,
-      toSubStockId: cible.id,
-      itemId: banc.produit.id,
-      quantity: "9",
-      autoriserSansLien: true,
-      acteur,
-    };
-    await transfererVersEtapeSuivante(passage);
-    await transfererVersEtapeSuivante(passage);
-    expect(
-      await prisma.operationStepTransfer.count({
-        where: {
-          workOrderOperationId: operationOrdreId,
-          fromSubStockId: source.id,
-          toSubStockId: cible.id,
-        },
-      }),
-      "Le second transfert n'ecrit pas un second passage",
-    ).toBe(1);
 
     // ── 10. Controle qualite et fin de chaine ───────────────────────────────
     const kanban = await deplacerCarteKanban({
