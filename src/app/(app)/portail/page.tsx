@@ -647,30 +647,97 @@ export default async function PagePortail() {
                     </p>
                   )}
 
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <BoutonAction
-                      action={actionPortailDemarrerOperation}
-                      libelle="Demarrer"
-                      variante="primaire"
-                      champsCaches={{ workOrderOperationId: operation.id }}
-                    />
-                    <BoutonAction
-                      action={actionPortailMettreEnPause}
-                      libelle="Mettre en pause"
-                      champsCaches={{ workOrderOperationId: operation.id }}
-                    />
-                    <BoutonAction
-                      action={actionPortailReprendreOperation}
-                      libelle="Reprendre"
-                      champsCaches={{ workOrderOperationId: operation.id }}
-                    />
-                    <BoutonAction
-                      action={actionPortailTerminerOperation}
-                      libelle="Terminer mon intervention"
-                      champsCaches={{ workOrderOperationId: operation.id }}
-                      confirmation="Terminer votre intervention ? Vos heures reelles seront figees et serviront de base a votre evaluation."
-                    />
-                  </div>
+                  {/*
+                   * LE CHEMIN, ET RIEN QUE L'ETAPE DU MOMENT.
+                   *
+                   * Les quatre boutons etaient affiches ensemble : l'ouvrier
+                   * devait deviner lequel le concernait, et un mauvais clic lui
+                   * repondait « cette operation est deja terminee ». Ici le
+                   * chemin est numerote, l'etape faite est cochee, et SEUL le
+                   * bouton de l'etape courante apparait.
+                   */}
+                  {(() => {
+                    const demarree = operation.status !== "NON_DEMARREE";
+                    const aProduit = D.gt(operation.quantityProduced, 0);
+                    const enCours = operation.status === "EN_COURS";
+                    const enPause = operation.status === "EN_PAUSE";
+
+                    const chemin = [
+                      { libelle: "Demarrer l'operation", fait: demarree },
+                      { libelle: "Declarer ce que tu as produit", fait: aProduit },
+                      { libelle: "Terminer ton intervention", fait: termine },
+                    ];
+
+                    return (
+                      <div className="mt-4 rounded-lg border p-3">
+                        <h3 className="mb-2 text-sm font-semibold">Ce que tu fais</h3>
+                        <ol className="mb-3 grid gap-1 text-sm">
+                          {chemin.map((etape, index) => {
+                            const courante =
+                              !etape.fait && chemin.slice(0, index).every((avant) => avant.fait);
+                            return (
+                              <li
+                                key={etape.libelle}
+                                className="flex items-center gap-2"
+                                style={{
+                                  color: etape.fait ? "var(--texte-doux)" : "var(--texte)",
+                                  fontWeight: courante ? 600 : 400,
+                                }}
+                              >
+                                <span aria-hidden="true">
+                                  {etape.fait ? "✓" : courante ? "▶" : "·"}
+                                </span>
+                                <span>
+                                  {index + 1}. {etape.libelle}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ol>
+
+                        <div className="flex flex-wrap gap-2">
+                          {!demarree && (
+                            <BoutonAction
+                              action={actionPortailDemarrerOperation}
+                              libelle="Demarrer l'operation"
+                              variante="primaire"
+                              champsCaches={{ workOrderOperationId: operation.id }}
+                            />
+                          )}
+                          {enCours && (
+                            <BoutonAction
+                              action={actionPortailMettreEnPause}
+                              libelle="Mettre en pause"
+                              champsCaches={{ workOrderOperationId: operation.id }}
+                            />
+                          )}
+                          {enPause && (
+                            <BoutonAction
+                              action={actionPortailReprendreOperation}
+                              libelle="Reprendre le travail"
+                              variante="primaire"
+                              champsCaches={{ workOrderOperationId: operation.id }}
+                            />
+                          )}
+                          {(enCours || enPause) && !aProduit && (
+                            <p className="text-sm" style={{ color: "var(--texte-doux)" }}>
+                              Declare d&apos;abord ta production ci-dessous, puis tu
+                              pourras terminer.
+                            </p>
+                          )}
+                          {(enCours || enPause) && aProduit && (
+                            <BoutonAction
+                              action={actionPortailTerminerOperation}
+                              libelle="Terminer mon intervention"
+                              variante="primaire"
+                              champsCaches={{ workOrderOperationId: operation.id }}
+                              confirmation="Terminer votre intervention ? Vos heures reelles seront figees et serviront de base a votre evaluation."
+                            />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div className="mt-4 grid gap-3">
                     <details>
