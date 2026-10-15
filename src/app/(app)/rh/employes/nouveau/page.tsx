@@ -28,18 +28,30 @@ export default async function PageNouvelEmploye() {
   const usinesDeProduction = portee.filter((usine) => usine !== "COMMUN");
   const voitSalaires = aLaPermission(utilisateur, PERMISSIONS.RH_SALAIRE_LIRE);
 
+  // Quand la division est IMPOSEE — une seule usine de production dans le
+  // perimetre, le champ est alors masque — les ateliers et les depots proposes
+  // doivent etre ceux de CETTE usine, et d'elle seule.
+  //
+  // Ils etaient tires de tout le perimetre : un proprietaire ADMEDCO se voyait
+  // proposer des ateliers et des depots MOBILIX dans la liste deroulante, et ne
+  // decouvrait le refus qu'a la soumission. Une liste qui propose ce qui sera
+  // refuse n'est pas une liste.
+  const usineImposee =
+    accesAutomatique && usinesDeProduction.length === 1 ? usinesDeProduction : null;
+  const perimetreListes = usineImposee ?? portee;
+
   const [ateliers, depots] = await Promise.all([
     prisma.workshop.findMany({
-      where: { isActive: true, factory: { in: portee } },
+      where: { isActive: true, factory: { in: perimetreListes } },
       orderBy: [{ factory: "asc" }, { code: "asc" }],
       take: 200,
-      select: { id: true, code: true, label: true },
+      select: { id: true, code: true, label: true, factory: true },
     }),
     prisma.warehouse.findMany({
-      where: { isActive: true, factory: { in: portee } },
+      where: { isActive: true, factory: { in: perimetreListes } },
       orderBy: { code: "asc" },
       take: 200,
-      select: { id: true, code: true, label: true },
+      select: { id: true, code: true, label: true, factory: true },
     }),
   ]);
 
@@ -106,7 +118,9 @@ export default async function PageNouvelEmploye() {
               type="select"
               options={ateliers.map((atelier) => ({
                 valeur: atelier.id,
-                libelle: `${atelier.code} — ${atelier.label}`,
+                libelle: `${atelier.code} — ${atelier.label}${
+                  usineImposee ? "" : ` (${libelle(LIBELLES_USINE, atelier.factory)})`
+                }`,
               }))}
             />
             <Champ
@@ -115,7 +129,9 @@ export default async function PageNouvelEmploye() {
               type="select"
               options={depots.map((depot) => ({
                 valeur: depot.id,
-                libelle: `${depot.code} — ${depot.label}`,
+                libelle: `${depot.code} — ${depot.label}${
+                  usineImposee ? "" : ` (${libelle(LIBELLES_USINE, depot.factory)})`
+                }`,
               }))}
               aide="Depot propose par defaut lors des declarations de l'employe."
             />
