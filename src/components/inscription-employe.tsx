@@ -19,8 +19,7 @@ export function FormulaireInscriptionEmploye({ action, children, libelleSoumettr
 
   if (resultat?.ok) {
     const texte = ["Acces " + resultat.factory, resultat.nom, "Matricule : " + resultat.matricule,
-    "Identifiant : " + resultat.identifiant, "Mot de passe temporaire : " + resultat.motDePasseTemporaire,
-      "Changer le mot de passe a la premiere connexion."].join("\n");
+    "Identifiant : " + resultat.identifiant, "Mot de passe : " + resultat.motDePasseTemporaire].join("\n");
     return (
       <section className="space-y-4" aria-label="Identifiants du nouvel employe">
         <div role="status" className="rounded-lg border p-4" style={{ borderColor: "var(--succes)", background: "var(--succes-clair)" }}>
@@ -30,9 +29,9 @@ export function FormulaireInscriptionEmploye({ action, children, libelleSoumettr
         <dl className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2">
           <div><dt className="text-sm">Matricule</dt><dd className="font-mono font-semibold">{resultat.matricule}</dd></div>
           <div><dt className="text-sm">Identifiant de connexion</dt><dd className="break-all font-mono font-semibold">{resultat.identifiant}</dd></div>
-          <div><dt className="text-sm">Mot de passe temporaire</dt><dd className="font-mono text-lg font-semibold">{resultat.motDePasseTemporaire}</dd></div>
+          <div><dt className="text-sm">Mot de passe</dt><dd className="font-mono text-lg font-semibold">{resultat.motDePasseTemporaire}</dd></div>
         </dl>
-        <p className="text-sm">Remettez ces identifiants a l'employe. Le mot de passe n'est affiche qu'apres cette creation et devra etre change a la premiere connexion. L'identifiant automatique ne necessite pas de boite mail.</p>
+        <p className="text-sm">Remettez ces identifiants a l&apos;employe : ils fonctionnent tels quels, aucun changement n&apos;est impose a la premiere connexion. Le mot de passe n&apos;est affiche qu&apos;ici, une seule fois. Pour le reinitialiser ensuite, passez par Administration &gt; Utilisateurs.</p>
         <div className="flex flex-wrap gap-3">
           <button type="button" className="bouton primaire" onClick={async () => {
             try { await navigator.clipboard.writeText(texte); setCopie("Identifiants copies."); }
@@ -46,10 +45,18 @@ export function FormulaireInscriptionEmploye({ action, children, libelleSoumettr
     );
   }
   return (
-    <form key={version} action={(formData) => demarrer(async () => {
-      try { setResultat(await action(formData)); }
-      catch { setResultat({ ok: false, message: "La creation n'a pas pu etre confirmee. Consultez la liste des employes avant de reessayer." }); }
-    })}>
+    <form key={version} onSubmit={(evenement) => {
+      // `onSubmit` et non `action={...}` : React 19 remet a zero les champs non
+      // controles des qu'une action de formulaire se termine, succes comme
+      // echec. Un refus — adresse deja utilisee, champ manquant — effacait donc
+      // tout ce que l'encadrement venait de saisir.
+      evenement.preventDefault();
+      const donnees = new FormData(evenement.currentTarget);
+      demarrer(async () => {
+        try { setResultat(await action(donnees)); }
+        catch { setResultat({ ok: false, message: "La creation n'a pas pu etre confirmee. Consultez la liste des employes avant de reessayer." }); }
+      });
+    }}>
       <fieldset disabled={enCours}>{children}</fieldset>
       {resultat && <div role="alert" className="mt-4 rounded-lg border p-3 text-sm" style={{ color: "var(--danger)" }}>{resultat.message}</div>}
       <div className="mt-5"><BoutonSoumettre enCours={enCours}>{libelleSoumettre}</BoutonSoumettre></div>
