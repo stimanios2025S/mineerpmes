@@ -5,6 +5,7 @@ import { PERMISSIONS, getPermissionLabel } from "@/lib/rbac/permissions";
 import { actionCreerEmploye, actionCreerEmployeEtCompte } from "@/actions/rh";
 import { Alerte, Carte, EnTetePage, Section } from "@/components/ui";
 import { Champ, FormulaireAction } from "@/components/interactif";
+import { AteliersEtDepots } from "@/components/ateliers-et-depots";
 import { DEVISE_PAR_DEFAUT } from "@/lib/format";
 import { LIBELLES_USINE, libelle } from "@/lib/libelles";
 
@@ -112,29 +113,7 @@ export default async function PageNouvelEmploye() {
 
         <Section titre="Contrat et affectation">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <Champ
-              nom="workshopId"
-              libelle="Atelier de rattachement"
-              type="select"
-              options={ateliers.map((atelier) => ({
-                valeur: atelier.id,
-                libelle: `${atelier.code} — ${atelier.label}${
-                  usineImposee ? "" : ` (${libelle(LIBELLES_USINE, atelier.factory)})`
-                }`,
-              }))}
-            />
-            <Champ
-              nom="defaultWarehouseId"
-              libelle="Depot par defaut"
-              type="select"
-              options={depots.map((depot) => ({
-                valeur: depot.id,
-                libelle: `${depot.code} — ${depot.label}${
-                  usineImposee ? "" : ` (${libelle(LIBELLES_USINE, depot.factory)})`
-                }`,
-              }))}
-              aide="Depot propose par defaut lors des declarations de l'employe."
-            />
+            <AteliersEtDepots ateliers={ateliers} depots={depots} />
             <Champ nom="contractType" libelle="Type de contrat" maxLength={60} />
             <Champ nom="hireDate" libelle="Date d'embauche" type="date" />
             <Champ nom="endDate" libelle="Date de fin de contrat" type="date" />
