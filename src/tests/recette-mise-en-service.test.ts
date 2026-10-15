@@ -14,7 +14,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { SessionUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { D } from "@/lib/decimal";
-import { changerMotDePasse, connecter } from "@/lib/auth/service";
+import { connecter } from "@/lib/auth/service";
 import { verifierMotDePasse } from "@/lib/auth/password";
 import { actionCreerEmployeEtCompte } from "@/actions/rh";
 import { getRolePermissions } from "@/lib/rbac/roles";
@@ -272,47 +272,37 @@ describe("Recette de mise en service", () => {
     expect(fiche.user!.roles.map((r) => r.role.code)).toEqual(["OPERATEUR_ADMEDCO"]);
     const employeId = acces.id;
 
-    // ── 2. Le travailleur se connecte et change son mot de passe ────────────
-    // On relache l'utilisateur force : la connexion doit etre celle du compte
-    // qui vient d'etre cree, pas celle du proprietaire.
+    // ── 2. Le travailleur se connecte et arrive DIRECTEMENT sur son portail ──
+    // Aucun changement de mot de passe ne lui est impose : il doit atteindre son
+    // travail, pas un ecran de mot de passe. Les identifiants sont remis par
+    // l'encadrement, et l'administration peut les reinitialiser depuis son
+    // portail (`/administration/utilisateurs/[id]`).
     etat.utilisateur = null;
-    const premiere = await connecter(acces.identifiant, acces.motDePasseTemporaire);
-    expect(premiere.utilisateur.mustChangePassword).toBe(true);
+    const connexion = await connecter(acces.identifiant, acces.motDePasseTemporaire);
+    expect(
+      connexion.utilisateur.mustChangePassword,
+      "Aucun changement de mot de passe n'est impose a l'operateur",
+    ).toBe(false);
+    expect(connexion.utilisateur.id).toBe(fiche.user!.id);
+    expect(
+      connexion.utilisateur.permissions.length,
+      "Le compte porte bien ses droits",
+    ).toBeGreaterThan(0);
 
-    const nouveau = "Recette-M3s!2026-Abc";
-    await changerMotDePasse(
-      premiere.utilisateur.id,
-      acces.motDePasseTemporaire,
-      nouveau,
-      nouveau,
-    );
-
-    const seconde = await connecter(acces.identifiant, nouveau);
-    expect(seconde.utilisateur.mustChangePassword).toBe(false);
-
-    // L'empreinte doit etre relue APRES le changement : celle capturee a la
-    // creation est l'ancienne, et la comparer ne prouverait rien.
+    // Le mot de passe remis par l'encadrement fonctionne tel quel.
     const apresChangement = await prisma.user.findUniqueOrThrow({
       where: { id: fiche.user!.id },
     });
     expect(
-      await verifierMotDePasse(nouveau, apresChangement.passwordHash),
-      "Le nouveau mot de passe est bien celui enregistre",
-    ).toBe(true);
-    expect(
       await verifierMotDePasse(acces.motDePasseTemporaire, apresChangement.passwordHash),
-      "L'ancien mot de passe ne vaut plus rien",
-    ).toBe(false);
-    await expect(
-      connecter(acces.identifiant, acces.motDePasseTemporaire),
-    ).rejects.toBeDefined();
+      "Le mot de passe remis a l'employe est bien celui enregistre",
+    ).toBe(true);
 
     const audits = await prisma.auditLog.findMany({
       where: { entity: "Employee", entityId: String(acces.id) },
       select: { newValue: true, oldValue: true, comment: true, reason: true },
     });
     expect(JSON.stringify(audits)).not.toContain(acces.motDePasseTemporaire);
-    expect(JSON.stringify(audits)).not.toContain(nouveau);
 
     // ── 3. L'admin cree un OF de 10 pieces ──────────────────────────────────
     const banc = await creerBanc("PRINCIPAL");

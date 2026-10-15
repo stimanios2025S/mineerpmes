@@ -78,7 +78,16 @@ export async function creerEmployeAvecAcces(
     const identifiant = entree.email?.trim().toLowerCase() || (factory === "ADMEDCO" ? "adm" : "mbx") + "." + id + "@erpmes.local";
     await creerCompteEmploye({
       employeeId: id, email: identifiant, motDePasse: motDePasseTemporaire,
-      roleCodes: ["OPERATEUR_" + factory], mustChangePassword: true,
+      roleCodes: ["OPERATEUR_" + factory],
+      // PAS de changement force pour un operateur d'atelier.
+      //
+      // Le mot de passe est genere ici et remis a l'employe par l'encadrement,
+      // qui le garde au registre du personnel. Imposer un changement a la
+      // premiere connexion bloquait l'ouvrier sur un ecran de mot de passe
+      // avant meme qu'il atteigne son portail — la ou le geste utile, c'est
+      // d'ouvrir sa tache. La gestion des identifiants reste du ressort de
+      // l'administration, qui peut reinitialiser depuis son portail.
+      mustChangePassword: false,
     }, acteur, tx);
     return { id, matricule, factory, nom: entree.firstName.trim() + " " + entree.lastName.trim(), identifiant, motDePasseTemporaire };
   }, { timeout: 30_000 });

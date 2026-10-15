@@ -57,7 +57,10 @@ describe("Inscription en une etape", () => {
     const fiche = await prisma.employee.findUniqueOrThrow({ where: { id: acces.id }, include: { user: { include: { roles: { include: { role: true } } } } } });
     expect(fiche.factory).toBe(factory);
     expect(fiche.user!.roles.map((r) => r.role.code)).toEqual(["OPERATEUR_" + factory]);
-    expect(fiche.user!.mustChangePassword).toBe(true);
+    // L'operateur n'est PAS force de changer son mot de passe : il doit
+    // atteindre son portail directement. Les identifiants sont remis par
+    // l'encadrement et geres depuis le portail d'administration.
+    expect(fiche.user!.mustChangePassword).toBe(false);
     expect(verifierRobustesseMotDePasse(acces.motDePasseTemporaire).valide).toBe(true);
     expect(await verifierMotDePasse(acces.motDePasseTemporaire, fiche.user!.passwordHash)).toBe(true);
     const audits = await prisma.auditLog.findMany({ where: { entity: "Employee", entityId: String(acces.id) }, select: { newValue: true, oldValue: true, comment: true, reason: true } });
