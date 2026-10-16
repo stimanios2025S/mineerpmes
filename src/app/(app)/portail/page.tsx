@@ -811,9 +811,17 @@ export default async function PagePortail() {
                       )}
                     </details>
 
-                    <details>
+                    {/*
+                     * OUVERT QUAND C'EST L'ETAPE EN COURS.
+                     *
+                     * Les quatre formulaires etaient tous replies : l'ouvrier
+                     * voyait quatre titres et devait deviner lequel le
+                     * concernait. Celui qui correspond a l'etape 2 — declarer
+                     * ce qu'il a produit — s'ouvre donc tout seul.
+                     */}
+                    <details open={operation.status !== "NON_DEMARREE" && !termine}>
                       <summary className="cursor-pointer text-sm font-semibold">
-                        Declarer une quantite produite
+                        Etape 2 — Declarer ce que tu as produit
                       </summary>
                       <p className="mt-1 text-xs" style={{ color: "var(--texte-doux)" }}>
                         Ces quantites alimentent votre evaluation et la tracabilite
