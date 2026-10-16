@@ -578,6 +578,28 @@ export default async function PagePortail() {
                     {`${operation.workOrder.item.code} — ${operation.workOrder.item.label1}`}
                   </p>
 
+                  {/*
+                   * LES DEUX SEULS CHIFFRES DONT L'OUVRIER A BESOIN.
+                   * Ce qu'il doit faire, ce qu'il a fait. Le reste — tableau des
+                   * six quantites, chiffres de validation, explication du
+                   * sous-stock — est de l'information d'encadrement, repoussee
+                   * sous un seul repli plus bas.
+                   */}
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                    <p>
+                      <span className="font-semibold">A faire : </span>
+                      {formatQuantite(operation.quantityPlanned)}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Deja fait : </span>
+                      {formatQuantite(operation.quantityProduced)}
+                    </p>
+                  </div>
+
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-sm font-semibold">
+                      Details de l&apos;operation
+                    </summary>
                   <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
                     <p>
                       <span className="font-semibold">Quantite prevue : </span>
@@ -646,6 +668,7 @@ export default async function PagePortail() {
                       du magasin.
                     </p>
                   )}
+                  </details>
 
                   {/*
                    * LE CHEMIN, ET RIEN QUE L'ETAPE DU MOMENT.
