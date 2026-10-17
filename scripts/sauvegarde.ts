@@ -198,6 +198,21 @@ function executer(
   const binaire =
     outil === "pg_dump" ? mode.pgDump : outil === "pg_restore" ? mode.pgRestore : mode.psql;
 
+  /*
+   * En mode natif, l'hote et le port doivent etre transmis explicitement.
+   * Sans eux, pg_dump et psql visent le socket local (/var/run/postgresql) sur
+   * le port 5432, pas la base de l'application — c'est ce qui faisait echouer
+   * la sauvegarde sur le serveur, ou PostgreSQL ecoute sur un autre port.
+   *
+   * `pg_restore --list` lit un fichier et ne se connecte pas : on ne lui ajoute
+   * pas d'options de connexion.
+   */
+  const sansConnexion = outil === "pg_restore" && arguments_.includes("--list");
+  const argumentsComplets =
+    mode.type === "natif" && !sansConnexion
+      ? [...arguments_, "-h", connexion.hote, "-p", connexion.port]
+      : arguments_;
+
   const resultat =
     mode.type === "docker"
       ? spawnSync(
@@ -205,7 +220,7 @@ function executer(
           ["exec", "-e", `PGPASSWORD=${connexion.motDePasse}`, mode.conteneur!, binaire, ...arguments_],
           { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 },
         )
-      : spawnSync(binaire, arguments_, {
+      : spawnSync(binaire, argumentsComplets, {
           encoding: "utf8",
           maxBuffer: 256 * 1024 * 1024,
           env: { ...process.env, PGPASSWORD: connexion.motDePasse },
