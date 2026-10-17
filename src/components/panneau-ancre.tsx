@@ -27,6 +27,24 @@ export function PanneauAncre({
     return () => window.removeEventListener("hashchange", maj);
   }, [id]);
 
+  /*
+   * Le panneau peut vivre dans un bloc replie (`SectionRepliable`).
+   *
+   * Le lien fait bien apparaitre le formulaire, mais un repli ferme le garde
+   * invisible : l'utilisateur clique, l'URL change, et rien ne s'ouvre a
+   * l'ecran. On ouvre donc le repli qui contient le panneau, puis on defile
+   * jusqu'a lui — le navigateur ne peut pas le faire seul, la cible n'existant
+   * qu'apres le rendu.
+   */
+  useEffect(() => {
+    if (!ouvert) return;
+    const panneau = document.getElementById(id);
+    if (!panneau) return;
+    const repli = panneau.closest("details");
+    if (repli) repli.open = true;
+    panneau.scrollIntoView({ block: "start" });
+  }, [ouvert, id]);
+
   if (!ouvert) {
     return (
       <p className="text-sm" style={{ color: "var(--texte-doux)" }}>
