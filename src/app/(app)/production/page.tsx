@@ -512,8 +512,21 @@ export default async function PageOrdresFabrication({
         </Carte>
       </div>
 
+      {/*
+        * LA LISTE D'ABORD.
+        *
+        * Le formulaire de creation — 25 champs — etait affiche sous la liste
+        * sur la meme page : pour creer un ordre, il fallait faire defiler la
+        * liste, et pour consulter la liste, on butait sur le formulaire. Il
+        * est maintenant replie : la page s'ouvre sur les ordres, et la
+        * creation est la quand on la cherche.
+        */}
       {peutCreer && (
-        <div className="mt-5">
+        <details className="mt-5 rounded-lg border p-4">
+          <summary className="cursor-pointer font-medium">
+            Creer un ordre de fabrication
+          </summary>
+        <div className="mt-4">
           <Carte
             titre="Creer un ordre de fabrication"
             description="La nomenclature et la gamme retenues sont celles de l'article ; vous pouvez les imposer explicitement. Un ordre cree sans lancement reste en brouillon."
@@ -699,6 +712,7 @@ export default async function PageOrdresFabrication({
             </FormulaireAction>
           </Carte>
         </div>
+        </details>
       )}
     </>
   );
