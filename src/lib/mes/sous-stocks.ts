@@ -1,7 +1,7 @@
 import { Prisma, StockStatus as Statut } from "@prisma/client";
 import { prisma, type Db } from "@/lib/db";
 import { D } from "@/lib/decimal";
-import { conflit, nonTrouve, validation } from "@/lib/errors";
+import { conflit, etatInvalide, nonTrouve, validation } from "@/lib/errors";
 import {
   enregistrerMouvement,
   quantiteDisponible,
@@ -467,6 +467,39 @@ export async function transfererVersEtapeSuivanteTx(
   });
   if (!operation) {
     throw nonTrouve("L'operation de l'ordre de fabrication");
+  }
+
+  // Ce qui passe a l'etape suivante est ce qui a ete VALIDE, jamais ce qui a
+  // seulement ete declare. Sans ce controle, la quantite venait du formulaire et
+  // pouvait depasser ce qu'un responsable avait valide : la matiere arrivait a
+  // l'etape suivante avant d'avoir ete controlee.
+  const [valide, dejaTransfere] = await Promise.all([
+    tx.operationDeclaration.aggregate({
+      where: {
+        workOrderOperationId: operation.id,
+        kind: "PRODUCTION",
+        status: "VALIDEE",
+      },
+      _sum: { quantityConform: true },
+    }),
+    tx.operationStepTransfer.aggregate({
+      where: { workOrderOperationId: operation.id },
+      _sum: { quantity: true },
+    }),
+  ]);
+
+  const transferable = D.max(
+    D.sub(
+      D.of(valide._sum.quantityConform ?? 0),
+      D.of(dejaTransfere._sum.quantity ?? 0),
+    ),
+    D.of(0),
+  );
+  if (D.gt(quantite, transferable)) {
+    throw etatInvalide(
+      `Transfert impossible : ${D.toFixed(quantite, 3)} demande, ${D.toFixed(transferable, 3)} valide et non encore transmis. ` +
+        "Une quantite declaree mais non validee ne peut pas passer a l'etape suivante.",
+    );
   }
 
   const cle = cleTransfertEtape(entree);

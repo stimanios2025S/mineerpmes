@@ -16,12 +16,14 @@ import {
   actionMettreEnPauseOperation,
   actionReprendreOperation,
 } from "@/actions/production";
+import { actionAffecterOperation } from "@/actions/atelier";
 import {
   Alerte,
   Carte,
   EnTetePage,
   EtiquetteStatut,
   ListeDefinitions,
+  SectionRepliable,
   Tableau,
 } from "@/components/ui";
 import { Champ, FormulaireAction, FormulaireMotif } from "@/components/interactif";
@@ -237,6 +239,12 @@ export default async function PageOrdreFabrication({
   const peutDeclarer = aLaPermission(utilisateur, PERMISSIONS.PRODUCTION_DECLARER);
   const peutCloturer = aLaPermission(utilisateur, PERMISSIONS.PRODUCTION_CLOTURER);
   const peutAnnuler = aLaPermission(utilisateur, PERMISSIONS.PRODUCTION_ANNULER);
+  // Affecter un ouvrier est un geste de planning, pas de conduite d'atelier :
+  // la permission est celle du programme, pas celle de la declaration.
+  const peutPlanifier = aLaPermission(
+    utilisateur,
+    PERMISSIONS.PRODUCTION_PLANNING_GERER,
+  );
 
   const enRetard =
     ordre.dueDate !== null &&
@@ -531,7 +539,18 @@ export default async function PageOrdreFabrication({
       {/* ---------------------------------------------------------------- */}
       {/* Matieres theoriques et consommations reelles                     */}
       {/* ---------------------------------------------------------------- */}
-      <div className="mt-5">
+      {/*
+        * LA TRACABILITE EN BAS, DERRIERE UN REPLI.
+        *
+        * L'ordre affichait neuf blocs au meme niveau : identification, actions,
+        * operations, puis six blocs d'historique et de tracabilite. Ces six-la
+        * se consultent, ils ne se pilotent pas. Ils pesaient autant que
+        * l'identification et les actions reunis.
+        */}
+      <SectionRepliable
+        className="mt-5"
+        titre="Tracabilite — matieres, declarations, Kanban, qualite, transferts"
+      >
         <Carte
           titre="Matieres theoriques et consommations reelles"
           description="Nomenclature figee au lancement de l'ordre, comparee aux consommations reellement enregistrees."
@@ -585,7 +604,6 @@ export default async function PageOrdreFabrication({
             messageVide="Aucune matiere figee : l'ordre n'a pas encore ete lance ou sa nomenclature est vide."
           />
         </Carte>
-      </div>
 
       {/* ---------------------------------------------------------------- */}
       {/* Historique des declarations                                      */}
@@ -813,6 +831,7 @@ export default async function PageOrdreFabrication({
           />
         </Carte>
       </div>
+      </SectionRepliable>
 
       {/* ---------------------------------------------------------------- */}
       {/* Actions d'atelier par operation                                  */}
@@ -834,6 +853,50 @@ export default async function PageOrdreFabrication({
                     {formatQuantite(operation.quantityPlanned)}, conforme :{" "}
                     {formatQuantite(operation.quantityConform)}.
                   </p>
+
+                  {peutPlanifier && !terminee && (
+                    <div
+                      className="mt-3 rounded-lg border p-3"
+                      style={{ background: "var(--surface-douce)" }}
+                    >
+                      <h3 className="text-sm font-semibold">Affecter un ouvrier</h3>
+                      <p className="mb-2 text-xs" style={{ color: "var(--texte-doux)" }}>
+                        C&apos;est l&apos;affectation qui fait apparaitre cette etape sur le
+                        portail de l&apos;ouvrier : un ordre lance, mais sans affectation,
+                        reste invisible pour lui. Le programme du jour est ouvert au besoin.
+                      </p>
+                      <FormulaireAction
+                        action={actionAffecterOperation}
+                        libelleSoumettre="Affecter"
+                        varianteSoumettre="secondaire"
+                        discret
+                      >
+                        <Champ
+                          nom="workOrderOperationId"
+                          type="hidden"
+                          libelle=""
+                          valeur={operation.id}
+                        />
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <Champ
+                            nom="employeeId"
+                            libelle="Ouvrier"
+                            type="select"
+                            requis
+                            options={optionsEmployes}
+                          />
+                          <Champ
+                            nom="sequenceOrder"
+                            libelle="Ordre de passage"
+                            type="number"
+                            min="0"
+                            aide="1 = premiere tache de la journee."
+                          />
+                          <Champ nom="comment" libelle="Consigne" maxLength={200} />
+                        </div>
+                      </FormulaireAction>
+                    </div>
+                  )}
 
                   <div className="mt-4 grid gap-5 lg:grid-cols-2">
                     {/* Conduite de l'operation */}

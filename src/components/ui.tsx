@@ -89,6 +89,58 @@ export function Carte({
   );
 }
 
+/**
+ * Bloc de page repliable.
+ *
+ * Meme socle visuel que `Carte`, mais refermable. Le titre reste visible une
+ * fois le bloc ferme : on sait toujours ce qu'il y a derriere. Le repli
+ * s'appuie sur <details>/<summary> natif, donc accessible au clavier et
+ * fonctionnel sans JavaScript.
+ *
+ * Regle d'usage : on replie ce qui se consulte rarement, jamais une information
+ * necessaire a l'action en cours. Aucun contenu n'est supprime par un repli.
+ */
+export function SectionRepliable({
+  id,
+  titre,
+  description,
+  ouvertParDefaut = false,
+  className,
+  children,
+}: {
+  /** Ancre HTML : permet de pointer le bloc depuis un lien de la page. */
+  id?: string;
+  titre: ReactNode;
+  description?: ReactNode;
+  /** Replie par defaut : le bloc ne prend la place que si on l'ouvre. */
+  ouvertParDefaut?: boolean;
+  /** Espacement exterieur, laisse au contexte d'appel. */
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <details
+      id={id}
+      className={className ? `carte repli ${className}` : "carte repli"}
+      open={ouvertParDefaut}
+    >
+      <summary>
+        <span className="font-semibold">{titre}</span>
+        <span className="chevron" aria-hidden="true" />
+      </summary>
+      <div className="p-4">
+        {description && (
+          <p className="mb-4 text-sm" style={{ color: "var(--texte-doux)" }}>
+            {description}
+          </p>
+        )}
+        {children}
+      </div>
+    </details>
+  );
+}
+
+
 export function EnTetePage({
   titre,
   description,

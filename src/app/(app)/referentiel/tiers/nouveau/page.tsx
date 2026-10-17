@@ -2,7 +2,7 @@ import Link from "next/link";
 import { actionCreerTiers } from "@/actions/referentiel";
 import { exigerPermission } from "@/lib/rbac/guard";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
-import { Alerte, Carte, EnTetePage } from "@/components/ui";
+import { Alerte, Carte, EnTetePage, SectionRepliable } from "@/components/ui";
 import { Champ, FormulaireAction } from "@/components/interactif";
 import { LIBELLES_MODE_REGLEMENT, LIBELLES_TYPE_TIERS, libelle } from "@/lib/libelles";
 
@@ -90,10 +90,6 @@ export default async function PageNouveauTiers() {
                 aide="Nature affichee par defaut ; les natures ci-dessous determinent les usages reels."
               />
               <Champ nom="libelle1" libelle="Libelle principal" requis maxLength={200} />
-              <Champ nom="libelle2" libelle="Libelle secondaire" maxLength={200} />
-              <Champ nom="designation" libelle="Designation longue" maxLength={300} />
-              <Champ nom="nom" libelle="Nom" maxLength={100} />
-              <Champ nom="prenom" libelle="Prenom" maxLength={100} />
             </div>
 
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -110,6 +106,28 @@ export default async function PageNouveauTiers() {
               </Alerte>
             </div>
           </Carte>
+
+          {/*
+            * SEULE L'IDENTIFICATION EST VISIBLE.
+            *
+            * La creation d'un tiers affichait 43 champs sur cinq cartes, dont
+            * quatre entierement facultatives. Il n'en faut que trois pour creer
+            * la fiche ; tout le reste se complete plus tard depuis la fiche du
+            * tiers. Les champs restent la, aucune information n'est perdue.
+            */}
+          <SectionRepliable
+            titre="Informations complementaires (facultatif)"
+            description="Tout ce qui suit peut etre laisse vide et complete plus tard depuis la fiche du tiers. Seuls le code, la nature et le libelle sont necessaires pour creer la fiche."
+          >
+            <div className="space-y-6">
+              <Carte titre="Denomination detaillee">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <Champ nom="libelle2" libelle="Libelle secondaire" maxLength={200} />
+                  <Champ nom="designation" libelle="Designation longue" maxLength={300} />
+                  <Champ nom="nom" libelle="Nom" maxLength={100} />
+                  <Champ nom="prenom" libelle="Prenom" maxLength={100} />
+                </div>
+              </Carte>
 
           <Carte titre="Coordonnees">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -224,6 +242,8 @@ export default async function PageNouveauTiers() {
               <Champ nom="remarque" libelle="Remarque interne" type="textarea" maxLength={1000} />
             </div>
           </Carte>
+            </div>
+          </SectionRepliable>
         </div>
       </FormulaireAction>
     </>

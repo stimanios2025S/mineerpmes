@@ -70,6 +70,7 @@ export interface EmployeInput {
 export async function creerEmploye(
   entree: EmployeInput,
   acteur: ActeurRh,
+  db?: Db,
 ): Promise<number> {
   if (!entree.matricule.trim()) {
     throw validation("Le matricule de l'employe est obligatoire.");
@@ -78,71 +79,71 @@ export async function creerEmploye(
     throw validation("Le prenom et le nom de l'employe sont obligatoires.");
   }
 
-  return prisma.$transaction(
-    async (tx) => {
-      const existant = await tx.employee.findUnique({
-        where: { matricule: entree.matricule.trim() },
-      });
-      if (existant) {
-        throw conflit(`Un employe porte deja le matricule « ${entree.matricule} ».`);
-      }
+  const operation = async (tx: Db) => {
+    const existant = await tx.employee.findUnique({
+      where: { matricule: entree.matricule.trim() },
+    });
+    if (existant) {
+      throw conflit(`Un employe porte deja le matricule « ${entree.matricule} ».`);
+    }
 
-      const employe = await tx.employee.create({
-        data: {
-          matricule: entree.matricule.trim(),
-          firstName: entree.firstName.trim(),
-          lastName: entree.lastName.trim(),
-          factory: entree.factory ?? "COMMUN",
-          workshopId: entree.workshopId ?? null,
-          jobTitle: entree.jobTitle ?? null,
-          email: entree.email ?? null,
-          phone: entree.phone ?? null,
-          phone2: entree.phone2 ?? null,
-          address: entree.address ?? null,
-          city: entree.city ?? null,
-          birthDate: entree.birthDate ?? null,
-          gender: entree.gender ?? null,
-          socialSecurityNumber: entree.socialSecurityNumber ?? null,
-          ccp: entree.ccp ?? null,
-          contractType: entree.contractType ?? null,
-          hireDate: entree.hireDate ?? null,
-          endDate: entree.endDate ?? null,
-          defaultWarehouseId: entree.defaultWarehouseId ?? null,
-          baseSalary:
-            entree.baseSalary === null || entree.baseSalary === undefined
-              ? null
-              : D.roundAmount(entree.baseSalary),
-          salaryPerDay:
-            entree.salaryPerDay === null || entree.salaryPerDay === undefined
-              ? null
-              : D.roundAmount(entree.salaryPerDay),
-          isActive: true,
+    const employe = await tx.employee.create({
+      data: {
+        matricule: entree.matricule.trim(),
+        firstName: entree.firstName.trim(),
+        lastName: entree.lastName.trim(),
+        factory: entree.factory ?? "COMMUN",
+        workshopId: entree.workshopId ?? null,
+        jobTitle: entree.jobTitle ?? null,
+        email: entree.email ?? null,
+        phone: entree.phone ?? null,
+        phone2: entree.phone2 ?? null,
+        address: entree.address ?? null,
+        city: entree.city ?? null,
+        birthDate: entree.birthDate ?? null,
+        gender: entree.gender ?? null,
+        socialSecurityNumber: entree.socialSecurityNumber ?? null,
+        ccp: entree.ccp ?? null,
+        contractType: entree.contractType ?? null,
+        hireDate: entree.hireDate ?? null,
+        endDate: entree.endDate ?? null,
+        defaultWarehouseId: entree.defaultWarehouseId ?? null,
+        baseSalary:
+          entree.baseSalary === null || entree.baseSalary === undefined
+            ? null
+            : D.roundAmount(entree.baseSalary),
+        salaryPerDay:
+          entree.salaryPerDay === null || entree.salaryPerDay === undefined
+            ? null
+            : D.roundAmount(entree.salaryPerDay),
+        isActive: true,
+      },
+    });
+
+    await enregistrerAudit(
+      {
+        action: ACTIONS_AUDIT.CREATION,
+        module: MODULES_AUDIT.RH,
+        entity: "Employee",
+        entityId: employe.id,
+        userId: acteur.id,
+        userEmail: acteur.email,
+        newValue: {
+          matricule: employe.matricule,
+          nom: `${employe.firstName} ${employe.lastName}`,
+          usine: employe.factory,
+          salaireRenseigne:
+            entree.baseSalary !== null && entree.baseSalary !== undefined,
         },
-      });
+      },
+      tx,
+    );
 
-      await enregistrerAudit(
-        {
-          action: ACTIONS_AUDIT.CREATION,
-          module: MODULES_AUDIT.RH,
-          entity: "Employee",
-          entityId: employe.id,
-          userId: acteur.id,
-          userEmail: acteur.email,
-          newValue: {
-            matricule: employe.matricule,
-            nom: `${employe.firstName} ${employe.lastName}`,
-            usine: employe.factory,
-            salaireRenseigne:
-              entree.baseSalary !== null && entree.baseSalary !== undefined,
-          },
-        },
-        tx,
-      );
+    return employe.id;
+  };
 
-      return employe.id;
-    },
-    { timeout: 30_000 },
-  );
+  if (db) return operation(db);
+  return prisma.$transaction(operation, { timeout: 30_000 });
 }
 
 /**
@@ -307,6 +308,7 @@ export async function creerCompteEmploye(
     mustChangePassword?: boolean;
   },
   acteur: ActeurRh,
+  db?: Db,
 ): Promise<number> {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(entree.email)) {
     throw validation("L'adresse electronique n'est pas valide.");
@@ -323,78 +325,81 @@ export async function creerCompteEmploye(
 
   const hash = await hacherMotDePasse(entree.motDePasse);
 
-  return prisma.$transaction(
-    async (tx) => {
-      const employe = await tx.employee.findUnique({
-        where: { id: entree.employeeId },
-      });
-      if (!employe) throw nonTrouve("La fiche employe");
-      if (employe.userId) {
-        throw conflit(
-          `${employe.firstName} ${employe.lastName} possede deja un compte nominatif.`,
-        );
-      }
-
-      const email = entree.email.toLowerCase().trim();
-      const existant = await tx.user.findUnique({ where: { email } });
-      if (existant) {
-        throw conflit(
-          `L'adresse « ${email} » est deja utilisee par un autre compte. Chaque employe doit avoir son propre compte.`,
-        );
-      }
-
-      const roles = await tx.role.findMany({ where: { code: { in: entree.roleCodes } } });
-      const manquants = entree.roleCodes.filter(
-        (code) => !roles.some((role) => role.code === code),
+  const operation = async (tx: Db) => {
+    const employe = await tx.employee.findUnique({
+      where: { id: entree.employeeId },
+    });
+    if (!employe) throw nonTrouve("La fiche employe");
+    if (employe.userId) {
+      throw conflit(
+        `${employe.firstName} ${employe.lastName} possede deja un compte nominatif.`,
       );
-      if (manquants.length > 0) {
-        throw validation(`Roles inconnus : ${manquants.join(", ")}.`);
-      }
+    }
 
-      const compte = await tx.user.create({
-        data: {
+    const email = entree.email.toLowerCase().trim();
+    const existant = await tx.user.findUnique({ where: { email } });
+    if (existant) {
+      throw conflit(
+        `L'adresse « ${email} » est deja utilisee par un autre compte. Chaque employe doit avoir son propre compte.`,
+      );
+    }
+
+    const roles = await tx.role.findMany({ where: { code: { in: entree.roleCodes } } });
+    const manquants = entree.roleCodes.filter(
+      (code) => !roles.some((role) => role.code === code),
+    );
+    if (roles.some((role) => !role.isActive)) {
+      throw validation("Un role inactif ne peut pas etre attribue au compte employe.");
+    }
+    if (manquants.length > 0) {
+      throw validation(`Roles inconnus : ${manquants.join(", ")}.`);
+    }
+
+    const compte = await tx.user.create({
+      data: {
+        email,
+        passwordHash: hash,
+        isActive: true,
+        mustChangePassword: entree.mustChangePassword ?? true,
+      },
+    });
+
+    await tx.employee.update({
+      where: { id: entree.employeeId },
+      data: { userId: compte.id, email },
+    });
+
+    for (const role of roles) {
+      await tx.userRole.create({
+        data: { userId: compte.id, roleId: role.id },
+      });
+    }
+
+    await enregistrerAudit(
+      {
+        action: ACTIONS_AUDIT.UTILISATEUR_CREE,
+        module: MODULES_AUDIT.RH,
+        entity: "Employee",
+        entityId: entree.employeeId,
+        userId: acteur.id,
+        userEmail: acteur.email,
+        newValue: {
           email,
-          passwordHash: hash,
-          isActive: true,
-          mustChangePassword: entree.mustChangePassword ?? true,
+          matricule: employe.matricule,
+          roles: roles.map((role) => role.code),
+          changementMotDePasseObligatoire: entree.mustChangePassword ?? true,
         },
-      });
+        comment:
+          "Compte nominatif cree pour un employe : aucun compte partage n'est autorise.",
+      },
+      tx,
+    );
 
-      await tx.employee.update({
-        where: { id: entree.employeeId },
-        data: { userId: compte.id, email },
-      });
+    return compte.id;
+  };
 
-      for (const role of roles) {
-        await tx.userRole.create({
-          data: { userId: compte.id, roleId: role.id },
-        });
-      }
-
-      await enregistrerAudit(
-        {
-          action: ACTIONS_AUDIT.UTILISATEUR_CREE,
-          module: MODULES_AUDIT.RH,
-          entity: "Employee",
-          entityId: entree.employeeId,
-          userId: acteur.id,
-          userEmail: acteur.email,
-          newValue: {
-            email,
-            matricule: employe.matricule,
-            roles: roles.map((role) => role.code),
-            changementMotDePasseObligatoire: entree.mustChangePassword ?? true,
-          },
-          comment:
-            "Compte nominatif cree pour un employe : aucun compte partage n'est autorise.",
-        },
-        tx,
-      );
-
-      return compte.id;
-    },
-    { timeout: 30_000 },
-  );
+  if (db) return operation(db);
+  return prisma.$transaction(operation, { timeout: 30_000 });
 }
 
 // -----------------------------------------------------------------------------

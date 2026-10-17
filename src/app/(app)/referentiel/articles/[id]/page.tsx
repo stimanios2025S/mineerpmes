@@ -16,6 +16,7 @@ import {
   EtiquetteStatut,
   ListeDefinitions,
   Section,
+  SectionRepliable,
   Tableau,
   Vide,
 } from "@/components/ui";
@@ -834,6 +835,18 @@ export default async function PageArticle({
           </Alerte>
         )}
 
+        {/*
+          * LES GESTES RARES EN BAS, DERRIERE UN REPLI.
+          *
+          * Modifier la fiche, l'archiver et consulter son historique ne se font
+          * pas a chaque visite. Ces trois blocs pesaient autant que la fiche
+          * elle-meme sur un ecran qui en compte treize. Ils restent la, entiers.
+          */}
+        <SectionRepliable
+          className="mt-5"
+          titre="Administration de la fiche — modification, archivage, suivi"
+        >
+          <div className="space-y-6">
         {peutEcrire ? (
           <PanneauAncre id="modification-fiche">
           <Carte
@@ -1108,6 +1121,8 @@ export default async function PageArticle({
             ]}
           />
         </Carte>
+          </div>
+        </SectionRepliable>
       </div>
     </>
   );

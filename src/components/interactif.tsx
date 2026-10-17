@@ -101,16 +101,26 @@ export function FormulaireAction({
   return (
     <form
       className={className}
-      action={(formData: FormData) => {
+      // `onSubmit` et non `action={...}`.
+      //
+      // React 19 remet a zero les champs NON CONTROLES des qu'une action de
+      // formulaire se termine — succes comme echec. Une saisie refusee etait
+      // donc integralement effacee, et l'utilisateur devait tout retaper pour
+      // corriger un seul champ. Le garde `if (reponse.ok)` ci-dessous ne
+      // pouvait rien y faire : la remise a zero avait deja eu lieu.
+      //
+      // En gerant nous-memes la soumission, le formulaire ne se vide plus que
+      // sur un succes, et une erreur laisse la saisie intacte.
+      onSubmit={(evenement) => {
+        evenement.preventDefault();
+        const formulaire = evenement.currentTarget;
+        const donnees = new FormData(formulaire);
         demarrer(async () => {
-          const reponse = await action(formData);
+          const reponse = await action(donnees);
           setResultat(reponse);
           if (reponse.ok) {
             if (rafraichir) router.refresh();
-            if (reinitialiser) {
-              const formulaire = document.activeElement?.closest("form");
-              if (formulaire instanceof HTMLFormElement) formulaire.reset();
-            }
+            if (reinitialiser) formulaire.reset();
           }
         });
       }}

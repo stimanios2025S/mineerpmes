@@ -530,6 +530,13 @@ export interface ReservationInput {
   warehouseId: number;
   quantity: Prisma.Decimal | string | number;
   lotId?: number | null;
+  /**
+   * Emplacement du solde vise. Comme `lotId`, il fait partie de l'identite d'une
+   * ligne de solde : l'omettre fait ecrire `verrouillerSolde` sur la ligne
+   * agregee (emplacement null), qui peut etre vide alors que la matiere est
+   * rangee dans un emplacement.
+   */
+  locationId?: number | null;
   documentType?: string | null;
   documentId?: string | null;
   acteur: ActeurStock;
@@ -546,6 +553,7 @@ export async function reserverStock(tx: Db, entree: ReservationInput): Promise<v
     itemId: entree.itemId,
     warehouseId: entree.warehouseId,
     lotId: entree.lotId ?? null,
+    locationId: entree.locationId ?? null,
     status: "LIBRE",
   });
 
@@ -592,6 +600,7 @@ export async function libererReservation(
     itemId: entree.itemId,
     warehouseId: entree.warehouseId,
     lotId: entree.lotId ?? null,
+    locationId: entree.locationId ?? null,
     status: "LIBRE",
   });
 

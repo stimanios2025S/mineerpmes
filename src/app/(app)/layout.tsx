@@ -46,14 +46,19 @@ export default async function LayoutApplication({
         </p>
       ) : (
         sections.map((section) => (
-          <div key={section.code}>
-            <p
-              className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide"
+          // <details> natif : chaque section se replie independamment, sans
+          // JavaScript, et reste accessible au clavier. Aucune section n'est
+          // ouverte au chargement, meme celle qui contient la page courante :
+          // l'etat ouvert/ferme survit a la navigation, pas au rechargement.
+          <details key={section.code} className="section-nav">
+            <summary
+              className="text-xs font-semibold uppercase tracking-wide"
               style={{ color: "var(--texte-doux)" }}
             >
-              {section.titre}
-            </p>
-            <div className="space-y-0.5">
+              <span>{section.titre}</span>
+              <span className="chevron" aria-hidden="true" />
+            </summary>
+            <div className="space-y-0.5 pb-1">
               {section.entrees.map((entree) => (
                 <LienNavigation
                   key={entree.chemin}
@@ -63,7 +68,7 @@ export default async function LayoutApplication({
                 />
               ))}
             </div>
-          </div>
+          </details>
         ))
       )}
     </nav>
@@ -124,7 +129,12 @@ export default async function LayoutApplication({
             </button>
           </form>
 
-          <div className="flex items-center gap-2 text-xs">
+          {/*
+            * Les etiquettes d'usine ne se coupent pas : sur un telephone, les
+            * deux cote a cote poussaient la page entiere a 648 px de large et
+            * tout le contenu defilait horizontalement. Elles passent a la ligne.
+            */}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
             {usines.map((usine) => (
               <Etiquette key={usine} ton="primaire">
                 {libelle(LIBELLES_USINE, usine)}
