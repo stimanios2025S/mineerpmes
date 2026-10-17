@@ -17,6 +17,7 @@ import {
   EnTetePage,
   EtiquetteStatut,
   Pagination,
+  SectionRepliable,
   Tableau,
 } from "@/components/ui";
 import { Champ, FormulaireAction } from "@/components/interactif";
@@ -522,197 +523,191 @@ export default async function PageOrdresFabrication({
         * creation est la quand on la cherche.
         */}
       {peutCreer && (
-        <details className="mt-5 rounded-lg border p-4">
-          <summary className="cursor-pointer font-medium">
-            Creer un ordre de fabrication
-          </summary>
-        <div className="mt-4">
-          <Carte
-            titre="Creer un ordre de fabrication"
-            description="La nomenclature et la gamme retenues sont celles de l'article ; vous pouvez les imposer explicitement. Un ordre cree sans lancement reste en brouillon."
+        <SectionRepliable
+          className="mt-5"
+          titre="Creer un ordre de fabrication"
+          description="La nomenclature et la gamme retenues sont celles de l'article ; vous pouvez les imposer explicitement. Un ordre cree sans lancement reste en brouillon."
+        >
+          <FormulaireAction
+            action={actionCreerOrdreFabrication}
+            libelleSoumettre="Creer l'ordre"
+            reinitialiser
           >
-            <FormulaireAction
-              action={actionCreerOrdreFabrication}
-              libelleSoumettre="Creer l'ordre"
-              reinitialiser
-            >
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <Champ
-                  nom="itemId"
-                  libelle="Article a fabriquer"
-                  type="select"
-                  requis
-                  options={articlesFabricables.map((article) => ({
-                    valeur: article.id,
-                    libelle: `${article.code} â€” ${article.label1}${article.unitCode ? ` (${article.unitCode})` : ""}`,
-                  }))}
-                  aide="Articles fabricables et actifs (500 au maximum)."
-                />
-                <Champ
-                  nom="quantityPlanned"
-                  libelle="Quantite planifiee"
-                  type="number"
-                  requis
-                  pas="0.001"
-                  min="0.001"
-                />
-                <Champ
-                  nom="factory"
-                  libelle="Division"
-                  type="select"
-                  requis
-                  options={divisionsAutorisees.map((usine) => ({
-                    valeur: usine,
-                    libelle: libelle(LIBELLES_USINE, usine),
-                  }))}
-                  aide="Seules les divisions de votre profil sont proposees."
-                />
-                <Champ
-                  nom="priority"
-                  libelle="Priorite"
-                  type="select"
-                  valeur="NORMALE"
-                  options={Object.entries(LIBELLES_PRIORITE).map(([valeur, texte]) => ({
-                    valeur,
-                    libelle: texte,
-                  }))}
-                />
-                <Champ
-                  nom="formulaId"
-                  libelle="Nomenclature"
-                  type="select"
-                  options={nomenclatures.map((formule) => ({
-                    valeur: formule.id,
-                    libelle: `${formule.code} v${formule.version} â€” ${formule.label} (${formule.item.code})`,
-                  }))}
-                  aide="Laisser vide pour retenir la nomenclature active de l'article."
-                />
-                <Champ
-                  nom="routeId"
-                  libelle="Gamme de fabrication"
-                  type="select"
-                  options={gammes.map((gamme) => ({
-                    valeur: gamme.id,
-                    libelle: `${gamme.code} v${gamme.version} â€” ${gamme.label} (${gamme.item.code})`,
-                  }))}
-                  aide="Laisser vide pour retenir la gamme active de l'article."
-                />
-                <Champ
-                  nom="sourceWarehouseId"
-                  libelle="Depot source (consommation)"
-                  type="select"
-                  options={depots.map((depot) => ({
-                    valeur: depot.id,
-                    libelle: `${depot.code} â€” ${depot.label} (${libelle(LIBELLES_USINE, depot.factory)})`,
-                  }))}
-                />
-                <Champ
-                  nom="targetWarehouseId"
-                  libelle="Depot de destination (produit fini)"
-                  type="select"
-                  options={depots.map((depot) => ({
-                    valeur: depot.id,
-                    libelle: `${depot.code} â€” ${depot.label} (${libelle(LIBELLES_USINE, depot.factory)})`,
-                  }))}
-                />
-                <div className="sm:col-span-2 lg:col-span-3 rounded-lg border p-3" style={{ borderColor: "var(--bordure)" }}>
-                  <h3 className="mb-1 text-sm font-semibold">Client et bon de livraison</h3>
-                  <p className="mb-3 text-xs" style={{ color: "var(--texte-doux)" }}>
-                    Bloc facultatif pour un ordre interne. Lorsqu&apos;un client ou une commande
-                    est selectionne, le service verifie la coherence avec l&apos;article et la
-                    ligne de commande.
-                  </p>
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    <Champ
-                      nom="customerId"
-                      libelle="Client"
-                      type="select"
-                      options={clients.map((client) => ({
-                        valeur: client.id,
-                        libelle: `${client.code} - ${client.label1}`,
-                      }))}
-                      aide="Laisser vide pour un ordre interne, ou saisissez le nom juste apres."
-                    />
-                    <Champ
-                      nom="nouveauClient"
-                      libelle="Nouveau client (saisie libre)"
-                      maxLength={200}
-                      aide="Nom d'un client absent de la liste : sa fiche est creee automatiquement dans le referentiel, puis rattachee a l'ordre."
-                    />
-                    <Champ
-                      nom="salesOrderId"
-                      libelle="Commande client"
-                      type="select"
-                      options={commandesClient.map((commande) => ({
-                        valeur: commande.id,
-                        libelle: `${commande.number} - ${commande.customer.label1}`,
-                      }))}
-                      aide="Laisser vide si l'ordre n'est pas rattache a une commande."
-                    />
-                    <Champ
-                      nom="salesOrderLineId"
-                      libelle="Ligne de commande"
-                      type="select"
-                      options={lignesCommande.map((ligne) => ({
-                        valeur: ligne.id,
-                        libelle: `${ligne.commandeNumero} / ligne ${ligne.lineNo} - ${ligne.itemCode}${ligne.unite ? ` (${ligne.unite})` : ""}`,
-                      }))}
-                      aide="La ligne doit porter l'article fabrique."
-                    />
-                    <Champ
-                      nom="customerReference"
-                      libelle="Reference client"
-                      aide="Reference du client ou reference du bon de livraison."
-                    />
-                    <Champ
-                      nom="deliveryAddress"
-                      libelle="Adresse de livraison"
-                      type="textarea"
-                      maxLength={1000}
-                    />
-                    <Champ
-                      nom="carrier"
-                      libelle="Transporteur"
-                      maxLength={200}
-                    />
-                    <Champ
-                      nom="plannedDeliveryDate"
-                      libelle="Livraison prevue"
-                      type="date"
-                    />
-                    <Champ
-                      nom="deliveryNotes"
-                      libelle="Notes de livraison"
-                      type="textarea"
-                      maxLength={2000}
-                      aide="Instructions, contact sur place ou particularites du transport."
-                    />
-                  </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <Champ
+                nom="itemId"
+                libelle="Article a fabriquer"
+                type="select"
+                requis
+                options={articlesFabricables.map((article) => ({
+                  valeur: article.id,
+                  libelle: `${article.code} â€” ${article.label1}${article.unitCode ? ` (${article.unitCode})` : ""}`,
+                }))}
+                aide="Articles fabricables et actifs (500 au maximum)."
+              />
+              <Champ
+                nom="quantityPlanned"
+                libelle="Quantite planifiee"
+                type="number"
+                requis
+                pas="0.001"
+                min="0.001"
+              />
+              <Champ
+                nom="factory"
+                libelle="Division"
+                type="select"
+                requis
+                options={divisionsAutorisees.map((usine) => ({
+                  valeur: usine,
+                  libelle: libelle(LIBELLES_USINE, usine),
+                }))}
+                aide="Seules les divisions de votre profil sont proposees."
+              />
+              <Champ
+                nom="priority"
+                libelle="Priorite"
+                type="select"
+                valeur="NORMALE"
+                options={Object.entries(LIBELLES_PRIORITE).map(([valeur, texte]) => ({
+                  valeur,
+                  libelle: texte,
+                }))}
+              />
+              <Champ
+                nom="formulaId"
+                libelle="Nomenclature"
+                type="select"
+                options={nomenclatures.map((formule) => ({
+                  valeur: formule.id,
+                  libelle: `${formule.code} v${formule.version} â€” ${formule.label} (${formule.item.code})`,
+                }))}
+                aide="Laisser vide pour retenir la nomenclature active de l'article."
+              />
+              <Champ
+                nom="routeId"
+                libelle="Gamme de fabrication"
+                type="select"
+                options={gammes.map((gamme) => ({
+                  valeur: gamme.id,
+                  libelle: `${gamme.code} v${gamme.version} â€” ${gamme.label} (${gamme.item.code})`,
+                }))}
+                aide="Laisser vide pour retenir la gamme active de l'article."
+              />
+              <Champ
+                nom="sourceWarehouseId"
+                libelle="Depot source (consommation)"
+                type="select"
+                options={depots.map((depot) => ({
+                  valeur: depot.id,
+                  libelle: `${depot.code} â€” ${depot.label} (${libelle(LIBELLES_USINE, depot.factory)})`,
+                }))}
+              />
+              <Champ
+                nom="targetWarehouseId"
+                libelle="Depot de destination (produit fini)"
+                type="select"
+                options={depots.map((depot) => ({
+                  valeur: depot.id,
+                  libelle: `${depot.code} â€” ${depot.label} (${libelle(LIBELLES_USINE, depot.factory)})`,
+                }))}
+              />
+              <div className="sm:col-span-2 lg:col-span-3 rounded-lg border p-3" style={{ borderColor: "var(--bordure)" }}>
+                <h3 className="mb-1 text-sm font-semibold">Client et bon de livraison</h3>
+                <p className="mb-3 text-xs" style={{ color: "var(--texte-doux)" }}>
+                  Bloc facultatif pour un ordre interne. Lorsqu&apos;un client ou une commande
+                  est selectionne, le service verifie la coherence avec l&apos;article et la
+                  ligne de commande.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <Champ
+                    nom="customerId"
+                    libelle="Client"
+                    type="select"
+                    options={clients.map((client) => ({
+                      valeur: client.id,
+                      libelle: `${client.code} - ${client.label1}`,
+                    }))}
+                    aide="Laisser vide pour un ordre interne, ou saisissez le nom juste apres."
+                  />
+                  <Champ
+                    nom="nouveauClient"
+                    libelle="Nouveau client (saisie libre)"
+                    maxLength={200}
+                    aide="Nom d'un client absent de la liste : sa fiche est creee automatiquement dans le referentiel, puis rattachee a l'ordre."
+                  />
+                  <Champ
+                    nom="salesOrderId"
+                    libelle="Commande client"
+                    type="select"
+                    options={commandesClient.map((commande) => ({
+                      valeur: commande.id,
+                      libelle: `${commande.number} - ${commande.customer.label1}`,
+                    }))}
+                    aide="Laisser vide si l'ordre n'est pas rattache a une commande."
+                  />
+                  <Champ
+                    nom="salesOrderLineId"
+                    libelle="Ligne de commande"
+                    type="select"
+                    options={lignesCommande.map((ligne) => ({
+                      valeur: ligne.id,
+                      libelle: `${ligne.commandeNumero} / ligne ${ligne.lineNo} - ${ligne.itemCode}${ligne.unite ? ` (${ligne.unite})` : ""}`,
+                    }))}
+                    aide="La ligne doit porter l'article fabrique."
+                  />
+                  <Champ
+                    nom="customerReference"
+                    libelle="Reference client"
+                    aide="Reference du client ou reference du bon de livraison."
+                  />
+                  <Champ
+                    nom="deliveryAddress"
+                    libelle="Adresse de livraison"
+                    type="textarea"
+                    maxLength={1000}
+                  />
+                  <Champ
+                    nom="carrier"
+                    libelle="Transporteur"
+                    maxLength={200}
+                  />
+                  <Champ
+                    nom="plannedDeliveryDate"
+                    libelle="Livraison prevue"
+                    type="date"
+                  />
+                  <Champ
+                    nom="deliveryNotes"
+                    libelle="Notes de livraison"
+                    type="textarea"
+                    maxLength={2000}
+                    aide="Instructions, contact sur place ou particularites du transport."
+                  />
                 </div>
-                <Champ nom="plannedStart" libelle="Debut prevu" type="date" valeur={toInputDate(new Date())} />
-                <Champ nom="dueDate" libelle="Echeance" type="date" />
-                <Champ
-                  nom="responsibleId"
-                  libelle="Responsable"
-                  type="select"
-                  options={employes.map((employe) => ({
-                    valeur: employe.id,
-                    libelle: `${employe.lastName} ${employe.firstName} (${employe.matricule})`,
-                  }))}
-                />
-                <Champ nom="notes" libelle="Notes" type="textarea" />
               </div>
-              <label className="mt-3 flex items-center gap-2 text-sm">
-                <input type="checkbox" name="lancerImmediatement" />
-                <span>
-                  Lancer immediatement l'ordre : la nomenclature est figee et les operations
-                  deviennent executables.
-                </span>
-              </label>
-            </FormulaireAction>
-          </Carte>
-        </div>
-        </details>
+              <Champ nom="plannedStart" libelle="Debut prevu" type="date" valeur={toInputDate(new Date())} />
+              <Champ nom="dueDate" libelle="Echeance" type="date" />
+              <Champ
+                nom="responsibleId"
+                libelle="Responsable"
+                type="select"
+                options={employes.map((employe) => ({
+                  valeur: employe.id,
+                  libelle: `${employe.lastName} ${employe.firstName} (${employe.matricule})`,
+                }))}
+              />
+              <Champ nom="notes" libelle="Notes" type="textarea" />
+            </div>
+            <label className="mt-3 flex items-center gap-2 text-sm">
+              <input type="checkbox" name="lancerImmediatement" />
+              <span>
+                Lancer immediatement l'ordre : la nomenclature est figee et les operations
+                deviennent executables.
+              </span>
+            </label>
+          </FormulaireAction>
+        </SectionRepliable>
       )}
     </>
   );

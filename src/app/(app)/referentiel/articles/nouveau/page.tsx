@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { actionCreerArticle } from "@/actions/referentiel";
 import { exigerPermission } from "@/lib/rbac/guard";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
-import { Alerte, Carte, EnTetePage, Section } from "@/components/ui";
+import { Alerte, Carte, EnTetePage, Section, SectionRepliable } from "@/components/ui";
 import { Champ, FormulaireAction } from "@/components/interactif";
 import { formatPourcentage } from "@/lib/format";
 import { LIBELLES_TYPE_ARTICLE, LIBELLES_USINE, libelle } from "@/lib/libelles";
@@ -179,15 +179,11 @@ export default async function PageNouvelArticle() {
             * dimensions se reglent plus tard, depuis la fiche de l'article.
             * Aucun champ n'est supprime.
             */}
-          <details className="rounded-lg border p-4">
-            <summary className="cursor-pointer font-medium">
-              Reglages industriels, seuils et dimensions (facultatif)
-            </summary>
-            <p className="mt-2 text-sm" style={{ color: "var(--texte-doux)" }}>
-              Ces reglages peuvent rester a leur valeur par defaut et se modifier
-              ensuite depuis la fiche de l&apos;article.
-            </p>
-            <div className="mt-4 space-y-6">
+          <SectionRepliable
+            titre="Reglages industriels, seuils et dimensions (facultatif)"
+            description="Ces reglages peuvent rester a leur valeur par defaut et se modifier ensuite depuis la fiche de l'article."
+          >
+            <div className="space-y-6">
           <Carte
             titre="Configuration industrielle et commerciale"
             description="Ces interrupteurs conditionnent l'apparition de l'article dans les achats, les ventes, la production et les controles de stock."
@@ -321,7 +317,7 @@ export default async function PageNouvelArticle() {
             </div>
           </Carte>
             </div>
-          </details>
+          </SectionRepliable>
 
           <Section titre="Enregistrement">
             <Alerte ton="info" titre="Article cree au statut actif">

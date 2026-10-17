@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { aLaPermission, exigerPermission, usinesAutorisees } from "@/lib/rbac/guard";
 import { PERMISSIONS, getPermissionLabel } from "@/lib/rbac/permissions";
 import { actionCreerEmploye, actionCreerEmployeEtCompte } from "@/actions/rh";
-import { Alerte, Carte, EnTetePage, Section } from "@/components/ui";
+import { Alerte, Carte, EnTetePage, Section, SectionRepliable } from "@/components/ui";
 import { Champ, FormulaireAction } from "@/components/interactif";
 import { AteliersEtDepots } from "@/components/ateliers-et-depots";
 import { DEVISE_PAR_DEFAUT } from "@/lib/format";
@@ -79,9 +79,11 @@ export default async function PageNouvelEmploye() {
           <Champ nom="firstName" libelle="Prenom" requis maxLength={80} />
         </div>
       </Section>
-      <details className="mt-4 rounded-lg border p-4">
-        <summary className="cursor-pointer font-medium">Informations complementaires (facultatif)</summary>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <SectionRepliable
+        className="mt-4"
+        titre="Informations complementaires (facultatif)"
+      >
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Champ nom="jobTitle" libelle="Poste occupe" maxLength={120} />
           <Champ
             nom="gender"
@@ -152,7 +154,7 @@ export default async function PageNouvelEmploye() {
             </Alerte>
           </Section>
         )}
-      </details>
+      </SectionRepliable>
     </>
   );
 

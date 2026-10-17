@@ -2,7 +2,7 @@ import Link from "next/link";
 import { actionCreerTiers } from "@/actions/referentiel";
 import { exigerPermission } from "@/lib/rbac/guard";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
-import { Alerte, Carte, EnTetePage } from "@/components/ui";
+import { Alerte, Carte, EnTetePage, SectionRepliable } from "@/components/ui";
 import { Champ, FormulaireAction } from "@/components/interactif";
 import { LIBELLES_MODE_REGLEMENT, LIBELLES_TYPE_TIERS, libelle } from "@/lib/libelles";
 
@@ -115,16 +115,11 @@ export default async function PageNouveauTiers() {
             * la fiche ; tout le reste se complete plus tard depuis la fiche du
             * tiers. Les champs restent la, aucune information n'est perdue.
             */}
-          <details className="rounded-lg border p-4">
-            <summary className="cursor-pointer font-medium">
-              Informations complementaires (facultatif)
-            </summary>
-            <p className="mt-2 text-sm" style={{ color: "var(--texte-doux)" }}>
-              Tout ce qui suit peut etre laisse vide et complete plus tard depuis
-              la fiche du tiers. Seuls le code, la nature et le libelle sont
-              necessaires pour creer la fiche.
-            </p>
-            <div className="mt-4 space-y-6">
+          <SectionRepliable
+            titre="Informations complementaires (facultatif)"
+            description="Tout ce qui suit peut etre laisse vide et complete plus tard depuis la fiche du tiers. Seuls le code, la nature et le libelle sont necessaires pour creer la fiche."
+          >
+            <div className="space-y-6">
               <Carte titre="Denomination detaillee">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <Champ nom="libelle2" libelle="Libelle secondaire" maxLength={200} />
@@ -248,7 +243,7 @@ export default async function PageNouveauTiers() {
             </div>
           </Carte>
             </div>
-          </details>
+          </SectionRepliable>
         </div>
       </FormulaireAction>
     </>

@@ -80,6 +80,62 @@ body {
   box-shadow: var(--ombre);
 }
 
+/*
+ * Bloc de page repliable (<SectionRepliable>).
+ *
+ * Meme socle que `.carte`, refermable. Le titre reste lisible une fois le bloc
+ * ferme : on sait toujours ce qu'il contient. Le repli est natif, donc
+ * accessible au clavier et fonctionnel sans JavaScript.
+ */
+.repli {
+  overflow: hidden;
+}
+
+.repli > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+/* Masque le marqueur natif : le chevron ci-dessous le remplace. */
+.repli > summary::-webkit-details-marker,
+.repli > summary::marker {
+  display: none;
+  content: "";
+}
+
+.repli > summary:hover {
+  background: var(--surface-douce);
+}
+
+.repli[open] > summary {
+  border-bottom: 1px solid var(--bordure);
+}
+
+.repli > summary .chevron {
+  flex: none;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 160ms ease;
+}
+
+.repli[open] > summary .chevron {
+  transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .repli > summary .chevron {
+    transition: none;
+  }
+}
+
 .etiquette {
   display: inline-flex;
   align-items: center;

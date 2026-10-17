@@ -23,6 +23,7 @@ import {
   EnTetePage,
   EtiquetteStatut,
   ListeDefinitions,
+  SectionRepliable,
   Tableau,
 } from "@/components/ui";
 import { Champ, FormulaireAction, FormulaireMotif } from "@/components/interactif";
@@ -546,11 +547,10 @@ export default async function PageOrdreFabrication({
         * se consultent, ils ne se pilotent pas. Ils pesaient autant que
         * l'identification et les actions reunis.
         */}
-      <details className="mt-5 rounded-lg border p-1">
-        <summary className="cursor-pointer p-3 font-medium">
-          Tracabilite — matieres, declarations, Kanban, qualite, transferts
-        </summary>
-      <div className="mt-2">
+      <SectionRepliable
+        className="mt-5"
+        titre="Tracabilite — matieres, declarations, Kanban, qualite, transferts"
+      >
         <Carte
           titre="Matieres theoriques et consommations reelles"
           description="Nomenclature figee au lancement de l'ordre, comparee aux consommations reellement enregistrees."
@@ -604,7 +604,6 @@ export default async function PageOrdreFabrication({
             messageVide="Aucune matiere figee : l'ordre n'a pas encore ete lance ou sa nomenclature est vide."
           />
         </Carte>
-      </div>
 
       {/* ---------------------------------------------------------------- */}
       {/* Historique des declarations                                      */}
@@ -832,7 +831,7 @@ export default async function PageOrdreFabrication({
           />
         </Carte>
       </div>
-      </details>
+      </SectionRepliable>
 
       {/* ---------------------------------------------------------------- */}
       {/* Actions d'atelier par operation                                  */}
