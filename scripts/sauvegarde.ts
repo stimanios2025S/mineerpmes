@@ -159,20 +159,30 @@ function resoudreMode(connexion: Connexion): Mode {
     "C:/Program Files/PostgreSQL/16/bin",
   ];
   const trouvee = racines.find((r) => existsSync(join(r, "pg_dump.exe")));
-  if (!trouvee) {
-    throw new Error(
-      "PostgreSQL introuvable.\n" +
-        "  - soit le conteneur n'est pas demarre :\n" +
-        "      docker start erpmes-postgres\n" +
-        "  - soit PostgreSQL doit etre installe localement.",
-    );
+  if (trouvee) {
+    return {
+      type: "natif",
+      pgDump: join(trouvee, "pg_dump.exe"),
+      pgRestore: join(trouvee, "pg_restore.exe"),
+      psql: join(trouvee, "psql.exe"),
+    };
   }
-  return {
-    type: "natif",
-    pgDump: join(trouvee, "pg_dump.exe"),
-    pgRestore: join(trouvee, "pg_restore.exe"),
-    psql: join(trouvee, "psql.exe"),
-  };
+
+  /*
+   * Serveur Linux : les outils sont dans le PATH, pas sous « Program Files ».
+   * Sans cette branche, la sauvegarde refusait de demarrer en production alors
+   * que pg_dump et pg_restore y sont installes.
+   */
+  if (existsSync("/usr/bin/pg_dump")) {
+    return { type: "natif", pgDump: "pg_dump", pgRestore: "pg_restore", psql: "psql" };
+  }
+
+  throw new Error(
+    "PostgreSQL introuvable.\n" +
+      "  - soit le conteneur n'est pas demarre :\n" +
+      "      docker start erpmes-postgres\n" +
+      "  - soit PostgreSQL doit etre installe localement (pg_dump, pg_restore, psql).",
+  );
 }
 
 // -----------------------------------------------------------------------------
