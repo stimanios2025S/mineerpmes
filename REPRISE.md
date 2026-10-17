@@ -3,8 +3,8 @@
 **Derniere mise a jour :** 17 octobre 2026
 **Depot :** `c:\Users\stimanios\Documents\ERPMES`
 **Branche de travail :** `codex/recette-production`
-**Dernier commit :** `a6efd4a` — refactor(ui) : extraire le bloc repliable partage
-**En production :** `ef72f5d` — les cinq chantiers de densite d'interface
+**Dernier commit :** `e40c639` — docs : document de reprise
+**En production :** `e40c639` — cinq chantiers de densite + composant `SectionRepliable`
 **`main` :** `fec0ad5`, en avance de 2 commits (`ci(deploy)` uniquement, aucun conflit applicatif)
 
 > Ce document est ecrit pour etre lu par une session qui reprend le projet sans
@@ -46,6 +46,7 @@ Prisma 6.19 · PostgreSQL 17 · Tailwind 4 · Vitest 3.2
 | `npm run test` | **218 tests verts / 17 fichiers** |
 | `npx eslint` (fichiers touches) | 0 erreur |
 | `npx next build` | OK |
+| Deploiement | `e40c639` en ligne, PM2 `erpmes` recharge, `/api/health` et `/connexion` en 200 |
 | Arbre de travail | propre |
 
 ⚠️ `ETAT-MISE-EN-SERVICE.md` est **perime sur les chiffres** (il annonce 169
@@ -181,18 +182,59 @@ npm run verify           # typecheck + test
 npm run production:audit # lecture seule, ne modifie rien
 ```
 
-**Deploiement** (recette utilisee lors de la derniere mise en ligne — a confirmer
-avant reutilisation) :
+### 5.1 Le serveur — autres applications presentes
+
+L'acces se fait par l'alias SSH `greendutyconfig` (cle dediee `~/.ssh/rmasc`,
+sans mot de passe : aucun secret n'est necessaire ni stocke dans le depot).
+
+L'application vit dans `/opt/erpmes/releases/owner-isolation-20261007`, processus
+PM2 **`erpmes`**, port **3100**.
+
+**Cinq autres applications tournent sur le meme serveur.** Elles ne doivent
+jamais etre touchees :
+
+| Processus PM2 | Role |
+|---|---|
+| `admedco:4003` | application ADMEDCO |
+| `rmasc-maintenance` | portail maintenance RMASC |
+| `rmasc-onsite` | portail terrain RMASC |
+| `rmasc-web` | site RMASC |
+| `wa-gateway` | passerelle WhatsApp |
+
+Regles qui decoulent de cette cohabitation :
+
+- Toujours `pm2 reload erpmes`, **jamais** `pm2 restart all`, `pm2 reload all`,
+  ni `pm2 delete`.
+- Faire `pm2 list` avant et apres : les cinq autres doivent garder leur uptime
+  et rester a `↺ 0`.
+- Pas de `npm install` si `package.json` et `package-lock.json` n'ont pas change.
+- Pas de migration si `prisma/` n'a pas change.
+- Ne rien supprimer dans `/opt/erpmes/releases/`.
+
+### 5.2 Procedure de deploiement
 
 ```bash
-ssh greendutyconfig "cd /opt/erpmes/releases/owner-isolation-20261007 \
-  && git fetch origin --prune \
-  && git reset --hard <sha> \
-  && npm run build \
-  && pm2 reload erpmes"
+ssh greendutyconfig 'cd /opt/erpmes/releases/owner-isolation-20261007; \
+  git fetch origin --prune; \
+  git reset --hard <sha>; \
+  npm run build; \
+  pm2 reload erpmes'
 ```
 
-Controle apres deploiement : `GET /api/health` → 200, et `/connexion` servie.
+Puis controle :
+
+```bash
+ssh greendutyconfig 'curl -sI http://localhost:3100/api/health | head -1; \
+  curl -sI http://localhost:3100/connexion | head -1; \
+  pm2 list --no-color | sed -n "1,14p"'
+```
+
+Attendu : `200` sur les deux routes, `erpmes` en ligne, `↺` increment de 1
+seulement, toutes les autres applications intactes.
+
+**Retour arriere :** `git reset --hard <sha precedent>` + `npm run build` +
+`pm2 reload erpmes`. Le build precedent n'est pas conserve : prevoir le temps de
+recompilation (environ une minute).
 
 ---
 
