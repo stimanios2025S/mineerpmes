@@ -834,6 +834,18 @@ export default async function PageArticle({
           </Alerte>
         )}
 
+        {/*
+          * LES GESTES RARES EN BAS, DERRIERE UN REPLI.
+          *
+          * Modifier la fiche, l'archiver et consulter son historique ne se font
+          * pas a chaque visite. Ces trois blocs pesaient autant que la fiche
+          * elle-meme sur un ecran qui en compte treize. Ils restent la, entiers.
+          */}
+        <details className="mt-5 rounded-lg border p-4">
+          <summary className="cursor-pointer font-medium">
+            Administration de la fiche — modification, archivage, suivi
+          </summary>
+          <div className="mt-4 space-y-6">
         {peutEcrire ? (
           <PanneauAncre id="modification-fiche">
           <Carte
@@ -1108,6 +1120,8 @@ export default async function PageArticle({
             ]}
           />
         </Carte>
+          </div>
+        </details>
       </div>
     </>
   );
