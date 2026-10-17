@@ -85,6 +85,10 @@ export default async function PageDirectionAdmedco() {
             <Link href="/production" className="lien-nav">OF ADMEDCO</Link>
             <Link href="/production/kanban" className="lien-nav">Kanban</Link>
             <Link href="/stock" className="lien-nav">Stock</Link>
+            <Link href="/nomenclature" className="lien-nav">Nomenclatures</Link>
+            <Link href="/nomenclature/gammes" className="lien-nav">Gammes de fabrication</Link>
+            <Link href="/achats/demandes" className="lien-nav">Demandes d&apos;achat</Link>
+            <Link href="/achats/commandes" className="lien-nav">Commandes fournisseur</Link>
             <Link href="/portail/admedco" className="lien-nav">Portail operateurs</Link>
           </div>
         </Carte>
