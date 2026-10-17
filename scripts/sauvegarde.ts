@@ -115,28 +115,69 @@ interface Mode {
  * ses outils garantit un pg_dump de la meme version que le serveur : un pg_dump
  * plus ancien refuse de lire un serveur plus recent.
  */
+/**
+ * Commande Docker utilisable sur cette machine.
+ *
+ * Sur le serveur de production, l'utilisateur applicatif n'appartient pas au
+ * groupe `docker` : `docker ps` repond « permission denied ». Les outils du
+ * conteneur restent pourtant les seuls de la bonne version (le client installe
+ * sur l'hote est plus ancien que le serveur et pg_dump refuse alors de lire la
+ * base). On retente donc avec `sudo -n`, sans mot de passe.
+ *
+ * Le resultat est memorise : une seule verification par execution.
+ */
+let prefixeDocker: string[] | null = null;
+
+function dockerUtilisable(): string[] {
+  if (prefixeDocker) return prefixeDocker;
+
+  const direct = spawnSync("docker", ["info"], { encoding: "utf8" });
+  if (direct.status === 0) {
+    prefixeDocker = ["docker"];
+    return prefixeDocker;
+  }
+
+  const avecSudo = spawnSync("sudo", ["-n", "docker", "info"], { encoding: "utf8" });
+  if (avecSudo.status === 0) {
+    prefixeDocker = ["sudo", "-n", "docker"];
+    return prefixeDocker;
+  }
+
+  prefixeDocker = ["docker"];
+  return prefixeDocker;
+}
+
+function lancerDocker(
+  args: string[],
+  options: { encoding: "utf8" } = { encoding: "utf8" },
+): { status: number; stdout: string; stderr: string } {
+  const prefixe = dockerUtilisable();
+  const r = spawnSync(prefixe[0], [...prefixe.slice(1), ...args], options);
+  return { status: r.status ?? 1, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
+}
+
 function detecterDocker(connexion: Connexion): string | null {
-  const liste = spawnSync(
-    "docker",
-    ["ps", "--filter", `publish=${connexion.port}`, "--format", "{{.Names}}"],
-    { encoding: "utf8" },
-  );
+  const liste = lancerDocker([
+    "ps",
+    "--filter",
+    `publish=${connexion.port}`,
+    "--format",
+    "{{.Names}}",
+  ]);
   if (liste.status !== 0) return null;
 
-  const noms = (liste.stdout ?? "")
+  const noms = liste.stdout
     .split(/\r?\n/)
     .map((ligne) => ligne.trim())
     .filter(Boolean);
 
   for (const nom of noms) {
-    const test = spawnSync(
-      "docker",
-      ["exec", "-e", `PGPASSWORD=${connexion.motDePasse}`, nom,
-       "psql", "-U", connexion.utilisateur, "-d", "postgres", "-tAc",
-       `SELECT 1 FROM pg_database WHERE datname = '${connexion.base}'`],
-      { encoding: "utf8" },
-    );
-    if (test.status === 0 && (test.stdout ?? "").trim() === "1") return nom;
+    const test = lancerDocker([
+      "exec", "-e", `PGPASSWORD=${connexion.motDePasse}`, nom,
+      "psql", "-U", connexion.utilisateur, "-d", "postgres", "-tAc",
+      `SELECT 1 FROM pg_database WHERE datname = '${connexion.base}'`,
+    ]);
+    if (test.status === 0 && test.stdout.trim() === "1") return nom;
   }
   return null;
 }
@@ -215,11 +256,14 @@ function executer(
 
   const resultat =
     mode.type === "docker"
-      ? spawnSync(
-          "docker",
-          ["exec", "-e", `PGPASSWORD=${connexion.motDePasse}`, mode.conteneur!, binaire, ...arguments_],
-          { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 },
-        )
+      ? lancerDocker([
+          "exec",
+          "-e",
+          `PGPASSWORD=${connexion.motDePasse}`,
+          mode.conteneur!,
+          binaire,
+          ...arguments_,
+        ])
       : spawnSync(binaire, argumentsComplets, {
           encoding: "utf8",
           maxBuffer: 256 * 1024 * 1024,
@@ -237,8 +281,7 @@ function executer(
 const ARCHIVE_CONTENEUR = "/tmp/erpmes-sauvegarde.dump";
 
 function commandeDocker(args: string[]): { status: number; stdout: string; stderr: string } {
-  const r = spawnSync("docker", args, { encoding: "utf8" });
-  return { status: r.status ?? 1, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
+  return lancerDocker(args);
 }
 
 // -----------------------------------------------------------------------------
