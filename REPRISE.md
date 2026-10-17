@@ -3,9 +3,10 @@
 **Derniere mise a jour :** 17 octobre 2026
 **Depot :** `c:\Users\stimanios\Documents\ERPMES`
 **Branche de travail :** `codex/recette-production`
-**Dernier commit :** `4acb7f1` — deux correctifs trouves en test navigateur
-**En production :** `4acb7f1` — cinq chantiers, composant `SectionRepliable`, deux correctifs
-**`main` :** `fec0ad5`, en avance de 2 commits (`ci(deploy)` uniquement, aucun conflit applicatif)
+**Dernier commit :** `aedf691` — allegement des cartes dans un repli, etat a jour
+**En production :** revision `4acb7f1` ; les commits suivants (`0998820` a
+`aedf691`) sont de la documentation et une ombre CSS, deployes avec elle
+**`main` :** fusion de la branche de travail (`0a94775`) — plus aucun ecart de code
 
 > Ce document est ecrit pour etre lu par une session qui reprend le projet sans
 > historique. Tout ce qui y figure a ete verifie dans le depot, pas recopie d'un
@@ -185,10 +186,11 @@ seul**.
 
 ### 4.4 Hygiene de depot
 
-- `codex/recette-production` est a **22 commits devant `main`**, et `main` a 2
-  commits d'avance (`ci(deploy)` sur `.github/workflows/deploy.yml` seulement).
-  Un rebase puis un merge dans `main` est trivial et devrait etre fait avant que
-  l'ecart ne grossisse.
+- **Fait le 17 octobre :** `codex/recette-production` a ete fusionnee dans `main`
+  (`0a94775`). Il n'y a plus d'ecart de code entre les deux branches.
+- Le workflow de deploiement de `main` ne part plus sur un push : il se declenche
+  a la main avec un SHA complet. Un push sur `main` ne met donc rien en
+  production.
 - Branches a recycler : `codex/menu-sections-repliables`,
   `codex/employee-onboarding-release`, `codex/reservation-par-lot`.
 

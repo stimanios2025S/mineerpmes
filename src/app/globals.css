@@ -130,6 +130,15 @@ body {
   transform: rotate(45deg);
 }
 
+/*
+ * Une carte placee dans un repli n'a pas besoin de sa propre ombre : le cadre
+ * du repli porte deja la profondeur. Sans cela, les cartes internes flottent
+ * dans un cadre qui flotte lui-meme.
+ */
+.repli .carte {
+  box-shadow: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .repli > summary .chevron {
     transition: none;
