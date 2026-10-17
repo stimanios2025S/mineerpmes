@@ -3,8 +3,8 @@
 **Derniere mise a jour :** 17 octobre 2026
 **Depot :** `c:\Users\stimanios\Documents\ERPMES`
 **Branche de travail :** `codex/recette-production`
-**Dernier commit :** `e40c639` — docs : document de reprise
-**En production :** `e40c639` — cinq chantiers de densite + composant `SectionRepliable`
+**Dernier commit :** `4acb7f1` — deux correctifs trouves en test navigateur
+**En production :** `4acb7f1` — cinq chantiers, composant `SectionRepliable`, deux correctifs
 **`main` :** `fec0ad5`, en avance de 2 commits (`ci(deploy)` uniquement, aucun conflit applicatif)
 
 > Ce document est ecrit pour etre lu par une session qui reprend le projet sans
@@ -46,7 +46,8 @@ Prisma 6.19 · PostgreSQL 17 · Tailwind 4 · Vitest 3.2
 | `npm run test` | **218 tests verts / 17 fichiers** |
 | `npx eslint` (fichiers touches) | 0 erreur |
 | `npx next build` | OK |
-| Deploiement | `e40c639` en ligne, PM2 `erpmes` recharge, `/api/health` et `/connexion` en 200 |
+| Test navigateur (Edge headless, session reelle) | replis ouvrants, panneau de modification revele, aucun debordement a 400 px |
+| Deploiement | `4acb7f1` en ligne, PM2 `erpmes` recharge, `/api/health` et `/connexion` en 200 |
 | Arbre de travail | propre |
 
 ⚠️ `ETAT-MISE-EN-SERVICE.md` est **perime sur les chiffres** (il annonce 169
@@ -102,6 +103,29 @@ import { SectionRepliable } from "@/components/ui";
 - La regle d'usage est ecrite dans le commentaire du composant : **on replie ce
   qui se consulte rarement, jamais une information necessaire a l'action en
   cours.**
+
+---
+
+## 3.3 Correctifs trouves en test navigateur
+
+Les deux defauts ci-dessous ne se voyaient ni au typage ni aux tests : ils
+demandaient un navigateur, une session reelle et un clic.
+
+**a. « Modifier la fiche » n'ouvrait rien** (`4972dec`)
+
+Le formulaire de modification est revele par une ancre : `PanneauAncre` ne rend
+son contenu que lorsque l'URL porte `#modification-fiche`. Depuis que ce panneau
+vit dans un bloc replie, le clic changeait l'URL et le formulaire apparaissait
+dans un repli ferme — donc invisible. Le panneau ouvre desormais le repli qui le
+contient et defile jusqu'a lui.
+
+**b. Toutes les pages defilaient horizontalement sur telephone** (`4acb7f1`)
+
+Les deux etiquettes d'usine du bandeau ne se coupent pas. Cote a cote, elles
+portaient la page a **648 px** de large : sur un ecran de 400 px, tout le
+contenu — pas seulement le bandeau — sortait du cadre. Elles passent a la ligne.
+Mesure apres correction : **400 px**, plus aucun element hors cadre, verifie sur
+`/production`, `/referentiel/tiers/nouveau` et `/tableau-de-bord`.
 
 ---
 
