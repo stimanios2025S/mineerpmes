@@ -538,7 +538,19 @@ export default async function PageOrdreFabrication({
       {/* ---------------------------------------------------------------- */}
       {/* Matieres theoriques et consommations reelles                     */}
       {/* ---------------------------------------------------------------- */}
-      <div className="mt-5">
+      {/*
+        * LA TRACABILITE EN BAS, DERRIERE UN REPLI.
+        *
+        * L'ordre affichait neuf blocs au meme niveau : identification, actions,
+        * operations, puis six blocs d'historique et de tracabilite. Ces six-la
+        * se consultent, ils ne se pilotent pas. Ils pesaient autant que
+        * l'identification et les actions reunis.
+        */}
+      <details className="mt-5 rounded-lg border p-1">
+        <summary className="cursor-pointer p-3 font-medium">
+          Tracabilite — matieres, declarations, Kanban, qualite, transferts
+        </summary>
+      <div className="mt-2">
         <Carte
           titre="Matieres theoriques et consommations reelles"
           description="Nomenclature figee au lancement de l'ordre, comparee aux consommations reellement enregistrees."
@@ -820,6 +832,7 @@ export default async function PageOrdreFabrication({
           />
         </Carte>
       </div>
+      </details>
 
       {/* ---------------------------------------------------------------- */}
       {/* Actions d'atelier par operation                                  */}
