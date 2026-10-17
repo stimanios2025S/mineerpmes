@@ -129,7 +129,12 @@ export default async function LayoutApplication({
             </button>
           </form>
 
-          <div className="flex items-center gap-2 text-xs">
+          {/*
+            * Les etiquettes d'usine ne se coupent pas : sur un telephone, les
+            * deux cote a cote poussaient la page entiere a 648 px de large et
+            * tout le contenu defilait horizontalement. Elles passent a la ligne.
+            */}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
             {usines.map((usine) => (
               <Etiquette key={usine} ton="primaire">
                 {libelle(LIBELLES_USINE, usine)}
