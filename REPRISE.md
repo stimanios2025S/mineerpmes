@@ -3,10 +3,9 @@
 **Derniere mise a jour :** 17 octobre 2026
 **Depot :** `c:\Users\stimanios\Documents\ERPMES`
 **Branche de travail :** `codex/recette-production`
-**Dernier commit :** `aedf691` — allegement des cartes dans un repli, etat a jour
-**En production :** revision `4acb7f1` ; les commits suivants (`0998820` a
-`aedf691`) sont de la documentation et une ombre CSS, deployes avec elle
-**`main` :** fusion de la branche de travail (`0a94775`) — plus aucun ecart de code
+**Dernier commit :** `d4df6cf` — fusion dans `main`
+**En production :** `d4df6cf` — exactement le commit de `main`
+**`main` :** a jour, aucun ecart avec la branche de travail
 
 > Ce document est ecrit pour etre lu par une session qui reprend le projet sans
 > historique. Tout ce qui y figure a ete verifie dans le depot, pas recopie d'un
