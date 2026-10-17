@@ -170,6 +170,24 @@ export default async function PageNouvelArticle() {
             </div>
           </Carte>
 
+          {/*
+            * SEULE L'IDENTIFICATION EST VISIBLE.
+            *
+            * La creation d'un article affichait 29 champs sur quatre cartes.
+            * Il suffit du code, du libelle, de l'unite et du type pour creer la
+            * fiche : les interrupteurs industriels, les seuils de stock et les
+            * dimensions se reglent plus tard, depuis la fiche de l'article.
+            * Aucun champ n'est supprime.
+            */}
+          <details className="rounded-lg border p-4">
+            <summary className="cursor-pointer font-medium">
+              Reglages industriels, seuils et dimensions (facultatif)
+            </summary>
+            <p className="mt-2 text-sm" style={{ color: "var(--texte-doux)" }}>
+              Ces reglages peuvent rester a leur valeur par defaut et se modifier
+              ensuite depuis la fiche de l&apos;article.
+            </p>
+            <div className="mt-4 space-y-6">
           <Carte
             titre="Configuration industrielle et commerciale"
             description="Ces interrupteurs conditionnent l'apparition de l'article dans les achats, les ventes, la production et les controles de stock."
@@ -302,6 +320,8 @@ export default async function PageNouvelArticle() {
               />
             </div>
           </Carte>
+            </div>
+          </details>
 
           <Section titre="Enregistrement">
             <Alerte ton="info" titre="Article cree au statut actif">
