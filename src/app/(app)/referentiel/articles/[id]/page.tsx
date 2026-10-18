@@ -5,6 +5,7 @@ import { D } from "@/lib/decimal";
 import { soldesArticle } from "@/lib/stock/service";
 import { actionArchiverArticle, actionModifierArticle } from "@/actions/referentiel";
 import { PanneauAncre } from "@/components/panneau-ancre";
+import { MediaArticle } from "@/components/media-article";
 import { aLaPermission, exigerPermission, peutAccederUsine } from "@/lib/rbac/guard";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
 import { identifiantOuNull } from "@/lib/liste";
@@ -332,6 +333,29 @@ export default async function PageArticle({
               },
             ]}
           />
+        </Carte>
+
+        <Carte
+          titre="Pieces jointes du produit"
+          description="Photo du produit et dessin technique, consultables depuis la nomenclature de l'article."
+        >
+          <div className="grid gap-4 lg:grid-cols-2">
+            <MediaArticle
+              itemId={article.id}
+              type="photo"
+              existe={Boolean(article.photoFile)}
+              nom={article.photoName}
+              peutEcrire={peutEcrire}
+            />
+            <MediaArticle
+              itemId={article.id}
+              type="dessin"
+              existe={Boolean(article.drawingFile)}
+              nom={article.drawingName}
+              estPdf={Boolean(article.drawingFile?.toLowerCase().endsWith(".pdf"))}
+              peutEcrire={peutEcrire}
+            />
+          </div>
         </Carte>
 
         <Carte

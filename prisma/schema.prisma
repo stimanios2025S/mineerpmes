@@ -728,6 +728,14 @@ model Item {
   remark         String?
   note           String?
 
+  // Pieces jointes produit, deposees depuis la fiche article.
+  // Les fichiers vivent hors du depot (dossier `storage/`) et sont servis par
+  // une route protegee ; seuls leurs noms sont enregistres ici.
+  photoFile   String?
+  photoName   String?
+  drawingFile String?
+  drawingName String?
+
   sourceSystem         String?
   sourceOid            Int?
   sourceSyncId         String?

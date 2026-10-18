@@ -20,6 +20,7 @@ import {
 import { PERMISSIONS } from "@/lib/rbac/permissions";
 import { identifiantOuNull } from "@/lib/liste";
 import { CLE_PARAMETRE, lireParametreTexte } from "@/lib/settings";
+import { ApercuMedia } from "@/components/media-article";
 import {
   Alerte,
   Carte,
@@ -79,6 +80,10 @@ export default async function PageNomenclature({
           designation: true,
           factory: true,
           vwap: true,
+          photoFile: true,
+          photoName: true,
+          drawingFile: true,
+          drawingName: true,
           family: { select: { code: true, label: true } },
         },
       },
@@ -226,6 +231,29 @@ export default async function PageNomenclature({
           </>
         }
       />
+
+      {(formule.item.photoFile || formule.item.drawingFile) && (
+        <Carte
+          titre="Pieces jointes du produit"
+          description="Photo du produit et dessin technique, deposes depuis la fiche article."
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <ApercuMedia
+              itemId={formule.item.id}
+              type="photo"
+              existe={Boolean(formule.item.photoFile)}
+              nom={formule.item.photoName}
+            />
+            <ApercuMedia
+              itemId={formule.item.id}
+              type="dessin"
+              existe={Boolean(formule.item.drawingFile)}
+              nom={formule.item.drawingName}
+              estPdf={Boolean(formule.item.drawingFile?.toLowerCase().endsWith(".pdf"))}
+            />
+          </div>
+        </Carte>
+      )}
 
       {ecartsOuverts > 0 && (
         <div className="mb-5">

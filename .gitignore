@@ -52,3 +52,6 @@ prisma/migrations/**/migration_lock.toml.bak
 
 # Configuration locale des agents (peut contenir des commandes avec identifiants)
 /.claude/
+
+# Pieces jointes produit (photos, dessins techniques) — hors depot
+/storage/
