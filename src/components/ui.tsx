@@ -165,6 +165,22 @@ export function EnTetePage({
   );
 }
 
+/**
+ * Teintes pastel des cartes de statistique.
+ *
+ * Le ton reste semantique (succes, alerte, danger) : il choisit la teinte de
+ * fond et la pastille. La valeur reste en encre foncee, seule la couleur de la
+ * pastille porte le sens — un grand nombre colore se lit mal.
+ */
+const PASTELS: Record<TonEtiquette, { fond: string; accent: string }> = {
+  neutre: { fond: "var(--surface)", accent: "var(--texte-doux)" },
+  primaire: { fond: "var(--orange-clair)", accent: "var(--orange)" },
+  succes: { fond: "var(--menthe-clair)", accent: "var(--menthe)" },
+  info: { fond: "var(--menthe-clair)", accent: "var(--menthe)" },
+  alerte: { fond: "var(--orange-clair)", accent: "var(--alerte)" },
+  danger: { fond: "var(--danger-clair)", accent: "var(--danger)" },
+};
+
 export function Statistique({
   libelle,
   valeur,
@@ -178,17 +194,31 @@ export function Statistique({
   ton?: TonEtiquette;
   href?: string;
 }) {
-  const style = TONS[ton];
+  const pastel = PASTELS[ton];
   const contenu = (
-    <div className="carte h-full p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--texte-doux)" }}>
+    <div className="carte h-full p-5" style={{ background: pastel.fond }}>
+      <p
+        className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide"
+        style={{ color: "var(--texte-doux)" }}
+      >
+        <span
+          aria-hidden="true"
+          style={{
+            display: "inline-block",
+            width: 8,
+            height: 8,
+            borderRadius: 999,
+            background: pastel.accent,
+            flex: "none",
+          }}
+        />
         {libelle}
       </p>
-      <p className="mt-2 text-2xl font-semibold tabular-nums" style={{ color: style.texte }}>
+      <p className="mt-3 text-3xl font-semibold tabular-nums tracking-tight">
         {valeur}
       </p>
       {detail && (
-        <p className="mt-1 text-xs" style={{ color: "var(--texte-doux)" }}>
+        <p className="mt-2 text-xs" style={{ color: "var(--texte-doux)" }}>
           {detail}
         </p>
       )}
@@ -197,7 +227,7 @@ export function Statistique({
 
   if (href) {
     return (
-      <Link href={href} className="block rounded-lg hover:opacity-90">
+      <Link href={href} className="block rounded-[20px] transition-opacity hover:opacity-90">
         {contenu}
       </Link>
     );

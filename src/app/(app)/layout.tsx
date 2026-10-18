@@ -77,11 +77,11 @@ export default async function LayoutApplication({
   return (
     <div className={`${identite?.className ?? ""} min-h-screen lg:grid lg:grid-cols-[17rem_1fr]`}>
       <aside
-        className="hidden border-r px-2 py-4 lg:block"
-        style={{ background: "var(--surface)", borderColor: "var(--bordure)" }}
+        className="hidden px-3 py-5 lg:block"
+        style={{ background: "var(--fond)" }}
       >
-        <Link href="/" className="mb-4 block px-3">
-          <span className="block text-base font-semibold">ERP MES</span>
+        <Link href="/" className="mb-6 block px-3">
+          <span className="block text-lg font-semibold tracking-tight">ERP MES</span>
           <span className="block text-xs" style={{ color: "var(--texte-doux)" }}>
             {nomPortail}
           </span>
@@ -91,8 +91,8 @@ export default async function LayoutApplication({
 
       <div className="flex min-w-0 flex-col">
         <header
-          className="flex flex-wrap items-center gap-3 border-b px-4 py-2"
-          style={{ background: "var(--surface)", borderColor: "var(--bordure)" }}
+          className="flex flex-wrap items-center gap-3 px-5 py-4"
+          style={{ background: "var(--fond)" }}
         >
           <details className="lg:hidden">
             <summary className="cursor-pointer rounded-md border px-3 py-1.5 text-sm">
@@ -116,14 +116,14 @@ export default async function LayoutApplication({
             </label>
             <input
               id="recherche-globale"
-              className="champ"
+              className="champ champ-recherche"
               type="search"
               name="q"
               placeholder={identite ? `Rechercher dans ${nomPortail}...` : "Rechercher un article, un tiers, un document..."}
             />
             <button
               type="submit"
-              className="min-h-[42px] rounded-lg border px-3 text-sm font-semibold"
+              className="bouton primaire"
             >
               Rechercher
             </button>
@@ -165,7 +165,7 @@ export default async function LayoutApplication({
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 px-4 py-5">{children}</main>
+        <main className="min-w-0 flex-1 px-6 py-6">{children}</main>
 
         <footer
           className="border-t px-4 py-2 text-xs"
