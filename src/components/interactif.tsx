@@ -258,6 +258,7 @@ export function Champ({
   maxLength,
   options,
   plusieurs = false,
+  autoComplete,
 }: {
   nom: string;
   libelle: string;
@@ -271,6 +272,8 @@ export function Champ({
   maxLength?: number;
   options?: { valeur: string | number; libelle: string }[];
   plusieurs?: boolean;
+  /** Indication au gestionnaire de mots de passe du navigateur. */
+  autoComplete?: string;
 }) {
   const valeurTexte = Array.isArray(valeur) ? valeur.map(String).join(",") : (valeur ?? "");
 
@@ -328,6 +331,7 @@ export function Champ({
           max={max}
           maxLength={maxLength}
           defaultValue={valeurTexte}
+          autoComplete={autoComplete}
           inputMode={type === "number" ? "decimal" : undefined}
         />
       )}
