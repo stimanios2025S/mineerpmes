@@ -242,9 +242,15 @@ Regles qui decoulent de cette cohabitation :
 ssh greendutyconfig 'cd /opt/erpmes/releases/owner-isolation-20261007; \
   git fetch origin --prune; \
   git reset --hard <sha>; \
+  npx prisma generate; \
   npm run build; \
   pm2 reload erpmes'
 ```
+
+`npx prisma generate` n'est pas facultatif : `git reset` change le schema mais
+pas le client installe dans `node_modules`. Sans cette etape, l'application
+tourne avec un client plus ancien que la base et certaines ecritures echouent
+sur des champs « inconnus » (constate le 18 octobre sur l'import des tiers).
 
 Puis controle :
 

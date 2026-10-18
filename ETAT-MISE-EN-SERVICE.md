@@ -1,5 +1,56 @@
 # Etat de mise en service
 
+## Mise a jour du 18 octobre 2026
+
+### Sauvegarde — faite et verifiee
+
+Le script de sauvegarde existait mais n'avait jamais pu tourner sur le serveur :
+il ne cherchait `pg_dump` que sous Windows ou dans Docker, ne lui transmettait ni
+hote ni port, et n'avait pas le droit d'acceder au socket Docker. Les trois
+defauts sont corriges.
+
+- Sauvegarde ecrite et verifiee : 1,8 Mo, 1089 objets SQL.
+- **Restauration testee** dans une base separee : 712 articles, 308 tiers,
+  704 lots, 13 comptes — identiques a la production.
+- Sauvegarde quotidienne planifiee a 02:15, retention de 30 archives.
+
+Limite connue : les archives restent sur le meme disque que la base. Une copie
+externe reste a mettre en place.
+
+### Import — causes des rejets identifiees
+
+1660 lignes rejetees, dont :
+
+| Motif | Lignes |
+|---|---|
+| Composant de nomenclature : identifiants source incomplets | 1232 |
+| Tiers sans identifiant ou sans code | 64 |
+| Tiers sans libelle | 16 |
+| Lot rattache a un article source introuvable | 7 |
+| Stock insuffisant pour un lot | 7 |
+| Erreurs `thirdParty.create` (client Prisma obsolete) | 334 |
+
+Les 334 erreurs `thirdParty.create` venaient d'un client Prisma plus ancien que
+le schema sur le serveur : le champ `birthDate` etait inconnu du client. Client
+regenere et application rechargee. Les autres motifs sont des donnees source
+incompletes — ils demandent les fichiers corriges, pas du code.
+
+### Tiers : la question CL/FR reste sans preuve
+
+Aucune commande client ni fournisseur n'existe en base : il est donc impossible
+de deduire des usages si `CL` designe un client et `FR` un fournisseur. La
+validation metier reste necessaire.
+
+### Configuration verifiee
+
+- `SESSION_SECRET` : 66 caracteres, pas une valeur par defaut.
+- HTTPS : assure par le tunnel Cloudflare (`https://mes.admedco.com`).
+
+### Ce qui reste
+
+Les arbitrages metier de la section du 5 octobre, moins les rejets d'import
+dont les causes sont desormais connues. Aucun n'a ete tranche.
+
 ## Mise a jour du 17 octobre 2026
 
 Verifie sur la revision `4acb7f1`, deployee en production.
