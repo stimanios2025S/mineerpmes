@@ -296,7 +296,7 @@ export async function actionDefinirMotDePasseUtilisateur(
   }
 
   return executer(
-    "Mot de passe defini. Le compte devra le changer a sa prochaine connexion.",
+    "Mot de passe defini. Transmettez-le a la personne de facon confidentielle.",
     async () => {
       const robustesse = verifierRobustesseMotDePasse(motDePasse);
       if (!robustesse.valide) {
@@ -307,7 +307,14 @@ export async function actionDefinirMotDePasseUtilisateur(
         where: { id: userId },
         data: {
           passwordHash: await hacherMotDePasse(motDePasse),
-          mustChangePassword: true,
+          /*
+           * L'administrateur choisit ici un mot de passe durable et le remet en
+           * main propre : on ne force pas son remplacement, sinon l'operateur
+           * retombe sur l'ecran de changement que l'exploitation ne veut pas lui
+           * montrer. La reinitialisation aleatoire, elle, impose toujours le
+           * changement.
+           */
+          mustChangePassword: false,
           failedAttempts: 0,
           lockedUntil: null,
         },
