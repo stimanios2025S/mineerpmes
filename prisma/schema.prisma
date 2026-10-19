@@ -1574,6 +1574,11 @@ model WorkOrder {
   status    WorkOrderStatus @default(BROUILLON)
   priority  Priority        @default(NORMALE)
 
+  /// Ordre de passage dans l'atelier, decide par le chef d'atelier : 0 = le
+  /// premier ordre a fabriquer. Deux ordres ne partagent jamais le meme rang
+  /// apres un deplacement : la liste est renumerotee a chaque mouvement.
+  sequenceOrder Int @default(0)
+
   quantityPlanned   Decimal @default(0) @db.Decimal(18, 6)
   quantityLaunched  Decimal @default(0) @db.Decimal(18, 6)
   quantityProduced  Decimal @default(0) @db.Decimal(18, 6)

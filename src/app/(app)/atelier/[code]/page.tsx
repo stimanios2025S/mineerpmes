@@ -6,6 +6,7 @@ import { PERMISSIONS } from "@/lib/rbac/permissions";
 import { Carte, EnTetePage, Etiquette, Statistique, Tableau, Vide } from "@/components/ui";
 import { Champ, FormulaireAction } from "@/components/interactif";
 import { actionAffecterOperation } from "@/actions/atelier";
+import { actionDeplacerOrdreFabrication } from "@/actions/ordre-priorite";
 import { formatDate, formatQuantite } from "@/lib/format";
 import {
   LIBELLES_PRIORITE,
@@ -87,6 +88,7 @@ export default async function PageAtelier({
           id: true,
           number: true,
           priority: true,
+          sequenceOrder: true,
           item: { select: { code: true, label1: true } },
         },
       },
@@ -100,7 +102,7 @@ export default async function PageAtelier({
         },
       },
     },
-    orderBy: [{ workOrder: { priority: "desc" } }, { stepNo: "asc" }],
+    orderBy: [{ workOrder: { sequenceOrder: "asc" } }, { stepNo: "asc" }],
     take: 60,
   });
 
@@ -179,6 +181,7 @@ export default async function PageAtelier({
             messageVide=""
             cleLigne={(i) => String(operations[i].id)}
             colonnes={[
+              { cle: "rang", libelle: "Rang" },
               { cle: "priorite", libelle: "Priorite" },
               { cle: "of", libelle: "Ordre" },
               { cle: "article", libelle: "Article" },
@@ -190,11 +193,39 @@ export default async function PageAtelier({
               { cle: "affecte", libelle: "Affecte a" },
               { cle: "action", libelle: "" },
             ]}
-            lignes={operations.map((o) => {
+            lignes={operations.map((o, position) => {
               const affecte = o.assignments[0]?.employee;
+              // Les fleches ne s'affichent qu'une fois par ordre : une operation
+              // par ligne, mais un seul rang a deplacer.
+              const premiereEtape =
+                operations.findIndex((autre) => autre.workOrder.id === o.workOrder.id) ===
+                position;
               return {
                 cle: String(o.id),
                 cellules: [
+                  <div key="r" className="flex items-center gap-1">
+                    <span className="font-mono text-xs">{o.workOrder.sequenceOrder + 1}</span>
+                    {premiereEtape && peutOrganiser && (
+                      <>
+                        <FormulaireAction
+                          action={actionDeplacerOrdreFabrication}
+                          libelleSoumettre="haut"
+                          varianteSoumettre="secondaire"
+                        >
+                          <input type="hidden" name="workOrderId" value={o.workOrder.id} />
+                          <input type="hidden" name="direction" value="haut" />
+                        </FormulaireAction>
+                        <FormulaireAction
+                          action={actionDeplacerOrdreFabrication}
+                          libelleSoumettre="bas"
+                          varianteSoumettre="secondaire"
+                        >
+                          <input type="hidden" name="workOrderId" value={o.workOrder.id} />
+                          <input type="hidden" name="direction" value="bas" />
+                        </FormulaireAction>
+                      </>
+                    )}
+                  </div>,
                   <Etiquette key="p" ton={o.workOrder.priority === "URGENTE" ? "danger" : "neutre"}>
                     {libelle(LIBELLES_PRIORITE, o.workOrder.priority)}
                   </Etiquette>,

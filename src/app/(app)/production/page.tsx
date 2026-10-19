@@ -11,6 +11,7 @@ import {
 import {
   actionCreerOrdreFabrication,
 } from "@/actions/production";
+import { actionDeplacerOrdreFabrication } from "@/actions/ordre-priorite";
 import {
   Alerte,
   Carte,
@@ -105,7 +106,7 @@ async function listerAvecPriorite(
     prisma.workOrder.count({ where }),
     prisma.workOrder.findMany({
       where,
-      orderBy: [{ dueDate: "asc" }, { id: "desc" }],
+      orderBy: [{ sequenceOrder: "asc" }, { dueDate: "asc" }, { id: "desc" }],
       skip: (page - 1) * taille,
       take: taille,
       include: {
@@ -203,6 +204,7 @@ export default async function PageOrdresFabrication({
   );
 
   const peutCreer = aLaPermission(utilisateur, PERMISSIONS.PRODUCTION_ORDRE_CREER);
+  const peutOrganiser = aLaPermission(utilisateur, PERMISSIONS.PRODUCTION_PLANNING_GERER);
 
   // Donnees de reference du formulaire de creation (lectures bornees).
   const [articlesFabricables, nomenclatures, gammes, depots, employes] = peutCreer
@@ -448,6 +450,7 @@ export default async function PageOrdresFabrication({
         >
           <Tableau
             colonnes={[
+              { cle: "rang", libelle: "Rang" },
               { cle: "numero", libelle: "Numero" },
               { cle: "article", libelle: "Article" },
               { cle: "division", libelle: "Division" },
@@ -466,6 +469,29 @@ export default async function PageOrdresFabrication({
             lignes={listeOrdres.lignes.map((ordre) => ({
               cle: String(ordre.id),
               cellules: [
+                <div key="rang" className="flex items-center gap-1">
+                  <span className="font-mono text-xs">{ordre.sequenceOrder + 1}</span>
+                  {peutOrganiser && (
+                    <>
+                      <FormulaireAction
+                        action={actionDeplacerOrdreFabrication}
+                        libelleSoumettre="haut"
+                        varianteSoumettre="secondaire"
+                      >
+                        <input type="hidden" name="workOrderId" value={ordre.id} />
+                        <input type="hidden" name="direction" value="haut" />
+                      </FormulaireAction>
+                      <FormulaireAction
+                        action={actionDeplacerOrdreFabrication}
+                        libelleSoumettre="bas"
+                        varianteSoumettre="secondaire"
+                      >
+                        <input type="hidden" name="workOrderId" value={ordre.id} />
+                        <input type="hidden" name="direction" value="bas" />
+                      </FormulaireAction>
+                    </>
+                  )}
+                </div>,
                 <Link key="n" className="lien-nav" href={`/production/${ordre.id}`}>
                   {ordre.number}
                 </Link>,
