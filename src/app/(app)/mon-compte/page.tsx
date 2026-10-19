@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { exigerUtilisateur } from "@/lib/rbac/guard";
 import { Alerte, Carte, EnTetePage, Etiquette, ListeDefinitions } from "@/components/ui";
 import { PERMISSION_DEFINITIONS } from "@/lib/rbac/permissions";
@@ -10,6 +11,18 @@ export const metadata = { title: "Mon compte" };
 /** Espace personnel : identite reelle, roles et droits effectifs. */
 export default async function PageMonCompte() {
   const utilisateur = await exigerUtilisateur();
+
+  /*
+   * L'espace personnel expose les roles et les droits : reserve aux profils
+   * d'encadrement. Un operateur va directement a son portail, ou il n'a que
+   * ses taches. L'exception reste le changement de mot de passe impose.
+   */
+  const estOperateur = utilisateur.roles.some((role) =>
+    role.code.startsWith("OPERATEUR_"),
+  );
+  if (estOperateur && !utilisateur.mustChangePassword) {
+    redirect("/portail");
+  }
 
   const parModule = new Map<string, string[]>();
   for (const definition of PERMISSION_DEFINITIONS) {

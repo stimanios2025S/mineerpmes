@@ -38,6 +38,16 @@ export default async function LayoutApplication({
   const sections = navigationAutorisee(utilisateur);
   const usines = usinesAutorisees(utilisateur);
 
+  /*
+   * Un operateur ne dispose ni de l'espace personnel ni du changement de mot
+   * de passe : ces reglages sont tenus par l'administration. Seule exception,
+   * le remplacement impose apres une reinitialisation.
+   */
+  const estOperateur = utilisateur.roles.some((role) =>
+    role.code.startsWith("OPERATEUR_"),
+  );
+  const montreMonCompte = !estOperateur || utilisateur.mustChangePassword;
+
   const contenuNavigation = (
     <nav aria-label="Navigation principale" className="space-y-5">
       {sections.length === 0 ? (
@@ -151,9 +161,11 @@ export default async function LayoutApplication({
                 {utilisateur.roles.map((role) => role.label).join(", ") || "Aucun role"}
               </p>
             </div>
-            <Link className="lien-nav text-xs" href="/mon-compte">
-              Mon compte
-            </Link>
+            {montreMonCompte && (
+              <Link className="lien-nav text-xs" href="/mon-compte">
+                Mon compte
+              </Link>
+            )}
             <form action={actionDeconnexion}>
               <button
                 type="submit"

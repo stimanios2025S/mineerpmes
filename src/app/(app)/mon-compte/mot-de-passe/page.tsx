@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { actionChangerMotDePasse } from "@/actions/auth";
 import { exigerUtilisateur } from "@/lib/rbac/guard";
 import { Alerte, Carte, EnTetePage } from "@/components/ui";
@@ -9,6 +10,18 @@ export const metadata = { title: "Mot de passe" };
 
 export default async function PageMotDePasse() {
   const utilisateur = await exigerUtilisateur();
+
+  /*
+   * Un operateur ne gere pas son mot de passe : l'administration s'en charge.
+   * La seule exception est le changement impose apres une reinitialisation —
+   * sans lui, le compte resterait bloque sur une page inaccessible.
+   */
+  const estOperateur = utilisateur.roles.some((role) =>
+    role.code.startsWith("OPERATEUR_"),
+  );
+  if (estOperateur && !utilisateur.mustChangePassword) {
+    redirect("/portail");
+  }
 
   return (
     <>
