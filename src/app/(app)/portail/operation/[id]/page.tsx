@@ -220,31 +220,62 @@ export default async function PagePortailOperation({
             </div>
           </dl>
 
+          {/*
+            * Un seul bouton par etat : on ne propose jamais une action qui n'a
+            * pas de sens a cet instant. Demarrer devient Terminer, Mettre en
+            * pause devient Reprendre.
+            */}
           <div className="mt-4 flex flex-wrap gap-2">
-            <BoutonAction
-              action={actionPortailDemarrerOperation}
-              libelle="Demarrer"
-              variante="primaire"
-              champsCaches={{ workOrderOperationId: execution.id }}
-            />
-            <BoutonAction
-              action={actionPortailMettreEnPause}
-              libelle="Mettre en pause"
-              champsCaches={{ workOrderOperationId: execution.id }}
-            />
-            <BoutonAction
-              action={actionPortailReprendreOperation}
-              libelle="Reprendre"
-              champsCaches={{ workOrderOperationId: execution.id }}
-            />
-            <BoutonAction
-              action={actionPortailTerminerOperation}
-              libelle="Terminer mon intervention"
-              variante="danger"
-              champsCaches={{ workOrderOperationId: execution.id }}
-              confirmation="Terminer votre intervention ? Vos heures reelles seront figees et serviront de base a votre evaluation."
-            />
+            {execution.status === "NON_DEMARREE" && (
+              <BoutonAction
+                action={actionPortailDemarrerOperation}
+                libelle="Demarrer"
+                variante="primaire"
+                champsCaches={{ workOrderOperationId: execution.id }}
+              />
+            )}
+
+            {execution.status === "EN_COURS" && (
+              <>
+                <BoutonAction
+                  action={actionPortailMettreEnPause}
+                  libelle="Mettre en pause"
+                  champsCaches={{ workOrderOperationId: execution.id }}
+                />
+                <BoutonAction
+                  action={actionPortailTerminerOperation}
+                  libelle="Terminer mon intervention"
+                  variante="danger"
+                  champsCaches={{ workOrderOperationId: execution.id }}
+                  confirmation="Terminer votre intervention ? Vos heures reelles seront figees et serviront de base a votre evaluation."
+                />
+              </>
+            )}
+
+            {execution.status === "EN_PAUSE" && (
+              <>
+                <BoutonAction
+                  action={actionPortailReprendreOperation}
+                  libelle="Reprendre"
+                  variante="primaire"
+                  champsCaches={{ workOrderOperationId: execution.id }}
+                />
+                <BoutonAction
+                  action={actionPortailTerminerOperation}
+                  libelle="Terminer mon intervention"
+                  variante="danger"
+                  champsCaches={{ workOrderOperationId: execution.id }}
+                  confirmation="Terminer votre intervention ? Vos heures reelles seront figees et serviront de base a votre evaluation."
+                />
+              </>
+            )}
           </div>
+
+          <p className="mt-2 text-xs" style={{ color: "var(--texte-doux)" }}>
+            « Terminer mon intervention » clos vos heures sur cette etape : l&apos;operation
+            elle-meme reste ouverte et peut continuer avec un autre ouvrier. C&apos;est votre
+            travail qui est arrete, pas la fabrication.
+          </p>
 
           {portail.peutCloturerOrdre && (
             <div className="mt-4">

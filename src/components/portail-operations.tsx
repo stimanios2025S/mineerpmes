@@ -122,6 +122,8 @@ async function ContenuPortailOperations({
               quantityPlanned: true,
               quantityConform: true,
               dueDate: true,
+              customerReference: true,
+              customer: { select: { code: true, label1: true } },
               item: { select: { code: true, label1: true, unitCode: true } },
             },
           },
@@ -286,6 +288,21 @@ async function ContenuPortailOperations({
 
                 <p className="mt-3 text-sm" style={{ color: "var(--texte-doux)" }}>
                   {operation.workOrder.item.code} - {operation.workOrder.item.label1}
+                </p>
+
+                <p className="mt-1 text-sm">
+                  <span style={{ color: "var(--texte-doux)" }}>Client : </span>
+                  <span className="font-medium">
+                    {operation.workOrder.customer
+                      ? `${operation.workOrder.customer.code} — ${operation.workOrder.customer.label1}`
+                      : "Interne / sans client"}
+                  </span>
+                  {operation.workOrder.customerReference && (
+                    <span style={{ color: "var(--texte-doux)" }}>
+                      {" "}
+                      (réf. {operation.workOrder.customerReference})
+                    </span>
+                  )}
                 </p>
 
                 <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
