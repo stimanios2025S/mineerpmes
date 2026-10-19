@@ -95,7 +95,14 @@ export interface OperationPortail {
     quantityRemaining: Prisma.Decimal;
     dueDate: Date | null;
     itemId: number;
-    item: { id: number; code: string; label1: string; unitCode: string | null };
+    item: {
+      id: number;
+      code: string;
+      label1: string;
+      unitCode: string | null;
+      drawingFile: string | null;
+      drawingName: string | null;
+    };
     workshop: { id: number; code: string; label: string } | null;
     route: {
       id: number;
@@ -229,7 +236,14 @@ export async function chargerOperationPortail(
           dueDate: true,
           itemId: true,
           item: {
-            select: { id: true, code: true, label1: true, unitCode: true },
+            select: {
+              id: true,
+              code: true,
+              label1: true,
+              unitCode: true,
+              drawingFile: true,
+              drawingName: true,
+            },
           },
           workshop: { select: { id: true, code: true, label: true } },
           route: {

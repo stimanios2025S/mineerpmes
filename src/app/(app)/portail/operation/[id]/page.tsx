@@ -183,6 +183,88 @@ export default async function PagePortailOperation({
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <div className="mb-4 space-y-4">
+        <Carte titre="Declarer une quantite produite">
+          <FormulaireAction
+            action={actionPortailDeclarerProduction}
+            libelleSoumettre="Declarer la production"
+            reinitialiser
+          >
+            <input
+              type="hidden"
+              name="workOrderOperationId"
+              value={execution.id}
+            />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Champ
+                nom="quantiteProduite"
+                libelle="Quantite produite"
+                type="number"
+                requis
+                pas="0.0001"
+                min="0"
+              />
+              <Champ
+                nom="quantiteConforme"
+                libelle="Dont conforme"
+                type="number"
+                pas="0.0001"
+                min="0"
+              />
+              <Champ
+                nom="quantiteRebutee"
+                libelle="Dont rebut"
+                type="number"
+                pas="0.0001"
+                min="0"
+              />
+              <Champ
+                nom="quantiteReprise"
+                libelle="Dont a reprendre"
+                type="number"
+                pas="0.0001"
+                min="0"
+              />
+            </div>
+            <Champ nom="commentaire" libelle="Commentaire" type="textarea" />
+          </FormulaireAction>
+        </Carte>
+        {workOrder.item.drawingFile && (
+          <Carte
+            titre="Dessin technique du produit"
+            description={`${workOrder.item.code} — ${workOrder.item.label1}`}
+          >
+            <p className="text-sm" style={{ color: "var(--texte-doux)" }}>
+              Le plan indique ou centrer et ou percer le tube avant de commencer.
+            </p>
+            <a
+              className="bouton primaire mt-3 inline-flex"
+              href={`/api/articles/${workOrder.itemId}/media/dessin`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Ouvrir le dessin
+            </a>
+            {!workOrder.item.drawingFile.toLowerCase().endsWith(".pdf") && (
+              <a
+                className="mt-3 block"
+                href={`/api/articles/${workOrder.itemId}/media/dessin`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  className="w-full rounded-[var(--rayon-petit)]"
+                  src={`/api/articles/${workOrder.itemId}/media/dessin`}
+                  alt={`Dessin technique ${workOrder.item.code}`}
+                />
+              </a>
+            )}
+          </Carte>
+        )}
+
+      </div>
+
         <Carte titre="Execution de l etape">
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
             <div>
@@ -597,51 +679,6 @@ export default async function PagePortailOperation({
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <Carte titre="Declarer une quantite produite">
-          <FormulaireAction
-            action={actionPortailDeclarerProduction}
-            libelleSoumettre="Declarer la production"
-            reinitialiser
-          >
-            <input
-              type="hidden"
-              name="workOrderOperationId"
-              value={execution.id}
-            />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Champ
-                nom="quantiteProduite"
-                libelle="Quantite produite"
-                type="number"
-                requis
-                pas="0.0001"
-                min="0"
-              />
-              <Champ
-                nom="quantiteConforme"
-                libelle="Dont conforme"
-                type="number"
-                pas="0.0001"
-                min="0"
-              />
-              <Champ
-                nom="quantiteRebutee"
-                libelle="Dont rebut"
-                type="number"
-                pas="0.0001"
-                min="0"
-              />
-              <Champ
-                nom="quantiteReprise"
-                libelle="Dont a reprendre"
-                type="number"
-                pas="0.0001"
-                min="0"
-              />
-            </div>
-            <Champ nom="commentaire" libelle="Commentaire" type="textarea" />
-          </FormulaireAction>
-        </Carte>
 
         <Carte titre="Signaler une anomalie">
           <div className="grid gap-3">
