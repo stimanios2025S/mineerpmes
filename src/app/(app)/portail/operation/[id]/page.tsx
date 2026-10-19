@@ -19,6 +19,7 @@ import {
   EnTetePage,
   Etiquette,
   EtiquetteStatut,
+  SectionRepliable,
   Statistique,
   Tableau,
 } from "@/components/ui";
@@ -290,6 +291,18 @@ export default async function PagePortailOperation({
           )}
         </Carte>
 
+        {/*
+          * Tout ce qui n'aide pas a executer l'etape est regroupe ici : poste,
+          * consignes, gamme, sous-stock, branches amont. L'ouvrier ouvre ce
+          * bloc quand il en a besoin, pas avant de commencer.
+          */}
+        <SectionRepliable
+          id="details-etape"
+          className="mt-4"
+          titre="A propos de cette etape — poste, consignes, gamme, sous-stock"
+        >
+          <div className="space-y-4">
+
         <Carte titre="Poste et affectation">
           <dl className="grid gap-2 text-sm">
             <div>
@@ -510,6 +523,8 @@ export default async function PagePortailOperation({
             </ul>
           )}
         </Carte>
+          </div>
+        </SectionRepliable>
       </div>
 
       <div className="mt-4">

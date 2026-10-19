@@ -135,6 +135,12 @@ export const NAVIGATION: SectionNavigation[] = [
         description: "Un espace dedie a chaque etape qui vous est affectee",
       },
       {
+        chemin: "/portail/sous-stocks",
+        libelle: "Mes sous-stocks",
+        permission: PERMISSIONS.PORTAIL_EMPLOYE,
+        description: "Ce qui est disponible a mon poste",
+      },
+      {
         chemin: "/portail/admedco",
         usine: "ADMEDCO",
         libelle: "Portail ADMEDCO",

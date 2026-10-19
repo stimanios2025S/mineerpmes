@@ -1086,7 +1086,7 @@ export async function actionPortailDeclarerProduction(
   formData: FormData,
 ): Promise<ResultatAction> {
   return executer<Record<string, unknown>>(
-    "La quantite produite a ete declaree.",
+    "La quantite produite a ete declaree. Le surplus eventuel est signale au chef d'atelier.",
     async () => {
       const { utilisateur, employeeId } = await employePortail(
         PERMISSIONS.PORTAIL_EMPLOYE,
@@ -1112,11 +1112,39 @@ export async function actionPortailDeclarerProduction(
           ? decimalObligatoire(produiteSaisie, "quantite produite")
           : D.add(conforme ?? D.ZERO, rebutee ?? D.ZERO);
 
+      /*
+       * Plafonnement a ce qui reste a produire.
+       *
+       * Un ouvrier peut annoncer plus que le reste de l'ordre : les pieces en
+       * trop ne lui appartiennent pas et ne doivent pas gonfler la quantite
+       * conforme de cet ordre. On retient ce qui reste, et le surplus est
+       * signale — c'est au chef d'atelier de le reaffecter, jamais au portail
+       * de decider tout seul sur quel ordre le poser.
+       */
+      const operation = await prisma.workOrderOperation.findUnique({
+        where: { id: workOrderOperationId },
+        select: { quantityPlanned: true, quantityConform: true },
+      });
+      const reste = operation
+        ? D.max(D.sub(D.of(operation.quantityPlanned), D.of(operation.quantityConform)), D.ZERO)
+        : null;
+
+      let conformeRetenu = conforme === null ? null : D.of(conforme);
+      let surplus = D.of(0);
+      if (reste !== null && conformeRetenu !== null && D.gt(conformeRetenu, reste)) {
+        surplus = D.sub(conformeRetenu, reste);
+        conformeRetenu = reste;
+      }
+      const produiteRetenue =
+        produiteSaisie !== null
+          ? quantiteProduite
+          : D.add(conformeRetenu ?? D.ZERO, rebutee ?? D.ZERO);
+
       const resultat = await declarerProduction({
         workOrderOperationId,
         employeeId,
-        quantiteProduite,
-        quantiteConforme: conforme ?? undefined,
+        quantiteProduite: produiteRetenue,
+        quantiteConforme: conformeRetenu ?? undefined,
         quantiteRebutee: rebutee ?? undefined,
         quantiteReprise: undefined,
         commentaire: texteOuNull(formData.get("commentaire")),
@@ -1127,6 +1155,7 @@ export async function actionPortailDeclarerProduction(
       return {
         declarationId: String(resultat.declarationId),
         resteAProduire: resultat.resteAProduire.toFixed(4),
+        surplusSignale: D.toFixed(surplus, 3),
       };
     },
   );
