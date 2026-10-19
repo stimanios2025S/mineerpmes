@@ -445,16 +445,19 @@ export const NAVIGATION: SectionNavigation[] = [
       {
         chemin: "/administration/utilisateurs",
         libelle: "Utilisateurs",
+        description: "Comptes, roles, mots de passe et activation",
         permission: PERMISSIONS.UTILISATEUR_LIRE,
       },
       {
         chemin: "/administration/roles",
         libelle: "Roles et permissions",
+        description: "Ce que chaque role a le droit de voir et de faire",
         permission: PERMISSIONS.ROLE_LIRE,
       },
       {
         chemin: "/administration/parametres",
         libelle: "Parametres",
+        description: "Reglages de la plateforme",
         permission: PERMISSIONS.CONFIG_LIRE,
       },
       {
@@ -475,6 +478,7 @@ export const NAVIGATION: SectionNavigation[] = [
       {
         chemin: "/administration/audit",
         libelle: "Journal d'audit",
+        description: "Qui a fait quoi, et quand",
         permission: PERMISSIONS.AUDIT_LIRE,
       },
     ],
