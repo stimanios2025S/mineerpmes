@@ -67,15 +67,21 @@ export default async function PageRecherche({
    * permet de le changer, pas seulement aux donnees. On interroge le menu que
    * l'utilisateur a le droit de voir, jamais le menu complet.
    */
-  const terme = requete.toLowerCase();
+  const mots = requete
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((mot) => mot.length > 1);
+
   const pages = navigationAutorisee(utilisateur).flatMap((section) =>
     section.entrees
-      .filter((entree) =>
-        [entree.libelle, section.titre, entree.description ?? ""]
+      .filter((entree) => {
+        const texte = [entree.libelle, section.titre, entree.description ?? ""]
           .join(" ")
-          .toLowerCase()
-          .includes(terme),
-      )
+          .toLowerCase();
+        // Tous les mots doivent apparaitre, dans n'importe quel ordre :
+        // « mot de passe » trouve « mots de passe ».
+        return mots.every((mot) => texte.includes(mot));
+      })
       .map((entree) => ({
         chemin: entree.chemin,
         libelle: entree.libelle,
