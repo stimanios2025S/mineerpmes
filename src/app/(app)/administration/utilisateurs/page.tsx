@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   actionBasculerActivationUtilisateur,
   actionCreerUtilisateur,
+  actionDefinirMotDePasseUtilisateur,
   actionReinitialiserMotDePasseUtilisateur,
 } from "@/actions/administration";
 import { exigerPermission } from "@/lib/rbac/guard";
@@ -20,6 +21,7 @@ import {
   Vide,
 } from "@/components/ui";
 import { Champ, FormulaireAction, FormulaireMotif } from "@/components/interactif";
+import { actionCreerCompteEmploye } from "@/actions/rh";
 import { formatDateTime, formatEntier } from "@/lib/format";
 import { fabricantLien, lireParametresListe } from "@/lib/liste";
 
@@ -280,6 +282,64 @@ export default async function PageUtilisateurs({
               </FormulaireAction>
             </Carte>
 
+            {/*
+              * Une fiche employe ne cree pas de compte : ce sont deux objets
+              * distincts. Sans cette liste, l'administrateur croit que la
+              * creation a echoue alors que la personne n'a simplement pas
+              * encore d'acces.
+              */}
+            {employesSansCompte.length > 0 && (
+              <Carte
+                titre={`Employes sans compte (${employesSansCompte.length})`}
+                description="Ces personnes ont une fiche employe mais aucun acces : elles ne peuvent pas se connecter. Creez leur compte ici."
+              >
+                <div className="space-y-4">
+                  {employesSansCompte.slice(0, 25).map((employe) => (
+                    <div
+                      key={employe.id}
+                      className="rounded-[var(--rayon-petit)] border p-4"
+                    >
+                      <p className="mb-3 text-sm font-semibold">
+                        {employe.lastName} {employe.firstName} —{" "}
+                        <span className="font-mono">{employe.matricule}</span>
+                      </p>
+                      <FormulaireAction
+                        action={actionCreerCompteEmploye}
+                        libelleSoumettre="Creer le compte"
+                      >
+                        <input type="hidden" name="employeeId" value={employe.id} />
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <Champ
+                            nom="email"
+                            libelle="Adresse electronique"
+                            type="email"
+                            requis
+                            maxLength={160}
+                            aide="Le mot de passe temporaire sera genere et affiche une seule fois."
+                          />
+                          <Champ
+                            nom="roleCodes"
+                            libelle="Roles attribues"
+                            type="select"
+                            plusieurs
+                            requis
+                            options={optionsRoles}
+                            aide="Maintenez la touche de selection multiple pour choisir plusieurs roles."
+                          />
+                        </div>
+                      </FormulaireAction>
+                    </div>
+                  ))}
+                  {employesSansCompte.length > 25 && (
+                    <p className="text-xs" style={{ color: "var(--texte-doux)" }}>
+                      Les 25 premiers employes sont affiches. Utilisez la carte « Creer un compte
+                      nominatif » ci-dessus pour les autres.
+                    </p>
+                  )}
+                </div>
+              </Carte>
+            )}
+
             {employesSansCompte.length === 0 && (
               <Alerte ton="info">
                 Tous les employes actifs disposent deja d'un compte nominatif, ou aucune fiche
@@ -309,7 +369,7 @@ export default async function PageUtilisateurs({
                     />
                   </div>
 
-                  <div className="grid gap-4 lg:grid-cols-2">
+                  <div className="grid gap-4 lg:grid-cols-3">
                     <FormulaireMotif
                       action={actionBasculerActivationUtilisateur}
                       champsCaches={{ userId: compte.id }}
@@ -339,6 +399,27 @@ export default async function PageUtilisateurs({
                         </p>
                       </FormulaireAction>
                     </div>
+
+                    {/*
+                      * Definition manuelle : l'administrateur choisit le mot de
+                      * passe au lieu de laisser le systeme en tirer un. Il est
+                      * hache immediatement et jamais renvoye par le serveur.
+                      */}
+                    <FormulaireAction
+                      action={actionDefinirMotDePasseUtilisateur}
+                      libelleSoumettre="Definir ce mot de passe"
+                      varianteSoumettre="secondaire"
+                    >
+                      <input type="hidden" name="userId" value={compte.id} />
+                      <Champ
+                        nom="motDePasse"
+                        libelle="Nouveau mot de passe"
+                        type="password"
+                        requis
+                        maxLength={200}
+                        aide="12 caracteres minimum. Le compte devra le changer a sa prochaine connexion."
+                      />
+                    </FormulaireAction>
                   </div>
                 </div>
               ))}

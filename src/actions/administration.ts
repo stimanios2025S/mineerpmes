@@ -266,6 +266,72 @@ export async function actionReinitialiserMotDePasseUtilisateur(
   );
 }
 
+/**
+ * Definir soi-meme le mot de passe d'un compte.
+ *
+ * Complement de la reinitialisation aleatoire : l'administrateur choisit le
+ * mot de passe, le saisit une fois, et il est hache immediatement. Il n'est
+ * jamais renvoye par l'action ni journalise. Le compte devra le changer a sa
+ * prochaine connexion, et ses sessions ouvertes sont fermees.
+ */
+export async function actionDefinirMotDePasseUtilisateur(
+  formData: FormData,
+): Promise<ResultatAction> {
+  const acteur = await exigerPermission(PERMISSIONS.UTILISATEUR_GERER);
+
+  const userId = entierOu(formData.get("userId"));
+  const motDePasse = texteOuNull(formData.get("motDePasse")) ?? "";
+
+  if (userId === null) {
+    return executer("Compte non identifie.", async () => {
+      throw validation("Le compte vise est introuvable.");
+    });
+  }
+  if (userId === acteur.id) {
+    return executer("Operation refusee.", async () => {
+      throw validation(
+        "Utilisez la page « Mon compte » pour changer votre propre mot de passe : la definition administrateur ne s'applique pas a votre propre compte.",
+      );
+    });
+  }
+
+  return executer(
+    "Mot de passe defini. Le compte devra le changer a sa prochaine connexion.",
+    async () => {
+      const robustesse = verifierRobustesseMotDePasse(motDePasse);
+      if (!robustesse.valide) {
+        throw validation(robustesse.erreurs.join(" "));
+      }
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          passwordHash: await hacherMotDePasse(motDePasse),
+          mustChangePassword: true,
+          failedAttempts: 0,
+          lockedUntil: null,
+        },
+      });
+
+      const sessions = await revoquerToutesLesSessions(userId);
+
+      await enregistrerAudit({
+        action: ACTIONS_AUDIT.MOT_DE_PASSE_REINITIALISE,
+        module: MODULES_AUDIT.AUTHENTIFICATION,
+        entity: "User",
+        entityId: userId,
+        userId: acteur.id,
+        userEmail: acteur.email,
+        oldValue: null,
+        newValue: { origine: "definition administrateur", sessionsRevoquees: sessions },
+      });
+
+      revalidatePath("/administration/utilisateurs");
+      return { sessionsRevoquees: sessions };
+    },
+  );
+}
+
 export async function actionBasculerActivationUtilisateur(
   formData: FormData,
 ): Promise<ResultatAction> {  const acteur = await exigerPermission(PERMISSIONS.UTILISATEUR_GERER);
