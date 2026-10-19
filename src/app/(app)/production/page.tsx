@@ -237,6 +237,7 @@ export default async function PageOrdresFabrication({
             version: true,
             label: true,
             item: { select: { code: true } },
+            _count: { select: { steps: true } },
           },
         }),
         prisma.warehouse.findMany({
@@ -352,7 +353,7 @@ export default async function PageOrdresFabrication({
                 requis
                 options={articlesFabricables.map((article) => ({
                   valeur: article.id,
-                  libelle: `${article.code} â€” ${article.label1}${article.unitCode ? ` (${article.unitCode})` : ""}`,
+                  libelle: `${article.code} - ${article.label1}${article.unitCode ? ` (${article.unitCode})` : ""}`,
                 }))}
                 aide="Articles fabricables et actifs (500 au maximum)."
               />
@@ -391,7 +392,7 @@ export default async function PageOrdresFabrication({
                 type="select"
                 options={nomenclatures.map((formule) => ({
                   valeur: formule.id,
-                  libelle: `${formule.code} v${formule.version} â€” ${formule.label} (${formule.item.code})`,
+                  libelle: `${formule.code} v${formule.version} - ${formule.item.code}`,
                 }))}
                 aide="Laisser vide pour retenir la nomenclature active de l'article."
               />
@@ -401,7 +402,9 @@ export default async function PageOrdresFabrication({
                 type="select"
                 options={gammes.map((gamme) => ({
                   valeur: gamme.id,
-                  libelle: `${gamme.code} v${gamme.version} â€” ${gamme.label} (${gamme.item.code})`,
+                  libelle: `${gamme.code} v${gamme.version} - ${gamme.item.code}${
+                    gamme._count.steps === 0 ? " (aucune etape)" : ""
+                  }`,
                 }))}
                 aide="Laisser vide pour retenir la gamme active de l'article."
               />
@@ -411,7 +414,7 @@ export default async function PageOrdresFabrication({
                 type="select"
                 options={depots.map((depot) => ({
                   valeur: depot.id,
-                  libelle: `${depot.code} â€” ${depot.label} (${libelle(LIBELLES_USINE, depot.factory)})`,
+                  libelle: `${depot.code} - ${depot.label} (${libelle(LIBELLES_USINE, depot.factory)})`,
                 }))}
               />
               <Champ
@@ -420,7 +423,7 @@ export default async function PageOrdresFabrication({
                 type="select"
                 options={depots.map((depot) => ({
                   valeur: depot.id,
-                  libelle: `${depot.code} â€” ${depot.label} (${libelle(LIBELLES_USINE, depot.factory)})`,
+                  libelle: `${depot.code} - ${depot.label} (${libelle(LIBELLES_USINE, depot.factory)})`,
                 }))}
               />
               <div className="sm:col-span-2 lg:col-span-3 rounded-lg border p-3" style={{ borderColor: "var(--bordure)" }}>
@@ -541,7 +544,7 @@ export default async function PageOrdresFabrication({
                     <Link className="lien-nav" href={`/production/${ordre.id}`}>
                       {ordre.number}
                     </Link>{" "}
-                    â€” {ordre.item.code}, echeance du {formatDate(ordre.dueDate)} (
+                    - {ordre.item.code}, echeance du {formatDate(ordre.dueDate)} (
                     {formatQuantite(ordre.quantityRemaining)} restant)
                   </li>
                 ))}
@@ -565,7 +568,7 @@ export default async function PageOrdresFabrication({
                     <Link className="lien-nav" href={`/production/${ordre.id}`}>
                       {ordre.number}
                     </Link>{" "}
-                    â€” {ordre.item.code}, {formatQuantite(ordre.quantityConform)} conforme(s)
+                    - {ordre.item.code}, {formatQuantite(ordre.quantityConform)} conforme(s)
                   </li>
                 ))}
               </ul>
@@ -690,7 +693,7 @@ export default async function PageOrdresFabrication({
                 <Link key="n" className="lien-nav" href={`/production/${ordre.id}`}>
                   {ordre.number}
                 </Link>,
-                `${ordre.item.code} â€” ${ordre.item.label1}`,
+                `${ordre.item.code} - ${ordre.item.label1}`,
                 libelle(LIBELLES_USINE, ordre.factory),
                 ordre.customer
                   ? `${ordre.customer.code} - ${ordre.customer.label1}${ordre.customerReference ? ` (${ordre.customerReference})` : ""}`
@@ -712,7 +715,7 @@ export default async function PageOrdresFabrication({
                     {formatDate(ordre.dueDate)}
                     {ordre.dueDate < new Date() &&
                       !STATUTS_ORDRE_FERMES.includes(ordre.status) && (
-                        <strong style={{ color: "var(--danger)" }}> â€” en retard</strong>
+                        <strong style={{ color: "var(--danger)" }}> - en retard</strong>
                       )}
                   </span>
                 ) : (

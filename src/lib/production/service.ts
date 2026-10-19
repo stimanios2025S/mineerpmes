@@ -315,8 +315,16 @@ export async function creerOrdreFabrication(
       const parCode = new Map(operations.map((op) => [op.code, op]));
       const manquantes = codesOperations.filter((code) => !parCode.has(code));
       if (manquantes.length > 0) {
+        /*
+         * Cas typique : une nomenclature importee porte des numeros de ligne
+         * (« 0 », « 1 ») la ou le logiciel d'origine attendait un code
+         * d'operation. Ce ne sont pas des operations : on le dit clairement, et
+         * on indique le geste qui debloque — choisir la gamme de fabrication.
+         */
         throw etatInvalide(
-          `Operations inconnues dans la nomenclature ${formule.code} : ${manquantes.join(", ")}.`,
+          `La nomenclature ${formule.code} designe des operations qui n'existent pas ` +
+            `(${manquantes.join(", ")}). Choisissez la gamme de fabrication de l'article ` +
+            `pour creer cet ordre, ou corrigez les operations de la nomenclature.`,
         );
       }
 
