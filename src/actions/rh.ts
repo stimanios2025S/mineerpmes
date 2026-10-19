@@ -1098,16 +1098,27 @@ export async function actionPortailDeclarerProduction(
       );
       await operationDuPortail(workOrderOperationId, employeeId, utilisateur);
 
+      /*
+       * Le portail ouvrier ne demande que deux chiffres : ce qui est bon et ce
+       * qui est rebut. La quantite produite en decoule. L'ouvrier n'a rien a
+       * additionner, et il ne peut pas declarer une quantite inferieure a ce
+       * qu'il vient de saisir.
+       */
+      const conforme = decimalOuNull(formData.get("quantiteConforme"));
+      const rebutee = decimalOuNull(formData.get("quantiteRebutee"));
+      const produiteSaisie = texteOuNull(formData.get("quantiteProduite"));
+      const quantiteProduite =
+        produiteSaisie !== null
+          ? decimalObligatoire(produiteSaisie, "quantite produite")
+          : D.add(conforme ?? D.ZERO, rebutee ?? D.ZERO);
+
       const resultat = await declarerProduction({
         workOrderOperationId,
         employeeId,
-        quantiteProduite: decimalObligatoire(
-          formData.get("quantiteProduite"),
-          "quantite produite",
-        ),
-        quantiteConforme: decimalOuNull(formData.get("quantiteConforme")) ?? undefined,
-        quantiteRebutee: decimalOuNull(formData.get("quantiteRebutee")) ?? undefined,
-        quantiteReprise: decimalOuNull(formData.get("quantiteReprise")) ?? undefined,
+        quantiteProduite,
+        quantiteConforme: conforme ?? undefined,
+        quantiteRebutee: rebutee ?? undefined,
+        quantiteReprise: undefined,
         commentaire: texteOuNull(formData.get("commentaire")),
         acteur: acteurDe(utilisateur),
       });

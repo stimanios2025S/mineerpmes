@@ -862,35 +862,28 @@ export default async function PagePortail() {
                         />
                         <div className="grid gap-3 sm:grid-cols-2">
                           <Champ
-                            nom="quantiteProduite"
-                            libelle="Quantite produite"
+                            nom="quantiteConforme"
+                            libelle="Pieces bonnes"
                             type="number"
                             requis
                             pas="0.0001"
                             min="0"
-                          />
-                          <Champ
-                            nom="quantiteConforme"
-                            libelle="Dont conforme"
-                            type="number"
-                            pas="0.0001"
-                            min="0"
+                            aide="Ce qui est bon, pret a passer a l'etape suivante."
                           />
                           <Champ
                             nom="quantiteRebutee"
-                            libelle="Dont rebut"
+                            libelle="Pieces rebut"
                             type="number"
                             pas="0.0001"
                             min="0"
-                          />
-                          <Champ
-                            nom="quantiteReprise"
-                            libelle="Dont a reprendre"
-                            type="number"
-                            pas="0.0001"
-                            min="0"
+                            aide="Ce qui est casse ou hors norme. Laisser vide si aucune."
                           />
                         </div>
+                        <p className="text-xs" style={{ color: "var(--texte-doux)" }}>
+                          Le total produit est calcule automatiquement. Les matieres
+                          consommees sont deduites de la nomenclature de l'ordre : rien
+                          a saisir.
+                        </p>
                         <Champ nom="commentaire" libelle="Commentaire" type="textarea" />
                       </FormulaireAction>
                     </details>
