@@ -40,6 +40,23 @@ export default async function PageAtelier({
 
   if (!workshop) notFound();
 
+  /*
+   * Un chef d'atelier ne voit que son atelier.
+   *
+   * Le role porte le code de l'atelier (CHEF_ADM_A01 -> ADM-A01). Le menu
+   * masque deja les autres entrees, mais une adresse tapee a la main ne doit
+   * pas ouvrir l'atelier du voisin : le controle est refait ici, comme pour
+   * toutes les pages.
+   */
+  const ateliersDuChef = utilisateur.roles
+    .map((role) => role.code)
+    .filter((codeRole) => codeRole.startsWith("CHEF_"))
+    .map((codeRole) => codeRole.replace(/^CHEF_/, "").replace("_", "-"));
+
+  if (ateliersDuChef.length > 0 && !ateliersDuChef.includes(workshop.code)) {
+    notFound();
+  }
+
   const peutOrganiser = aLaPermission(utilisateur, PERMISSIONS.PRODUCTION_PLANNING_GERER);
 
   const aujourdHui = new Date();
