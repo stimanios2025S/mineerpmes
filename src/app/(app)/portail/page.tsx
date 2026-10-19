@@ -199,7 +199,20 @@ export default async function PagePortail() {
           operation: { select: { id: true, code: true, label: true } },
           workCenter: { select: { code: true, label: true } },
           workOrder: {
-            select: { id: true, number: true, factory: true, itemId: true, item: { select: { code: true, label1: true } } },
+            select: {
+              id: true,
+              number: true,
+              factory: true,
+              itemId: true,
+              item: {
+                select: {
+                  code: true,
+                  label1: true,
+                  drawingFile: true,
+                  drawingName: true,
+                },
+              },
+            },
           },
           assignments: {
             where: { employeeId, status: { in: ["PLANIFIEE", "EN_COURS", "EN_PAUSE"] } },
@@ -595,6 +608,48 @@ export default async function PagePortail() {
                       {formatQuantite(operation.quantityProduced)}
                     </p>
                   </div>
+
+                  {/*
+                    * Le dessin technique du produit est affiche avant la
+                    * declaration : sur une operation de centrage ou de percage,
+                    * l'ouvrier doit voir ou se placent les reperes avant de
+                    * toucher la machine.
+                    */}
+                  {operation.workOrder.item.drawingFile && (
+                    <div className="mt-3 rounded-[var(--rayon-petit)] border p-3">
+                      <p className="text-sm font-semibold">
+                        Dessin technique — {operation.workOrder.item.code}
+                      </p>
+                      <p className="mt-1 text-xs" style={{ color: "var(--texte-doux)" }}>
+                        {/centr|perc|perç/i.test(operation.operation.label)
+                          ? "Le plan indique ou centrer et ou percer le tube avant de commencer."
+                          : "Le plan du produit est disponible avant de commencer."}
+                      </p>
+                      <a
+                        href={`/api/articles/${operation.workOrder.itemId}/media/dessin`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="bouton primaire mt-2"
+                      >
+                        Ouvrir le dessin
+                      </a>
+                      {!operation.workOrder.item.drawingFile.toLowerCase().endsWith(".pdf") && (
+                        <a
+                          href={`/api/articles/${operation.workOrder.itemId}/media/dessin`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-2 block"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={`/api/articles/${operation.workOrder.itemId}/media/dessin`}
+                            alt={`Dessin technique ${operation.workOrder.item.code}`}
+                            className="w-full rounded-[var(--rayon-petit)]"
+                          />
+                        </a>
+                      )}
+                    </div>
+                  )}
 
                   <details className="mt-3">
                     <summary className="cursor-pointer text-sm font-semibold">

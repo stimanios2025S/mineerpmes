@@ -225,6 +225,11 @@ export interface TacheProgrammee {
   workOrderId: number | null;
   workOrderNumber: string | null;
   produit: string | null;
+  /** Article fabrique : sert a retrouver ses pieces jointes. */
+  articleId: number | null;
+  /** Dessin technique du produit, affiche a l'ouvrier pendant l'operation. */
+  dessinFile: string | null;
+  dessinNom: string | null;
   stepNo: number | null;
 
   quantitePrevue: Prisma.Decimal;
@@ -284,7 +289,16 @@ const INCLUSION_TACHE = {
       id: true,
       number: true,
       itemId: true,
-      item: { select: { code: true, label1: true, unitCode: true } },
+      item: {
+        select: {
+          code: true,
+          label1: true,
+          unitCode: true,
+          photoFile: true,
+          drawingFile: true,
+          drawingName: true,
+        },
+      },
     },
   },
   workOrderOperation: {
@@ -454,6 +468,9 @@ async function construireTache(
     produit: affectation.workOrder
       ? `${affectation.workOrder.item.code} — ${affectation.workOrder.item.label1}`
       : null,
+    articleId: affectation.workOrder?.itemId ?? null,
+    dessinFile: affectation.workOrder?.item.drawingFile ?? null,
+    dessinNom: affectation.workOrder?.item.drawingName ?? null,
     stepNo: affectation.workOrderOperation?.stepNo ?? null,
 
     quantitePrevue,
