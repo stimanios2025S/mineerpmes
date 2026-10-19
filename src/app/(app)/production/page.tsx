@@ -22,6 +22,7 @@ import {
   Tableau,
 } from "@/components/ui";
 import { Champ, FormulaireAction } from "@/components/interactif";
+import { FiltreOptionsDivision } from "@/components/filtre-division";
 import { formatDate, formatQuantite, toInputDate } from "@/lib/format";
 import {
   LIBELLES_PRIORITE,
@@ -213,7 +214,7 @@ export default async function PageOrdresFabrication({
           where: { isProducible: true, status: "ACTIF" },
           orderBy: { code: "asc" },
           take: 500,
-          select: { id: true, code: true, label1: true, unitCode: true },
+          select: { id: true, code: true, label1: true, unitCode: true, factory: true },
         }),
         prisma.formula.findMany({
           where: { status: { in: ["ACTIVE", "VALIDEE"] } },
@@ -376,6 +377,7 @@ export default async function PageOrdresFabrication({
             libelleSoumettre="Creer l'ordre"
             reinitialiser
           >
+            <FiltreOptionsDivision />
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <Champ
                 nom="itemId"
@@ -384,6 +386,7 @@ export default async function PageOrdresFabrication({
                 requis
                 options={articlesFabricables.map((article) => ({
                   valeur: article.id,
+                  factory: article.factory,
                   libelle: `${article.code} - ${article.label1}${article.unitCode ? ` (${article.unitCode})` : ""}`,
                 }))}
                 aide="Articles fabricables et actifs (500 au maximum)."
@@ -445,6 +448,7 @@ export default async function PageOrdresFabrication({
                 type="select"
                 options={depotsSource.map((depot) => ({
                   valeur: depot.id,
+                  factory: depot.factory,
                   libelle: `${depot.code} - ${depot.label} (${libelle(LIBELLES_USINE, depot.factory)})`,
                 }))}
               />
@@ -454,6 +458,7 @@ export default async function PageOrdresFabrication({
                 type="select"
                 options={depotsDestination.map((depot) => ({
                   valeur: depot.id,
+                  factory: depot.factory,
                   libelle: `${depot.code} - ${depot.label} (${libelle(LIBELLES_USINE, depot.factory)})`,
                 }))}
               />

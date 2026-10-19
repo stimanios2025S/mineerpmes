@@ -270,7 +270,7 @@ export function Champ({
   min?: string | number;
   max?: string | number;
   maxLength?: number;
-  options?: { valeur: string | number; libelle: string }[];
+  options?: { valeur: string | number; libelle: string; factory?: string }[];
   plusieurs?: boolean;
   /** Indication au gestionnaire de mots de passe du navigateur. */
   autoComplete?: string;
@@ -315,7 +315,11 @@ export function Champ({
         >
           {!plusieurs && <option value="">— Selectionner —</option>}
           {(options ?? []).map((option) => (
-            <option key={String(option.valeur)} value={String(option.valeur)}>
+            <option
+              key={String(option.valeur)}
+              value={String(option.valeur)}
+              data-factory={option.factory}
+            >
               {option.libelle}
             </option>
           ))}
