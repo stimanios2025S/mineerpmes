@@ -13,6 +13,7 @@ import {
   Vide,
 } from "@/components/ui";
 import { premiereValeur } from "@/lib/liste";
+import { navigationAutorisee } from "@/components/navigation";
 import { formatDate, formatEntier, formatMontant, formatQuantite } from "@/lib/format";
 import {
   LIBELLES_STATUT_ARTICLE,
@@ -60,6 +61,28 @@ export default async function PageRecherche({
       </>
     );
   }
+
+  /*
+   * Les pages elles-memes : chercher « mot de passe » doit mener a l'ecran qui
+   * permet de le changer, pas seulement aux donnees. On interroge le menu que
+   * l'utilisateur a le droit de voir, jamais le menu complet.
+   */
+  const terme = requete.toLowerCase();
+  const pages = navigationAutorisee(utilisateur).flatMap((section) =>
+    section.entrees
+      .filter((entree) =>
+        [entree.libelle, section.titre, entree.description ?? ""]
+          .join(" ")
+          .toLowerCase()
+          .includes(terme),
+      )
+      .map((entree) => ({
+        chemin: entree.chemin,
+        libelle: entree.libelle,
+        section: section.titre,
+        description: entree.description ?? "",
+      })),
+  );
 
   const peut = (permission: string) => utilisateur.permissions.includes(permission);
   const comme = { contains: requete, mode: "insensitive" as const };
@@ -346,9 +369,33 @@ export default async function PageRecherche({
       </div>
 
       <div className="space-y-5">
-        {totalTrouve === 0 && (
+        {pages.length > 0 && (
+          <Carte titre={`Pages et actions (${pages.length})`} sansPadding>
+            <Tableau
+              messageVide=""
+              cleLigne={(index) => pages[index].chemin}
+              colonnes={[
+                { cle: "page", libelle: "Page" },
+                { cle: "section", libelle: "Menu" },
+                { cle: "aide", libelle: "A quoi ca sert" },
+              ]}
+              lignes={pages.map((entree) => ({
+                cle: entree.chemin,
+                cellules: [
+                  <Link key="l" href={entree.chemin} className="font-medium underline">
+                    {entree.libelle}
+                  </Link>,
+                  entree.section,
+                  entree.description || "-",
+                ],
+              }))}
+            />
+          </Carte>
+        )}
+
+        {totalTrouve === 0 && pages.length === 0 && (
           <Vide
-            message={`Aucun resultat pour « ${requete} » dans les domaines auxquels vous avez acces.`}
+            message={`Aucun resultat pour « ${requete} » dans les pages et les donnees auxquelles vous avez acces.`}
           />
         )}
 

@@ -172,7 +172,17 @@ export default async function PageUtilisateurs({
       </Carte>
 
       <div className="mt-5 space-y-5">
-        <Carte titre="Comptes nominatifs" sansPadding>
+        <Carte
+          titre="Comptes nominatifs"
+          sansPadding
+          actions={
+            peutGerer ? (
+              <a className="bouton secondaire" href="#gestion-comptes">
+                Changer un mot de passe
+              </a>
+            ) : undefined
+          }
+        >
           {utilisateurs.length === 0 ? (
             <Vide message="Aucun compte ne correspond aux filtres selectionnes." />
           ) : (
@@ -351,8 +361,9 @@ export default async function PageUtilisateurs({
 
         {peutGerer && utilisateurs.length > 0 && (
           <Carte
+            id="gestion-comptes"
             titre="Gestion des comptes affiches"
-            description="Ces operations sont journalisees. La reinitialisation d'un mot de passe ferme les sessions ouvertes du compte et impose le changement a la prochaine connexion."
+            description="Trois actions par compte : desactiver, reinitialiser avec un mot de passe aleatoire, ou definir vous-meme le mot de passe. Toutes sont journalisees ; un changement de mot de passe ferme les sessions ouvertes et impose le changement a la prochaine connexion."
           >
             <div className="space-y-4">
               {utilisateurs.map((compte) => (
