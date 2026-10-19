@@ -1,5 +1,5 @@
 ﻿import Link from "next/link";
-import type { Factory, Priority, WorkOrderStatus } from "@prisma/client";
+import { WarehouseType, type Factory, type Priority, type WorkOrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { exigerPermission, aLaPermission, usinesAutorisees } from "@/lib/rbac/guard";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
@@ -240,11 +240,28 @@ export default async function PageOrdresFabrication({
             _count: { select: { steps: true } },
           },
         }),
+        /*
+         * Un ordre consomme dans un depot de matieres ou de consommables, et
+         * livre dans un depot de produits finis ou d'en-cours. Proposer les
+         * neuf depots pour les deux champs laissait choisir une destination
+         * absurde (matieres premieres) ou celle de l'autre division.
+         */
         prisma.warehouse.findMany({
-          where: { isActive: true },
+          where: {
+            isActive: true,
+            factory: { in: usinesAutorisees(utilisateur) },
+            type: {
+              in: [
+                WarehouseType.MATIERES_PREMIERES,
+                WarehouseType.CONSOMMABLES,
+                WarehouseType.PRODUITS_FINIS,
+                WarehouseType.EN_COURS,
+              ],
+            },
+          },
           orderBy: [{ factory: "asc" }, { code: "asc" }],
           take: 500,
-          select: { id: true, code: true, label: true, factory: true },
+          select: { id: true, code: true, label: true, factory: true, type: true },
         }),
         prisma.employee.findMany({
           where: { isActive: true },
@@ -254,6 +271,20 @@ export default async function PageOrdresFabrication({
         }),
       ])
     : [[], [], [], [], []];
+
+  /** Depots proposes selon le role du champ : consommer ou livrer. */
+  const depotsSource = (depots ?? []).filter(
+    (depot) =>
+      depot.type === WarehouseType.MATIERES_PREMIERES ||
+      depot.type === WarehouseType.CONSOMMABLES ||
+      depot.type === WarehouseType.EN_COURS,
+  );
+  const depotsDestination = (depots ?? []).filter(
+    (depot) =>
+      depot.type === WarehouseType.PRODUITS_FINIS ||
+      depot.type === WarehouseType.EN_COURS,
+  );
+
 
   const clients = peutCreer
     ? await prisma.thirdParty.findMany({
@@ -412,7 +443,7 @@ export default async function PageOrdresFabrication({
                 nom="sourceWarehouseId"
                 libelle="Depot source (consommation)"
                 type="select"
-                options={depots.map((depot) => ({
+                options={depotsSource.map((depot) => ({
                   valeur: depot.id,
                   libelle: `${depot.code} - ${depot.label} (${libelle(LIBELLES_USINE, depot.factory)})`,
                 }))}
@@ -421,7 +452,7 @@ export default async function PageOrdresFabrication({
                 nom="targetWarehouseId"
                 libelle="Depot de destination (produit fini)"
                 type="select"
-                options={depots.map((depot) => ({
+                options={depotsDestination.map((depot) => ({
                   valeur: depot.id,
                   libelle: `${depot.code} - ${depot.label} (${libelle(LIBELLES_USINE, depot.factory)})`,
                 }))}
