@@ -132,6 +132,15 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
       P.ARTICLE_ECRIRE,
       P.NOMENCLATURE_ECRIRE,
       P.GAMME_GERER,
+      // Les lectures correspondantes : sans elles, les sections Nomenclature
+      // et Gammes restent invisibles alors que l'ecriture est deja accordee.
+      P.NOMENCLATURE_LIRE,
+      P.GAMME_LIRE,
+      // Production : creer et organiser les ordres de sa division.
+      P.PRODUCTION_ORDRE_CREER,
+      P.PRODUCTION_ORDRE_MODIFIER,
+      P.PRODUCTION_PLANNING_GERER,
+      P.PRODUCTION_LANCER,
       // Gestion des employes de sa propre division : creer, modifier,
       // desactiver. Les lectures RH sont bornees a l'usine cote serveur.
       P.RH_LIRE,
@@ -152,6 +161,15 @@ export const ROLE_DEFINITIONS: RoleDefinition[] = [
       P.ARTICLE_ECRIRE,
       P.NOMENCLATURE_ECRIRE,
       P.GAMME_GERER,
+      // Les lectures correspondantes : sans elles, les sections Nomenclature
+      // et Gammes restent invisibles alors que l'ecriture est deja accordee.
+      P.NOMENCLATURE_LIRE,
+      P.GAMME_LIRE,
+      // Production : creer et organiser les ordres de sa division.
+      P.PRODUCTION_ORDRE_CREER,
+      P.PRODUCTION_ORDRE_MODIFIER,
+      P.PRODUCTION_PLANNING_GERER,
+      P.PRODUCTION_LANCER,
       // Gestion des employes de sa propre division : creer, modifier,
       // desactiver. Les lectures RH sont bornees a l'usine cote serveur.
       P.RH_LIRE,
