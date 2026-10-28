@@ -10,7 +10,14 @@ export function estProprietaireUsine(utilisateur: SessionUser): boolean {
 
 export function peutAccederUsine(utilisateur: SessionUser, usine: Factory): boolean {
   if (utilisateur.scope.allFactories) return true;
-  if (usine === "COMMUN") return !estProprietaireUsine(utilisateur);
+  /*
+   * « Transversal » signifie utilisable par les deux divisions. Le refuser a un
+   * proprietaire d'usine fermait sa propre fiche produit : les articles importes
+   * sont transversaux, et il ne pouvait ni les consulter ni les modifier depuis
+   * son portail. Il accede donc au transversal, et seulement a cela en plus de
+   * sa division — jamais a l'autre usine.
+   */
+  if (usine === "COMMUN") return true;
   if (usine === "ADMEDCO") return utilisateur.scope.admedco;
   if (usine === "MOBILIX") return utilisateur.scope.mobilix;
   return false;

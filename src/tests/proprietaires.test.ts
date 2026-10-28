@@ -88,9 +88,11 @@ beforeEach(() => {
 describe("Proprietaires limites a leur usine", () => {
   it.each(["ADMEDCO", "MOBILIX"] as Factory[])("%s : un seul perimetre et une seule page d'accueil", (usine) => {
     const utilisateur = compte(`PROPRIETAIRE_${usine}`);
-    expect(usinesAutorisees(utilisateur)).toEqual([usine]);
+    expect(usinesAutorisees(utilisateur)).toEqual(["COMMUN", usine]);
     expect(peutAccederUsine(utilisateur, usine === "ADMEDCO" ? "MOBILIX" : "ADMEDCO")).toBe(false);
-    expect(peutAccederUsine(utilisateur, "COMMUN")).toBe(false);
+    // Le transversal est utilisable par les deux divisions : le refuser fermait
+    // au proprietaire ses propres produits, importes en transversal.
+    expect(peutAccederUsine(utilisateur, "COMMUN")).toBe(true);
     expect(premierCheminAccessible(utilisateur)).toBe(`/direction/${usine.toLowerCase()}`);
     const menus = navigationAutorisee(utilisateur).flatMap((s) => s.entrees.map((e) => e.chemin));
     expect(menus).toContain(`/direction/${usine.toLowerCase()}`);
