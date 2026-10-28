@@ -78,7 +78,10 @@ export async function actionCreerProduit(formData: FormData): Promise<ResultatAc
       const libelle = texteObligatoire(formData.get("libelle"), "nom du produit");
       const unite = texteOuNull(formData.get("unite"));
 
-      const codeChaine = texteObligatoire(formData.get("codeChaine"), "code de la chaine");
+      // Le code de la chaine n'est pas demande a l'utilisateur : il se deduit
+      // du code produit. L'assistant ne doit pas exiger une reference interne
+      // que personne ne connait par coeur.
+      const codeChaine = texteOuNull(formData.get("codeChaine")) ?? `ROUTE-${codeArticle}`;
       const libelleChaine = texteOuNull(formData.get("libelleChaine")) ?? `${libelle} - chaine`;
 
       const codeNomenclature =
@@ -123,12 +126,18 @@ export async function actionCreerProduit(formData: FormData): Promise<ResultatAc
             `Le code produit « ${codeArticle} » est deja utilise par un article existant.`,
           );
         }
-        const doublonChaine = await tx.productRoute.findUnique({
-          where: { code: codeChaine },
-          select: { id: true },
-        });
-        if (doublonChaine) {
-          throw conflit(`Le code de chaine « ${codeChaine} » est deja utilise.`);
+        // Un code de chaine deja pris (ROUTE-X existe deja) : on suffixe au lieu
+        // de refuser la creation.
+        let codeChaineFinal = codeChaine;
+        let suffixeChaine = 2;
+        while (
+          await tx.productRoute.findUnique({
+            where: { code: codeChaineFinal },
+            select: { id: true },
+          })
+        ) {
+          codeChaineFinal = `${codeChaine}-${suffixeChaine}`;
+          suffixeChaine += 1;
         }
         const doublonNomenclature = await tx.formula.findFirst({
           where: { code: codeNomenclature },
@@ -265,7 +274,7 @@ export async function actionCreerProduit(formData: FormData): Promise<ResultatAc
         // --- 5. Chaine de fabrication ---------------------------------------
         const chaine = await tx.productRoute.create({
           data: {
-            code: codeChaine,
+            code: codeChaineFinal,
             label: libelleChaine,
             itemId: article.id,
             version: 1,
