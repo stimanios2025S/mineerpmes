@@ -111,6 +111,8 @@ export default async function PageArticle({
   const peutEcrire = aLaPermission(utilisateur, PERMISSIONS.ARTICLE_ECRIRE);
   const peutArchiver = aLaPermission(utilisateur, PERMISSIONS.ARTICLE_ARCHIVER);
   const peutVoirPrix = aLaPermission(utilisateur, PERMISSIONS.PRIX_LIRE);
+  /** Un produit fini se fabrique et se vend : il ne s'achete pas. */
+  const estProduit = article.type === "PRODUIT_FINI";
 
   const [
     soldes,
@@ -256,9 +258,20 @@ export default async function PageArticle({
     <>
       <EnTetePage
         titre={`${article.code} — ${article.label1}`}
-        description="Fiche complete de l'article : configuration, seuils, stock reel par depot, nomenclature, gammes, lots et prix enregistres."
+        description={
+          estProduit
+            ? "Fiche complete du produit : matieres consommees, operations, stock par depot, lots et prix de vente."
+            : "Fiche complete de l'article : configuration, seuils, stock reel par depot, lots et prix enregistres."
+        }
         actions={
           <>
+            <Link
+              className="bouton secondaire text-sm"
+              href={`/referentiel/articles/${article.id}/fiche-technique`}
+              target="_blank"
+            >
+              Fiche technique
+            </Link>
             {peutEcrire && (
               <a
                 className="bouton primaire text-sm"
@@ -282,7 +295,7 @@ export default async function PageArticle({
             peutEcrire ? (
               <a
                 className="bouton secondaire text-xs"
-                href="#modification-fiche"
+                href="#modif-identification"
                 style={{ minHeight: 34 }}
               >
                 Modifier
@@ -364,7 +377,7 @@ export default async function PageArticle({
             peutEcrire ? (
               <a
                 className="bouton secondaire text-xs"
-                href="#modification-fiche"
+                href="#modif-configuration"
                 style={{ minHeight: 34 }}
               >
                 Modifier
@@ -414,7 +427,7 @@ export default async function PageArticle({
             peutEcrire ? (
               <a
                 className="bouton secondaire text-xs"
-                href="#modification-fiche"
+                href="#modif-seuils"
                 style={{ minHeight: 34 }}
               >
                 Modifier
@@ -749,6 +762,12 @@ export default async function PageArticle({
 
         {peutVoirPrix ? (
           <>
+            {/*
+              * Un produit que l'on fabrique ne s'achete pas : afficher des prix
+              * fournisseurs sur une chaise n'a aucun sens et fait douter du
+              * reste de la fiche. Le bloc n'apparait que pour ce qui s'achete.
+              */}
+            {article.isPurchasable && !estProduit && (
             <Carte
               titre="Prix fournisseurs"
               actions={
@@ -804,6 +823,7 @@ export default async function PageArticle({
                 messageVide="Aucun prix fournisseur enregistre pour cet article."
               />
             </Carte>
+            )}
 
             <Carte
               titre="Tarifs de vente"
@@ -872,7 +892,7 @@ export default async function PageArticle({
         >
           <div className="space-y-6">
         {peutEcrire ? (
-          <PanneauAncre id="modification-fiche">
+          <PanneauAncre id="modification-fiche" prefixes={["#modif-"]}>
           <Carte
             titre="Modification de la fiche"
             description="Toute modification est journalisee avec son auteur et l'etat precedent de la fiche."
@@ -884,7 +904,14 @@ export default async function PageArticle({
             >
               <input type="hidden" name="articleId" value={article.id} />
 
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <details
+                id="modif-identification"
+                className="mt-4 rounded-[var(--rayon-petit)] border p-3"
+              >
+                <summary className="cursor-pointer font-semibold">
+                  Modifier l&apos;identification
+                </summary>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <Champ nom="code" libelle="Code article" requis valeur={article.code} />
                 <Champ
                   nom="codeBarres"
@@ -968,10 +995,17 @@ export default async function PageArticle({
                     libelle: `${taux.label} (${formatPourcentage(taux.rate)})`,
                   }))}
                 />
-              </div>
+                </div>
+              </details>
 
-              <Section titre="Configuration">
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <details
+                id="modif-configuration"
+                className="mt-4 rounded-[var(--rayon-petit)] border p-3"
+              >
+                <summary className="cursor-pointer font-semibold">
+                  Modifier la configuration
+                </summary>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <CaseACocher nom="achetable" libelle="Achetable" coche={article.isPurchasable} />
                   <CaseACocher nom="vendable" libelle="Vendable" coche={article.isSellable} />
                   <CaseACocher nom="fabricable" libelle="Fabricable" coche={article.isProducible} />
@@ -998,9 +1032,16 @@ export default async function PageArticle({
                     coche={article.useNegativeStock}
                   />
                 </div>
-              </Section>
+              </details>
 
-              <Section titre="Seuils de stock">
+              <details
+                id="modif-seuils"
+                className="mt-4 rounded-[var(--rayon-petit)] border p-3"
+              >
+                <summary className="cursor-pointer font-semibold">
+                  Modifier les seuils de stock
+                </summary>
+                <div className="mt-4">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <Champ
                     nom="quantiteMin"
@@ -1027,9 +1068,17 @@ export default async function PageArticle({
                     valeur={article.safetyStock.toString()}
                   />
                 </div>
-              </Section>
+                </div>
+              </details>
 
-              <Section titre="Poids et dimensions">
+              <details
+                id="modif-dimensions"
+                className="mt-4 rounded-[var(--rayon-petit)] border p-3"
+              >
+                <summary className="cursor-pointer font-semibold">
+                  Modifier les poids et dimensions
+                </summary>
+                <div className="mt-4">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <Champ
                     nom="poidsUnitaire"
@@ -1072,7 +1121,8 @@ export default async function PageArticle({
                     valeur={article.thickness.toString()}
                   />
                 </div>
-              </Section>
+                </div>
+              </details>
             </FormulaireAction>
           </Carte>
           </PanneauAncre>

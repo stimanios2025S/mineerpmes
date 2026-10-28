@@ -13,19 +13,32 @@ import { useEffect, useState, type ReactNode } from "react";
  */
 export function PanneauAncre({
   id,
+  prefixes = [],
   children,
 }: {
   id: string;
+  /**
+   * Autres ancres qui ouvrent ce panneau. La fiche produit s'en sert pour que
+   * « Modifier » sur une section precise ouvre la fiche au bon endroit, sans
+   * devoiler toutes les autres sections.
+   */
+  prefixes?: string[];
   children: ReactNode;
 }) {
   const [ouvert, setOuvert] = useState(false);
 
   useEffect(() => {
-    const maj = () => setOuvert(window.location.hash === `#${id}`);
+    const maj = () => {
+      const hash = window.location.hash;
+      setOuvert(
+        hash === `#${id}` ||
+          prefixes.some((prefixe) => hash.startsWith(prefixe)),
+      );
+    };
     maj();
     window.addEventListener("hashchange", maj);
     return () => window.removeEventListener("hashchange", maj);
-  }, [id]);
+  }, [id, prefixes]);
 
   /*
    * Le panneau peut vivre dans un bloc replie (`SectionRepliable`).
