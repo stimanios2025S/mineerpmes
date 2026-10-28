@@ -1,21 +1,19 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import type { ResultatAction } from "@/lib/actions/resultat";
-import { actionCreerProduit } from "@/actions/produit";
+import { actionCreerProduit, actionCreerFamilleProduit } from "@/actions/produit";
 
 /**
  * Creation d'un produit en trois etapes.
  *
  * 1. les matieres premieres, avec leur quantite ;
  * 2. les operations, dans l'ordre ou le produit les traverse ;
- * 3. l'identite du produit : code, nom, famille, photo, dessin technique.
+ * 3. l'identite : code, nom, famille, photo, dessin technique.
  *
- * Le dessin technique est depose ici parce qu'il sert ensuite a l'ouvrier :
- * c'est lui qui montre ou centrer, ou percer, et dans quel ordre assembler.
- *
- * L'ordre des operations est celui de la selection : la premiere cochee est la
- * premiere traversee. Il est reordonnable sans tout recommencer.
+ * Rien n'est perdu en cours de route : la saisie est memorisee, y compris si
+ * l'envoi echoue ou si la page est rechargee. Refaire une etape ne fait jamais
+ * retaper ce qui a deja ete rempli.
  */
 
 export interface OptionMatiere {
@@ -40,6 +38,16 @@ export interface OptionFamille {
   label: string;
 }
 
+interface EtatSauve {
+  division: string;
+  lignes: { id: number; quantite: string }[];
+  choisies: number[];
+  code: string;
+  libelle: string;
+  familleId: string;
+}
+
+const CLE = "nomenclature-brouillon";
 const ETAPES = ["Matieres premieres", "Operations", "Produit"] as const;
 
 export function AssistantNomenclature({
@@ -48,23 +56,56 @@ export function AssistantNomenclature({
   matieres,
   operations,
   familles,
-  unites,
 }: {
   divisions: { code: string; libelle: string }[];
   divisionImposee: string | null;
   matieres: OptionMatiere[];
   operations: OptionOperation[];
   familles: OptionFamille[];
-  unites: { code: string; label: string }[];
 }) {
   const [etape, setEtape] = useState(0);
   const [division, setDivision] = useState(divisionImposee ?? divisions[0]?.code ?? "ADMEDCO");
   const [recherche, setRecherche] = useState("");
   const [lignes, setLignes] = useState<{ id: number; quantite: string }[]>([]);
   const [choisies, setChoisies] = useState<number[]>([]);
+  const [code, setCode] = useState("");
+  const [libelle, setLibelle] = useState("");
+  const [familleId, setFamilleId] = useState("");
+  const [famillesLocales, setFamillesLocales] = useState<OptionFamille[]>(familles);
+  const [nouvelleFamille, setNouvelleFamille] = useState("");
+  const [erreurFamille, setErreurFamille] = useState<string | null>(null);
   const [resultat, setResultat] = useState<ResultatAction | null>(null);
   const [enCours, demarrer] = useTransition();
-  const formulaire = useRef<HTMLFormElement>(null);
+  const [pret, setPret] = useState(false);
+
+  // Restauration : la saisie survit a un rechargement ou a un retour arriere.
+  useEffect(() => {
+    try {
+      const brut = window.sessionStorage.getItem(CLE);
+      if (brut) {
+        const etat = JSON.parse(brut) as EtatSauve;
+        if (etat.division) setDivision(etat.division);
+        if (Array.isArray(etat.lignes)) setLignes(etat.lignes);
+        if (Array.isArray(etat.choisies)) setChoisies(etat.choisies);
+        if (etat.code) setCode(etat.code);
+        if (etat.libelle) setLibelle(etat.libelle);
+        if (etat.familleId) setFamilleId(etat.familleId);
+      }
+    } catch {
+      /* stockage indisponible : on repart d'un formulaire vide */
+    }
+    setPret(true);
+  }, []);
+
+  useEffect(() => {
+    if (!pret) return;
+    const etat: EtatSauve = { division, lignes, choisies, code, libelle, familleId };
+    try {
+      window.sessionStorage.setItem(CLE, JSON.stringify(etat));
+    } catch {
+      /* stockage indisponible : sans consequence sur la saisie en cours */
+    }
+  }, [pret, division, lignes, choisies, code, libelle, familleId]);
 
   const matieresFiltrees = useMemo(() => {
     const terme = recherche.trim().toLowerCase();
@@ -84,39 +125,14 @@ export function AssistantNomenclature({
     [operations, division],
   );
 
-  const ajouterMatiere = (id: number) => {
-    setLignes((actuel) =>
-      actuel.some((l) => l.id === id) ? actuel : [...actuel, { id, quantite: "1" }],
-    );
-    setRecherche("");
-  };
-
-  const retirerMatiere = (id: number) =>
-    setLignes((actuel) => actuel.filter((l) => l.id !== id));
-
-  const changerQuantite = (id: number, valeur: string) =>
-    setLignes((actuel) =>
-      actuel.map((l) => (l.id === id ? { ...l, quantite: valeur } : l)),
-    );
-
-  const basculerOperation = (id: number) =>
-    setChoisies((actuel) =>
-      actuel.includes(id) ? actuel.filter((x) => x !== id) : [...actuel, id],
-    );
-
-  const deplacerOperation = (index: number, sens: -1 | 1) => {
-    setChoisies((actuel) => {
-      const cible = index + sens;
-      if (cible < 0 || cible >= actuel.length) return actuel;
-      const copie = [...actuel];
-      [copie[index], copie[cible]] = [copie[cible], copie[index]];
-      return copie;
-    });
-  };
-
   const nommer = (id: number) =>
-    matieres.find((m) => m.id === id) ??
-    ({ id, code: String(id), label: "?", unitCode: null, factory: "" } as OptionMatiere);
+    matieres.find((m) => m.id === id) ?? {
+      id,
+      code: String(id),
+      label: "?",
+      unitCode: null,
+      factory: "",
+    };
 
   const nommerOperation = (id: number) =>
     operations.find((o) => o.id === id) ?? {
@@ -127,11 +143,50 @@ export function AssistantNomenclature({
       factory: "",
     };
 
-  const soumettre = (donnees: FormData) => {
+  const creerFamille = () => {
+    const nom = nouvelleFamille.trim();
+    if (nom === "") return;
+    const donnees = new FormData();
+    donnees.set("libelle", nom);
+    demarrer(async () => {
+      const reponse = await actionCreerFamilleProduit(donnees);
+      if (reponse.ok) {
+        const id = String((reponse as unknown as { familleId: number }).familleId);
+        setFamillesLocales((actuel) => [
+          ...actuel,
+          { id: Number(id), code: "", label: nom },
+        ]);
+        setFamilleId(id);
+        setNouvelleFamille("");
+        setErreurFamille(null);
+      } else {
+        setErreurFamille(reponse.message);
+      }
+    });
+  };
+
+  const soumettre = (evenement: React.FormEvent<HTMLFormElement>) => {
+    evenement.preventDefault();
+    const donnees = new FormData(evenement.currentTarget);
+    // La division est transmise sous le nom attendu par le serveur.
+    donnees.set("division", division);
+    donnees.set("familleId", familleId);
+
     demarrer(async () => {
       const reponse = await actionCreerProduit(donnees);
       setResultat(reponse);
-      if (reponse.ok) window.scrollTo({ top: 0, behavior: "smooth" });
+      if (reponse.ok) {
+        try {
+          window.sessionStorage.removeItem(CLE);
+        } catch {
+          /* sans consequence */
+        }
+        setLignes([]);
+        setChoisies([]);
+        setCode("");
+        setLibelle("");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
     });
   };
 
@@ -170,13 +225,17 @@ export function AssistantNomenclature({
         </p>
       )}
 
-      <form ref={formulaire} action={soumettre}>
-        <input type="hidden" name="factory" value={division} />
+      <form onSubmit={soumettre}>
         {lignes.map((ligne) => (
           <input key={ligne.id} type="hidden" name="composant" value={ligne.id} />
         ))}
         {lignes.map((ligne) => (
-          <input key={`q${ligne.id}`} type="hidden" name={`qte_${ligne.id}`} value={ligne.quantite} />
+          <input
+            key={`q${ligne.id}`}
+            type="hidden"
+            name={`qte_${ligne.id}`}
+            value={ligne.quantite}
+          />
         ))}
         {choisies.map((id) => (
           <input key={id} type="hidden" name="etape" value={id} />
@@ -232,7 +291,14 @@ export function AssistantNomenclature({
                       <button
                         type="button"
                         className="w-full px-3 py-2 text-left text-sm hover:bg-[var(--surface-douce)]"
-                        onClick={() => ajouterMatiere(matiere.id)}
+                        onClick={() => {
+                          setLignes((actuel) =>
+                            actuel.some((l) => l.id === matiere.id)
+                              ? actuel
+                              : [...actuel, { id: matiere.id, quantite: "1" }],
+                          );
+                          setRecherche("");
+                        }}
                       >
                         <span className="font-mono">{matiere.code}</span> — {matiere.label}
                       </button>
@@ -267,7 +333,13 @@ export function AssistantNomenclature({
                           step="0.000001"
                           value={ligne.quantite}
                           onChange={(evenement) =>
-                            changerQuantite(ligne.id, evenement.target.value)
+                            setLignes((actuel) =>
+                              actuel.map((l) =>
+                                l.id === ligne.id
+                                  ? { ...l, quantite: evenement.target.value }
+                                  : l,
+                              ),
+                            )
                           }
                         />
                         <span style={{ color: "var(--texte-doux)" }}>
@@ -277,7 +349,9 @@ export function AssistantNomenclature({
                       <button
                         type="button"
                         className="bouton"
-                        onClick={() => retirerMatiere(ligne.id)}
+                        onClick={() =>
+                          setLignes((actuel) => actuel.filter((l) => l.id !== ligne.id))
+                        }
                       >
                         Retirer
                       </button>
@@ -317,13 +391,43 @@ export function AssistantNomenclature({
                           {operation.workshop ?? ""}
                         </span>
                       </span>
-                      <button type="button" className="bouton" onClick={() => deplacerOperation(index, -1)}>
+                      <button
+                        type="button"
+                        className="bouton"
+                        onClick={() =>
+                          setChoisies((actuel) => {
+                            const cible = index - 1;
+                            if (cible < 0) return actuel;
+                            const copie = [...actuel];
+                            [copie[index], copie[cible]] = [copie[cible], copie[index]];
+                            return copie;
+                          })
+                        }
+                      >
                         ↑
                       </button>
-                      <button type="button" className="bouton" onClick={() => deplacerOperation(index, 1)}>
+                      <button
+                        type="button"
+                        className="bouton"
+                        onClick={() =>
+                          setChoisies((actuel) => {
+                            const cible = index + 1;
+                            if (cible >= actuel.length) return actuel;
+                            const copie = [...actuel];
+                            [copie[index], copie[cible]] = [copie[cible], copie[index]];
+                            return copie;
+                          })
+                        }
+                      >
                         ↓
                       </button>
-                      <button type="button" className="bouton" onClick={() => basculerOperation(id)}>
+                      <button
+                        type="button"
+                        className="bouton"
+                        onClick={() =>
+                          setChoisies((actuel) => actuel.filter((x) => x !== id))
+                        }
+                      >
                         Retirer
                       </button>
                     </div>
@@ -339,7 +443,13 @@ export function AssistantNomenclature({
                   <button
                     key={operation.id}
                     type="button"
-                    onClick={() => basculerOperation(operation.id)}
+                    onClick={() =>
+                      setChoisies((actuel) =>
+                        actuel.includes(operation.id)
+                          ? actuel.filter((x) => x !== operation.id)
+                          : [...actuel, operation.id],
+                      )
+                    }
                     className="rounded-[var(--rayon-petit)] border p-3 text-left text-sm"
                     style={{
                       background: pris ? "var(--accent)" : "var(--surface)",
@@ -362,34 +472,70 @@ export function AssistantNomenclature({
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block text-sm">
               <span className="mb-1 block font-medium">Code produit *</span>
-              <input className="champ" name="code" required maxLength={40} />
+              <input
+                className="champ"
+                name="code"
+                required
+                maxLength={40}
+                value={code}
+                onChange={(evenement) => setCode(evenement.target.value)}
+              />
             </label>
             <label className="block text-sm">
               <span className="mb-1 block font-medium">Nom du produit *</span>
-              <input className="champ" name="libelle" required maxLength={200} />
+              <input
+                className="champ"
+                name="libelle"
+                required
+                maxLength={200}
+                value={libelle}
+                onChange={(evenement) => setLibelle(evenement.target.value)}
+              />
             </label>
-            <label className="block text-sm">
-              <span className="mb-1 block font-medium">Famille</span>
-              <select className="champ" name="familleId" defaultValue="">
+
+            <div className="block text-sm sm:col-span-2">
+              <span className="mb-1 block font-medium">Famille de produits</span>
+              <select
+                className="champ"
+                value={familleId}
+                onChange={(evenement) => setFamilleId(evenement.target.value)}
+              >
                 <option value="">— Aucune —</option>
-                {familles.map((famille) => (
+                {famillesLocales.map((famille) => (
                   <option key={famille.id} value={famille.id}>
-                    {famille.code} — {famille.label}
+                    {famille.label}
                   </option>
                 ))}
               </select>
-            </label>
-            <label className="block text-sm">
-              <span className="mb-1 block font-medium">Unite</span>
-              <select className="champ" name="unite" defaultValue="">
-                <option value="">— Aucune —</option>
-                {unites.map((unite) => (
-                  <option key={unite.code} value={unite.code}>
-                    {unite.code} — {unite.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+
+              <div className="mt-2 flex flex-wrap items-end gap-2">
+                <label className="flex-1 text-sm">
+                  <span className="mb-1 block" style={{ color: "var(--texte-doux)" }}>
+                    La famille n&apos;existe pas encore ? Donnez-lui un nom.
+                  </span>
+                  <input
+                    className="champ"
+                    placeholder="Nouvelle famille : table, etagere..."
+                    value={nouvelleFamille}
+                    onChange={(evenement) => setNouvelleFamille(evenement.target.value)}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="bouton"
+                  disabled={enCours || nouvelleFamille.trim() === ""}
+                  onClick={creerFamille}
+                >
+                  Creer et selectionner
+                </button>
+              </div>
+              {erreurFamille && (
+                <p className="mt-1 text-xs" style={{ color: "var(--danger)" }}>
+                  {erreurFamille}
+                </p>
+              )}
+            </div>
+
             <label className="block text-sm">
               <span className="mb-1 block font-medium">Photo du produit</span>
               <input

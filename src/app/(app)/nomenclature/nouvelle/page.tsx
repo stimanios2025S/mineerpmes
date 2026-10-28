@@ -38,7 +38,17 @@ export default async function PageNouvelleNomenclature() {
   const portee: Factory[] =
     divisions.length === 1 ? [divisions[0], "COMMUN"] : [...divisions, "COMMUN"];
 
-  const [matieres, operations, familles, unites] = await Promise.all([
+  /*
+   * Seules les familles de produits finis sont proposees : une nomenclature
+   * decrit un produit fini, jamais une matiere premiere. Les familles filles de
+   * « PRODUIT FINI » sont donc les seules utiles ici.
+   */
+  const familleProduits = await prisma.itemFamily.findFirst({
+    where: { code: "002" },
+    select: { id: true },
+  });
+
+  const [matieres, operations, familles] = await Promise.all([
     prisma.item.findMany({
       where: {
         status: "ACTIF",
@@ -61,12 +71,14 @@ export default async function PageNouvelleNomenclature() {
       },
     }),
     prisma.itemFamily.findMany({
-      orderBy: { code: "asc" },
+      where: {
+        OR: [
+          ...(familleProduits ? [{ parentId: familleProduits.id }] : []),
+          { code: "FAM-PF" },
+        ],
+      },
+      orderBy: { label: "asc" },
       select: { id: true, code: true, label: true },
-    }),
-    prisma.unitOfMeasure.findMany({
-      orderBy: { code: "asc" },
-      select: { code: true, label: true },
     }),
   ]);
 
@@ -110,7 +122,6 @@ export default async function PageNouvelleNomenclature() {
               factory: operation.factory,
             }))}
             familles={familles}
-            unites={unites}
           />
         </Carte>
       )}

@@ -485,3 +485,60 @@ export async function actionSupprimerProduit(
     return { itemId };
   });
 }
+
+/**
+ * Cree une famille de produits a la volee, depuis l'assistant.
+ *
+ * Une famille creee ici est une vraie famille du referentiel : elle apparaitra
+ * dans les listes de produits et dans les filtres, pas seulement dans cet
+ * assistant. Elle est rattachee a « PRODUIT FINI ».
+ */
+export async function actionCreerFamilleProduit(
+  formData: FormData,
+): Promise<ResultatAction> {
+  return executer("La famille a ete creee.", async () => {
+    const utilisateur = await exigerPermission(PERMISSIONS.ARTICLE_ECRIRE);
+    const label = texteObligatoire(formData.get("libelle"), "nom de la famille").trim();
+
+    const existante = await prisma.itemFamily.findFirst({
+      where: { label: { equals: label, mode: "insensitive" } },
+      select: { id: true, code: true, label: true },
+    });
+    if (existante) {
+      return { familleId: existante.id, code: existante.code, label: existante.label };
+    }
+
+    const parent = await prisma.itemFamily.findFirst({
+      where: { code: "002" },
+      select: { id: true },
+    });
+
+    const nombre = await prisma.itemFamily.count();
+    let code = `FAM-PF-${nombre + 1}`;
+    let suffixe = nombre + 1;
+    while (await prisma.itemFamily.findUnique({ where: { code }, select: { id: true } })) {
+      suffixe += 1;
+      code = `FAM-PF-${suffixe}`;
+    }
+
+    const creee = await prisma.itemFamily.create({
+      data: { code, label, parentId: parent?.id ?? null },
+      select: { id: true, code: true, label: true },
+    });
+
+    await enregistrerAudit({
+      action: ACTIONS_AUDIT.CREATION,
+      module: MODULES_AUDIT.REFERENTIEL,
+      entity: "ItemFamily",
+      entityId: creee.id,
+      userId: utilisateur.id,
+      userEmail: utilisateur.email,
+      newValue: creee,
+      comment: `Famille de produits creee depuis l'assistant : ${label}`,
+    });
+
+    revalidatePath("/referentiel/familles");
+    revalidatePath("/nomenclature/nouvelle");
+    return { familleId: creee.id, code: creee.code, label: creee.label };
+  });
+}
