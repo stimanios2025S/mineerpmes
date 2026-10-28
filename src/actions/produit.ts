@@ -7,6 +7,7 @@ import { conflit, validation } from "@/lib/errors";
 import { ACTIONS_AUDIT, MODULES_AUDIT, enregistrerAudit } from "@/lib/audit";
 import { exigerPermission, exigerPermissionEtUsine } from "@/lib/rbac/guard";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
+import { FORMATS, TAILLE_MAX, enregistrerMedia } from "@/lib/media/articles";
 import {
   decimalObligatoire,
   entierOu,
@@ -84,6 +85,10 @@ export async function actionCreerProduit(formData: FormData): Promise<ResultatAc
         texteOuNull(formData.get("codeNomenclature")) ?? `${codeArticle}-N1`;
       const libelleNomenclature =
         texteOuNull(formData.get("libelleNomenclature")) ?? `${libelle} - nomenclature`;
+
+      // Famille de rattachement : facultative, mais c'est elle qui range le
+      // produit dans les listes de vente et de referentiel.
+      const familyId = entierOu(formData.get("familleId"), null);
 
       const etapesChoisies = identifiantsCoches(formData, "etape");
       const composantsChoisis = identifiantsCoches(formData, "composant");
@@ -235,6 +240,7 @@ export async function actionCreerProduit(formData: FormData): Promise<ResultatAc
             status: "ACTIF",
             factory,
             unitCode: unite,
+            familyId,
             isProducible: true,
             isRawMaterial: false,
             isPurchasable: false,
@@ -347,11 +353,135 @@ export async function actionCreerProduit(formData: FormData): Promise<ResultatAc
         };
       });
 
+      /*
+       * Photo et dessin technique, enregistres apres la transaction : les
+       * fichiers vivent hors base, et un echec d'ecriture ne doit pas annuler
+       * un article, une chaine et une nomenclature deja valides.
+       */
+      const pieces: { type: "photo" | "dessin"; cle: string }[] = [
+        { type: "photo", cle: "photo" },
+        { type: "dessin", cle: "dessin" },
+      ];
+      for (const piece of pieces) {
+        const fichier = formData.get(piece.cle);
+        if (!(fichier instanceof File) || fichier.size === 0) continue;
+        if (fichier.size > TAILLE_MAX) {
+          throw validation(`Le fichier « ${piece.type} » depasse 10 Mo.`, {
+            [piece.cle]: "Fichier trop volumineux.",
+          });
+        }
+        if (!FORMATS[piece.type].includes(fichier.type)) {
+          throw validation(
+            piece.type === "photo"
+              ? "La photo doit etre au format JPEG, PNG ou WebP."
+              : "Le dessin doit etre au format JPEG, PNG, WebP ou PDF.",
+            { [piece.cle]: "Format non accepte." },
+          );
+        }
+
+        const enregistre = await enregistrerMedia(
+          resultat.articleId,
+          piece.type,
+          fichier.name,
+          fichier.type,
+          Buffer.from(await fichier.arrayBuffer()),
+        );
+        await prisma.item.update({
+          where: { id: resultat.articleId },
+          data:
+            piece.type === "photo"
+              ? { photoFile: enregistre.fichier, photoName: enregistre.nom }
+              : { drawingFile: enregistre.fichier, drawingName: enregistre.nom },
+        });
+      }
+
       revalidatePath("/production/nouveau-produit");
       revalidatePath("/nomenclature");
       revalidatePath("/nomenclature/gammes");
       revalidatePath("/production");
+      revalidatePath(`/referentiel/articles/${resultat.articleId}`);
       return resultat;
     },
   );
+}
+
+/**
+ * Supprime un produit, sa nomenclature et sa chaine.
+ *
+ * Aucune justification n'est demandee : le geste est direct. Une seule chose
+ * est verifiee — que la fabrication n'a jamais touche ce produit. Effacer une
+ * nomenclature deja utilisee par un ordre effacerait l'explication des
+ * consommations passees ; on refuse alors, en le disant.
+ */
+export async function actionSupprimerProduit(
+  formData: FormData,
+): Promise<ResultatAction> {
+  return executer("Le produit a ete supprime.", async () => {
+    const utilisateur = await exigerPermission(PERMISSIONS.NOMENCLATURE_ECRIRE);
+    const itemId = entierOu(formData.get("itemId"), null);
+    if (!itemId) {
+      throw validation("Produit introuvable.");
+    }
+
+    const article = await prisma.item.findUnique({
+      where: { id: itemId },
+      select: { id: true, code: true, label1: true },
+    });
+    if (!article) throw validation("Produit introuvable.");
+
+    const [ordres, mouvements, lots] = await Promise.all([
+      prisma.workOrder.count({ where: { itemId } }),
+      prisma.stockMovement.count({ where: { itemId } }),
+      prisma.stockLot.count({ where: { itemId } }),
+    ]);
+
+    if (ordres + mouvements + lots > 0) {
+      throw validation(
+        `« ${article.code} » a deja une histoire (${ordres} ordre(s), ${mouvements} mouvement(s), ${lots} lot(s)) : le supprimer effacerait l'explication des consommations passees. Archivez-le plutot depuis sa fiche.`,
+      );
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const formules = await tx.formula.findMany({
+        where: { itemId },
+        select: { id: true },
+      });
+      const ids = formules.map((f) => f.id);
+      if (ids.length > 0) {
+        await tx.formulaLine.deleteMany({ where: { formulaId: { in: ids } } });
+        await tx.formula.deleteMany({ where: { id: { in: ids } } });
+      }
+
+      const chaines = await tx.productRoute.findMany({
+        where: { itemId },
+        select: { id: true },
+      });
+      const idsChaines = chaines.map((c) => c.id);
+      if (idsChaines.length > 0) {
+        await tx.routeStep.deleteMany({ where: { routeId: { in: idsChaines } } });
+        await tx.productRoute.deleteMany({ where: { id: { in: idsChaines } } });
+      }
+
+      await tx.item.delete({ where: { id: itemId } });
+
+      await enregistrerAudit(
+        {
+          action: ACTIONS_AUDIT.SUPPRESSION_LOGIQUE,
+          module: MODULES_AUDIT.NOMENCLATURE,
+          entity: "Item",
+          entityId: itemId,
+          userId: utilisateur.id,
+          userEmail: utilisateur.email,
+          oldValue: article,
+          comment: `Suppression du produit ${article.code} et de sa nomenclature`,
+        },
+        tx,
+      );
+    });
+
+    revalidatePath("/nomenclature");
+    revalidatePath("/nomenclature/gammes");
+    revalidatePath("/production");
+    return { itemId };
+  });
 }

@@ -22,10 +22,11 @@ import {
   Etiquette,
   EtiquetteStatut,
   Pagination,
-  Tableau,
+
 } from "@/components/ui";
-import { formatDate, formatEntier } from "@/lib/format";
+import { formatEntier, formatQuantite } from "@/lib/format";
 import { LIBELLES_STATUT_NOMENCLATURE, libelle } from "@/lib/libelles";
+import { BoutonSupprimerProduit } from "@/components/bouton-supprimer-produit";
 
 export const metadata = { title: "Nomenclatures" };
 
@@ -129,6 +130,7 @@ export default async function PageNomenclatures({
           code: true,
           label1: true,
           factory: true,
+          photoFile: true,
           family: { select: { code: true, label: true } },
         },
       },
@@ -137,7 +139,49 @@ export default async function PageNomenclatures({
     },
   });
 
+  const peutEcrire = aLaPermission(utilisateur, PERMISSIONS.NOMENCLATURE_ECRIRE);
   const maintenant = new Date();
+
+  /*
+   * Ce que la carte doit dire en un coup d'oeil : ce que le produit consomme,
+   * par quelles operations il passe, et combien on en a deja fabrique.
+   */
+  const idsArticles = nomenclatures.map((formule) => formule.item.id);
+  const [chaines, produits] = idsArticles.length
+    ? await Promise.all([
+        prisma.productRoute.findMany({
+          where: { itemId: { in: idsArticles } },
+          orderBy: [{ itemId: "asc" }, { version: "desc" }],
+          select: {
+            itemId: true,
+            code: true,
+            version: true,
+            steps: {
+              orderBy: { stepNo: "asc" },
+              select: { operation: { select: { code: true, label: true } } },
+            },
+          },
+        }),
+        prisma.workOrder.groupBy({
+          by: ["itemId"],
+          where: { itemId: { in: idsArticles } },
+          _sum: { quantityConform: true },
+        }),
+      ])
+    : [[], []];
+
+  const operationsParArticle = new Map<number, string[]>();
+  for (const chaine of chaines) {
+    if (!operationsParArticle.has(chaine.itemId)) {
+      operationsParArticle.set(
+        chaine.itemId,
+        chaine.steps.map((etape) => etape.operation.code),
+      );
+    }
+  }
+  const produitParArticle = new Map(
+    produits.map((ligne) => [ligne.itemId, ligne._sum.quantityConform ?? 0]),
+  );
 
   const filtresCourants = {
     q: parametres.recherche,
@@ -147,62 +191,14 @@ export default async function PageNomenclatures({
     taille: parametres.taille,
   };
 
-  const lignes = nomenclatures.map((formule) => {
-    const active = formule.status === "ACTIVE";
-    const applicable = active && dansPeriode(formule, maintenant);
-
+  const cartes = nomenclatures.map((formule) => {
+    const operations = operationsParArticle.get(formule.item.id) ?? [];
+    const produit = produitParArticle.get(formule.item.id) ?? 0;
     return {
-      cle: String(formule.id),
-      cellules: [
-        <div key="article">
-          <Link className="lien-nav" href={`/referentiel/articles/${formule.item.id}`}>
-            {formule.item.code}
-          </Link>
-          <span className="block text-xs" style={{ color: "var(--texte-doux)" }}>
-            {formule.item.label1}
-            {formule.item.family ? ` — ${formule.item.family.label}` : ""}
-          </span>
-        </div>,
-        <Link key="code" className="lien-nav" href={`/nomenclature/${formule.id}`}>
-          {formule.code}
-        </Link>,
-        <span key="version" className="tabular-nums">
-          v{formule.version}
-        </span>,
-        <EtiquetteStatut
-          key="statut"
-          libelle={libelle(LIBELLES_STATUT_NOMENCLATURE, formule.status)}
-          code={formule.status}
-        />,
-        <span key="effet">{formatDate(formule.effectiveFrom)}</span>,
-        <span key="fin">{formatDate(formule.effectiveTo)}</span>,
-        <span key="composants" className="tabular-nums">
-          {formatEntier(formule._count.lines)}
-        </span>,
-        <span key="valideur">
-          {formule.approvedBy
-            ? formule.approvedBy.email
-            : "Non renseigne"}
-        </span>,
-        <div key="active">
-          {applicable ? (
-            <Etiquette ton="succes" titre="Version active et dans sa periode d'effet">
-              Version active
-            </Etiquette>
-          ) : active ? (
-            <Etiquette ton="alerte" titre="Statut actif, mais hors periode d'effet">
-              Active hors periode
-            </Etiquette>
-          ) : (
-            <span style={{ color: "var(--texte-doux)" }}>—</span>
-          )}
-          {formule._count.workOrders > 0 && (
-            <span className="mt-1 block text-xs" style={{ color: "var(--texte-doux)" }}>
-              {formatEntier(formule._count.workOrders)} ordre(s) fige(s) sur cette version
-            </span>
-          )}
-        </div>,
-      ],
+      formule,
+      operations,
+      produit,
+      applicable: formule.status === "ACTIVE" && dansPeriode(formule, maintenant),
     };
   });
 
@@ -220,8 +216,8 @@ export default async function PageNomenclatures({
               Gammes de fabrication
             </Link>
             {aLaPermission(utilisateur, PERMISSIONS.NOMENCLATURE_ECRIRE) && (
-              <Link className="lien-nav text-sm" href="/nomenclature/nouvelle">
-                Nouvelle nomenclature
+              <Link className="bouton primaire" href="/nomenclature/nouvelle">
+                Creer une nomenclature
               </Link>
             )}
           </>
@@ -308,33 +304,110 @@ export default async function PageNomenclatures({
         </Link>
       </form>
 
-      <Carte
-        titre="Versions de nomenclature"
-        description="Liste bornee et paginee. Le nombre de composants et le nombre d'ordres fige(s) sont comptes en base."
-        sansPadding
-      >
-        <Tableau
-          colonnes={[
-            { cle: "article", libelle: "Article parent" },
-            { cle: "code", libelle: "Code" },
-            { cle: "version", libelle: "Version", nombre: true },
-            { cle: "statut", libelle: "Statut" },
-            { cle: "effet", libelle: "Date d'effet" },
-            { cle: "fin", libelle: "Date de fin" },
-            { cle: "composants", libelle: "Composants", nombre: true },
-            { cle: "valideur", libelle: "Valideur" },
-            { cle: "active", libelle: "Version active" },
-          ]}
-          lignes={lignes}
-          messageVide="Aucune nomenclature ne correspond aux filtres selectionnes."
-        />
+      {cartes.length === 0 ? (
+        <Carte>
+          <p className="text-sm" style={{ color: "var(--texte-doux)" }}>
+            Aucune nomenclature ne correspond aux filtres selectionnes.
+          </p>
+        </Carte>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {cartes.map(({ formule, operations, produit, applicable }) => (
+            <article
+              key={formule.id}
+              className="carte flex flex-col overflow-hidden"
+            >
+              <Link
+                href={`/nomenclature/${formule.id}`}
+                className="block"
+                style={{ background: "var(--surface-douce)" }}
+              >
+                {formule.item.photoFile ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={`/api/articles/${formule.item.id}/media/photo`}
+                    alt={formule.item.label1}
+                    className="h-36 w-full object-cover"
+                  />
+                ) : (
+                  <div
+                    className="flex h-36 items-center justify-center text-xs"
+                    style={{ color: "var(--texte-doux)" }}
+                  >
+                    Sans photo
+                  </div>
+                )}
+              </Link>
+
+              <div className="flex flex-1 flex-col gap-2 p-4">
+                <div>
+                  <Link href={`/nomenclature/${formule.id}`} className="font-semibold">
+                    {formule.item.code}
+                  </Link>
+                  <p className="text-sm" style={{ color: "var(--texte-doux)" }}>
+                    {formule.item.label1}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <EtiquetteStatut
+                    libelle={libelle(LIBELLES_STATUT_NOMENCLATURE, formule.status)}
+                    code={formule.status}
+                  />
+                  {formule.item.family && (
+                    <Etiquette>{formule.item.family.label}</Etiquette>
+                  )}
+                  {applicable && <Etiquette ton="succes">Active</Etiquette>}
+                </div>
+
+                <p className="text-sm">
+                  <span style={{ color: "var(--texte-doux)" }}>Matieres : </span>
+                  <span className="font-medium">{formatEntier(formule._count.lines)}</span>
+                </p>
+                <p className="text-sm">
+                  <span style={{ color: "var(--texte-doux)" }}>Operations : </span>
+                  <span className="font-medium">
+                    {operations.length === 0
+                      ? "aucune"
+                      : operations.join(" → ")}
+                  </span>
+                </p>
+                <p className="text-sm">
+                  <span style={{ color: "var(--texte-doux)" }}>Produit : </span>
+                  <span className="font-medium">{formatQuantite(produit)}</span>
+                </p>
+
+                <div className="mt-auto flex flex-wrap gap-2 pt-2">
+                  <Link className="bouton" href={`/nomenclature/${formule.id}`}>
+                    Modifier
+                  </Link>
+                  <Link
+                    className="bouton secondaire"
+                    href={`/referentiel/articles/${formule.item.id}`}
+                  >
+                    Fiche article
+                  </Link>
+                  {peutEcrire && (
+                    <BoutonSupprimerProduit
+                      itemId={formule.item.id}
+                      code={formule.item.code}
+                    />
+                  )}
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-4">
         <Pagination
           page={parametres.page}
           pages={bornes.pages}
           total={total}
           construireLien={fabricantLien("/nomenclature", filtresCourants)}
         />
-      </Carte>
+      </div>
     </>
   );
 }
